@@ -1,0 +1,9 @@
+/doc
+/EBSD/*.d
+/EBSD/*.o
+*.o
+*.d
+*.exe
+*.h5
+*.png
+*.nml
