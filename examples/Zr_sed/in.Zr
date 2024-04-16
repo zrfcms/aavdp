@@ -1,0 +1,26 @@
+#LAMMPS
+
+units		metal
+boundary	p p p 
+atom_style	atomic
+
+variable a1 equal 3.2
+variable a3 equal 1.6235
+lattice custom ${a1} a1 1.0 0.0 0.0 a2 0.0 1.732 0.0 a3 0.0 0.0 ${a3} &
+basis 0.0 0.0 0.0 &
+basis 0.5 0.5 0.0 &
+basis 0.5 0.83333 0.5 &
+basis 0.0 0.33333 0.5
+region		box block 0 10 0 10 0 10
+create_box 	1 box
+create_atoms 1 box
+
+pair_style  eam/fs
+pair_coeff  * * Zr.eam Zr
+
+timestep 0.001
+velocity all create 200 12345 mom yes rot no
+compute 1 all saed 0.0251 Zr Kmax 1.70 Zone 0 0 0 c 0.061900 0.061900 0.061900 manual echo
+fix 1 all saed/vtk 1 1 1 c_1 file Zr_10x10x10_000.saed.vtk
+run 0
+write_data Zr_10x10x10_000.lmp
