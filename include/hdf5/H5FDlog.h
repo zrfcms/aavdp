@@ -241,7 +241,7 @@ H5_DLL hid_t H5FD_log_init(void);
  * <td>#H5FD_LOG_LOC_READ</td>
  * <td>Read Error</td>
  * <td>
- * \Code{Error! Reading: %10a-%10a (%10Zu bytes)}\n\n
+ * \Code{[ERROR] Reading: %10a-%10a (%10Zu bytes)}\n\n
  * Same parameters as non-error entry.
  * </td>
  * </tr>
@@ -261,7 +261,7 @@ H5_DLL hid_t H5FD_log_init(void);
  * <td>#H5FD_LOG_LOC_WRITE</td>
  * <td>Write Error</td>
  * <td>
- * \Code{Error! Writing: %10a-%10a (%10Zu bytes)}\n\n
+ * \Code{[ERROR] Writing: %10a-%10a (%10Zu bytes)}\n\n
  * Same parameters as non-error entry.
  * </td>
  * </tr>

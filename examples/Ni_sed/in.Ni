@@ -15,6 +15,5 @@ pair_coeff  * * Ni.eam
 timestep 0.001
 velocity all create 200 12345 mom yes rot no
 compute 1 all saed 0.0251 Ni Kmax 1.70 Zone 0 0 0 c 0.056818 0.056818 0.056818 manual echo
-fix 1 all saed/vtk 1 1 1 c_1 file Ni_10x10x10_000.saed.vtk
+fix 1 all saed/vtk 1 1 1 c_1 file Ni_10x10x10.000.saed.vtk
 run 0
-write_data Ni_10x10x10_000.lmp

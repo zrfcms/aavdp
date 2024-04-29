@@ -11,13 +11,13 @@ void EBSD_HDF5::open(const char* file_path)
     if(!existing_flag){
         f_id=H5Fcreate(file_path, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
         if(f_id<0){
-            printf("Error! Unable to create HDF5 file %s.\n", file_path);
+            printf("[ERROR] Unable to create HDF5 file %s.\n", file_path);
             exit(EXIT_FAILURE);
         }
     }else{
         f_id=H5Fopen(file_path, H5F_ACC_RDWR, H5P_DEFAULT);
         if(f_id<0){
-            printf("Error! Unable to open HDF5 file %s.\n", file_path);
+            printf("[ERROR] Unable to open HDF5 file %s.\n", file_path);
             exit(EXIT_FAILURE);
         }
     }
@@ -36,7 +36,7 @@ void EBSD_HDF5::write_group(const char *name)
     if(0!=status){
         g_id=H5Gcreate(f_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         if(g_id<0){
-            printf("Error! Unable to create HDF5 group %s.\n", name);
+            printf("[ERROR] Unable to create HDF5 group %s.\n", name);
             exit(EXIT_FAILURE);
         }
         status=H5Gclose(g_id);
@@ -329,7 +329,7 @@ void EBSD_HDF5::create_dataset(const char *name, size_t ndim, size_t size1, size
             }
         }
         if(flag){
-            printf("Error! Unable to create HDF5 dataset %s due to the existing dataset with different dimensions.\n", name);
+            printf("[ERROR] Unable to create HDF5 dataset %s due to the existing dataset with different dimensions.\n", name);
             exit(EXIT_FAILURE);
         }
     }else{
@@ -360,7 +360,7 @@ void EBSD_HDF5::create_dataset(const char *name, size_t ndim, size_t size1, size
             mallocate(&dims, 4); dims[0]=size1; dims[1]=size2; dims[2]=size3; dims[3]=size4;
             break;
         default:
-            printf("Error! Unable to store dataset of %d dimensions as HDF5 format.", ndim);
+            printf("[ERROR] Unable to store dataset of %d dimensions as HDF5 format.", ndim);
             exit(EXIT_FAILURE);
         }
         if(is_string_flag){
@@ -369,12 +369,12 @@ void EBSD_HDF5::create_dataset(const char *name, size_t ndim, size_t size1, size
             dataspace_id=H5Screate_simple(rank, dims, NULL);
         }
         if(dataspace_id<0){
-            printf("Error! Unable to create HDF5 dataspace %s.\n", name);
+            printf("[ERROR] Unable to create HDF5 dataspace %s.\n", name);
             exit(EXIT_FAILURE);
         }
         dataset_id=H5Dcreate(f_id, name, type_id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         if(dataset_id<0){
-            printf("Error! Unable to create HDF5 dataset %s.\n", name);
+            printf("[ERROR] Unable to create HDF5 dataset %s.\n", name);
             exit(EXIT_FAILURE);
         }
     }
@@ -389,7 +389,7 @@ void EBSD_HDF5::open_dataset(const char *name, hsize_t *dims, unsigned ndim)
     if((rank==ndim)||((1==rank)&&(0==ndim))){
         return;
     }else{
-        printf("Error! Inconsistency between ndim %d preseted and rank %d deduced from dataset %s.\n", ndim, rank, name);
+        printf("[ERROR] Inconsistency between ndim %d preseted and rank %d deduced from dataset %s.\n", ndim, rank, name);
         exit(EXIT_FAILURE);
     }
 }

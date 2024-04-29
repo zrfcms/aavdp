@@ -11,11 +11,11 @@ EBSD_MC::EBSD_MC(const char *file_path)
     }else if(len>=5&&strcmp(file_path+len-5, ".hdf5")==0){
         flag=read_parameters_from_hdf5(file_path);
     }else{
-        printf("Error! Unrecognized file %s.", file_path);
+        printf("[ERROR] Unrecognized file %s.", file_path);
         exit(EXIT_FAILURE);  
     }
     if(!flag){
-        printf("Error! Unrecognized parameters in file %s.", file_path);
+        printf("[ERROR] Unrecognized parameters in file %s.", file_path);
         exit(EXIT_FAILURE);
     }
 }
@@ -31,7 +31,7 @@ bool EBSD_MC::read_parameters_from_nml(const char *file_path)
 {
     FILE *fp=fopen(file_path, "r");
     if(fp==NULL){
-        printf("Error! Unable to open file %s.\n", file_path);
+        printf("[ERROR] Unable to open file %s.\n", file_path);
     }
     fseek(fp, 0, SEEK_SET);
 

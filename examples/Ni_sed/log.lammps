@@ -15,7 +15,7 @@ Created orthogonal box = (0 0 0) to (35.2 35.2 35.2)
   1 by 1 by 1 MPI processor grid
 create_atoms 1 box
 Created 4000 atoms
-  create_atoms CPU = 0 secs
+  create_atoms CPU = 0.00100899 secs
 
 pair_style  eam
 pair_coeff  * * Ni.eam
@@ -24,7 +24,7 @@ Reading potential file Ni.eam with DATE: 2007-06-11
 timestep 0.001
 velocity all create 200 12345 mom yes rot no
 compute 1 all saed 0.0251 Ni Kmax 1.70 Zone 0 0 0 c 0.056818 0.056818 0.056818 manual echo
-fix 1 all saed/vtk 1 1 1 c_1 file Ni_10x10x10_000.saed.vtk
+fix 1 all saed/vtk 1 1 1 c_1 file Ni_10x10x10.000.saed.vtk
 run 0
 Neighbor list info ...
   update every 1 steps, delay 10 steps, check yes
@@ -66,8 +66,7 @@ Total # of neighbors = 268000
 Ave neighs/atom = 67
 Neighbor list builds = 0
 Dangerous builds = 0
-write_data Ni_10x10x10_000.lmp
 
 Please see the log.cite file for references relevant to this simulation
 
-Total wall time: 0:00:33
+Total wall time: 0:00:32

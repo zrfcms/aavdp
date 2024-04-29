@@ -1,8 +1,8 @@
-inc=-I ./src/QB:./src/QSPG:./src:./src/MATH:./src/MODEL:./src/SED:./src/KKD
-lib=
+inc=-I ./src/include:./src/QB:./src/QSPG:./src:./src/MATH:./src/MODEL:./src/SED:./src/KKD:./src/RDF:./src/SSF:./src/XRD
+lib=./lib/libpng16.a ./lib/libz.a
 CXX=g++.exe
 CC=gcc.exe
-src=$(wildcard ./src/*.cpp ./src/QB/*.cpp ./src/MATH/*.cpp ./src/MODEL/*.cpp ./src/SED/*.cpp ./src/KKD/*.cpp)
+src=$(wildcard ./src/*.cpp ./src/QB/*.cpp ./src/MATH/*.cpp ./src/MODEL/*.cpp ./src/SED/*.cpp ./src/KKD/*.cpp ./src/RDF/*.cpp ./src/SSF/*.cpp ./src/XRD/*.cpp)
 obj=$(patsubst %.cpp, %.o, $(src))
 
 AAVDP: $(obj)

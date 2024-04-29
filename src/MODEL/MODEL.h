@@ -7,11 +7,67 @@
 #include <complex>
 #include "../QB/QB.h"
 #include "../MATH/MATH.h"
-#define PI 3.141592653589793
 #define XLAMBDA 1.54059
 #define ELAMBDA 0.02510
 
 using namespace std;
+
+class CELL
+{
+public:
+    double a, b, c, alpha, beta, gamma;
+    double vol;
+    int    ntype=0;
+    int    natom=0;
+    double **atom_pos=nullptr;
+    int    *atom_type=nullptr;
+
+    double lambda=XLAMBDA;
+    int    *type_index=nullptr;
+    CELL(const char *model_path, const char types[][10], double mlambda=XLAMBDA);
+    ~CELL();
+    void   cartesian_to_direct(double d_v[3], double c_v[3]);
+    double get_reciprocal_vector_length(double g[3]);
+    void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
+    complex<double> get_atomic_structure_factor(double theta, double g[3], bool is_lorentz_flag);
+    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz_flag);
+    double get_diffraction_intensity(complex<double> F);
+private:
+    double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
+    double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
+    double get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C);
+};
+
+class MODEL
+{
+public:
+    char   mode='x';
+    double lambda=XLAMBDA;
+
+    double dimension[3];
+    int    is_periodic[3];
+    int    ntype=0;
+    int    *type_index=nullptr;
+    int    natom=0;
+    double **atom_pos=nullptr;
+    int    *atom_type=nullptr;
+    MODEL(const char *model_path, const char types[][10], double mlambda=XLAMBDA, char mmode='x');
+    ~MODEL();
+    double get_reciprocal_vector_length(double g[3]);
+    void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
+    complex<double> get_atomic_structure_factor(double theta, double g[3], bool is_lorentz_flag);
+    complex<double> get_atomic_structure_factor(double theta, double g[3]);
+    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz_flag);
+    double get_diffraction_intensity(double theta, double g[3]);
+    double get_diffraction_intensity(complex<double> F);
+private:
+    double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
+    double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
+    void   index_type(const char types[][10], const char TYPE[][10], int TYPE_NUM);
+    void   matrix_lattice(double mat[3][3]);
+    double get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C);
+    double get_atomic_scattering_factor(double S, const double A[5], const double B[5]);
+};
 
 class XMODEL
 {

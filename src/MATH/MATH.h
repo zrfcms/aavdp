@@ -1,15 +1,38 @@
 #ifndef __AAVDP_MATH_H__
 #define __AAVDP_MATH_H__
 #include <cmath>
+#include "../include/libpng/png.h"
 
+#define KEY_CHAR_NUMBER 100
+#define KEY_LINE_NUMBER 100
+
+#define PI 3.141592653589793
+#define DEG_TO_RAD 0.017453292519943295 //PI/180
+
+extern void image(const char* png_path, unsigned char *pixels, int width, int height);
+
+extern void matrix_copy(double c_mat[3][3], double mat[3][3]);
+extern void matrix_constant(double k_mat[3][3], double k, double mat[3][3]);
+extern void matrix_transpose(double t_mat[3][3], double mat[3][3]);
 extern void matrix_multiply(double mat[3][3], double mat1[3][3], double mat2[3][3]);
 
-extern void vector_rotate(double r_v[3], double v[3], double R[3][3]);
+template <typename T>
+extern void vector_copy(T c_v[3], T v[3]);
 extern double vector_dot(double v1[3], double v2[3]);
-extern void vector_cross(double v[3], double v1[3], double v2[3]);
 extern double vector_length(double v[3]);
-extern void vector_differance(double v[3], double v1[3], double v2[3]);
 extern void vector_normalize(double n_v[3], double v[3]);
+extern void vector_cross(double v[3], double v1[3], double v2[3]);
+extern void vector_constant(double k_v[3], double k, double v[3]);
+extern void vector_plus(double v[3], double v1[3], double v2[3]);
+extern void vector_difference(double v[3], double v1[3], double v2[3]);
+extern void vector_multiply(double v[3], double v1[3], double v2[3]);
+extern void vector_rotate(double r_v[3], double R[3][3], double v[3]);
+
+template <typename T>
+void vector_copy(T c_v[3], T v[3])
+{
+    c_v[0]=v[0]; c_v[1]=v[1]; c_v[2]=v[2];
+}
 
 struct QUATERNION
 {

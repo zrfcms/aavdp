@@ -45,7 +45,7 @@ EBSD_KVECTOR::EBSD_KVECTOR(EBSD_CELL *cell, int nump)
         }
         break;
     default:
-        printf("Error! Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+        printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
         exit(EXIT_FAILURE);
     }
     mallocate_2d(&karray, numk, 3); mallocate_2d(&kijarray, numk, 3);
@@ -253,11 +253,11 @@ EBSD_MASTER::EBSD_MASTER(const char *file_path)
     if(len>=4&&strcmp(file_path+len-4, ".nml")==0){
         flag=read_parameters_from_nml(file_path);
     }else{
-        printf("Error! Unrecognized file %s.", file_path);
+        printf("[ERROR] Unrecognized file %s.", file_path);
         exit(EXIT_FAILURE);
     }
     if(!flag){
-        printf("Error! Unrecognized parameters in file %s.", file_path);
+        printf("[ERROR] Unrecognized parameters in file %s.", file_path);
         exit(EXIT_FAILURE);
     }
 }
@@ -271,7 +271,7 @@ bool EBSD_MASTER::read_parameters_from_nml(const char *file_path)
 {
     FILE *fp=fopen(file_path, "r");
     if(fp==NULL){
-        printf("Error! Unable to open file %s.\n", file_path);
+        printf("[ERROR] Unable to open file %s.\n", file_path);
     }
     fseek(fp, 0, SEEK_SET);
 
@@ -452,7 +452,7 @@ void EBSD_MASTER::compute_master_pattern(const char* file_path)
                     compute_sphere_from_square_Lambert(xyz, ierr, xy);
                     compute_hexagonal_Lambert(xy, ierr, xyz);
                     if(0!=ierr){
-                        printf("Error! Unable to compute hexagonal Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
+                        printf("[ERROR] Unable to compute hexagonal Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
                         exit(EXIT_FAILURE);
                     }
                     int ix=int(xy[0]), iy=int(xy[1]);
@@ -676,7 +676,7 @@ void EBSD_MASTER::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DM
     LWORK=min(LWMAX, int(creal(WORK[0]))); LDA=NS;
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//call the eigenvalue solver
     if(0!=INFO){
-        printf("Error! Unable to return INFO as zero when calling the eigenvalue solver.");
+        printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
         exit(EXIT_FAILURE);
     }
     deallocate(VL);

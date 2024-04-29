@@ -305,7 +305,7 @@ int ovl_check_total_overlap(OverlapChecker *checker,
                                          checker->size,
                                          symprec);
   if (check == -1) {
-    /* Error! */
+    /* [ERROR] */
     return -1;
   }
 

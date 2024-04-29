@@ -90,7 +90,7 @@ void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
                 y=q0*(-0.5*PI+q);
                 break;
             default:
-                printf("Error! Unrecognized sextant %d (not between 0 and 5).", sextant);
+                printf("[ERROR] Unrecognized sextant %d (not between 0 and 5).", sextant);
                 exit(EXIT_FAILURE);
             }
             cxy[0]=y; 
@@ -115,7 +115,7 @@ void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag,
         compute_square_Lambert(xy, ierr, cxyz);
     }
     if(0!=ierr){
-        printf("Error! Unable to compute square Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
+        printf("[ERROR] Unable to compute square Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
         exit(EXIT_FAILURE);
     }
     xy[0]*=nump; xy[1]*=nump; 
@@ -219,7 +219,7 @@ void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2
             y=-PI_PREA*q1*cos(q2);
             break;
         default:
-            printf("Error! Unrecognized sextant %d (not between 0 and 5).", sextant);
+            printf("[ERROR] Unrecognized sextant %d (not between 0 and 5).", sextant);
             exit(EXIT_FAILURE);
         }
         double q=x*x+y*y;
@@ -263,18 +263,18 @@ void create_image(const char* png_path, unsigned char *pixels, int width, int he
     png_infop info_ptr;  
     FILE *fp=fopen(png_path, "wb");  
     if(!fp){
-        printf("Error! Unable to create %s using fopen.\n", png_path);
+        printf("[ERROR] Unable to create %s using fopen.\n", png_path);
         exit(EXIT_FAILURE);
     }
     png_ptr=png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);  
     if(png_ptr==NULL){  
-        printf("Error! Unable to create %s using png_create_write_struct.\n", png_path);
+        printf("[ERROR] Unable to create %s using png_create_write_struct.\n", png_path);
         fclose(fp);
         exit(EXIT_FAILURE);
     }  
     info_ptr=png_create_info_struct(png_ptr);
     if(info_ptr==NULL){  
-        printf("Error! Unable to create %s using png_create_info_struct.\n", png_path);
+        printf("[ERROR] Unable to create %s using png_create_info_struct.\n", png_path);
         png_destroy_write_struct(&png_ptr, NULL);  
         exit(EXIT_FAILURE);
     }  
@@ -283,7 +283,7 @@ void create_image(const char* png_path, unsigned char *pixels, int width, int he
                  PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE); 
     png_colorp palette=(png_colorp)png_malloc(png_ptr, PNG_MAX_PALETTE_LENGTH*sizeof(png_color));
     if(!palette){
-        printf("Error! Unable to create palette using png_malloc.\n");
+        printf("[ERROR] Unable to create palette using png_malloc.\n");
         fclose(fp);
         png_destroy_write_struct(&png_ptr, &info_ptr);
         exit(EXIT_FAILURE);

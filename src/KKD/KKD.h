@@ -4,26 +4,35 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <fstream>
 #include <ctime>
-#include "../MODEL/MODEL.h"
-#include "../SED/SED.h"
-#include "../MATH.h"
+#include "../MATH/MATH.h"
+#define KEY_CHAR_NUMBER 20
+#define KEY_LINE_NUMBER 50
 using namespace std;
 
 //kinematic Kikuchi diffraction
 class KKD
 {
 public:
-    KKD(int zone[3], double threshold_ratio, double screenD, int screen_dpi, int screenW, int screenH);
+    KKD(const char *kkd_path, double threshold_ratio, double screenD, int screen_dpi, int screenW, int screenH);
+    KKD(const char *kkd_path, int zone[3], double threshold_ratio, double screenD, int screen_dpi, int screenW, int screenH);
     ~KKD();
+    void img(const char* img_path, char mode='w');
 private:
-    double radiusK=0.0;
-    int    numpx=0, numpy=0;
+    int    numpx=0, numpy=0;//ncol, nrow
     double ***screenG=nullptr;
+    double intensity_min=1.0e8, intensity_max=0.0;
     double **screenI=nullptr;
+
+    double radiusK=39.8406374501992;//ELAMBDA
+    int    numk=0;
+    double **Kvectors=nullptr;
+    double *Kintensity=nullptr;
+    void read_diffraction_intensity_from_kkd(const char *kkd_path);
     void compute_Kikuchi_sphere_projection(int screen_npx);
     void compute_Kikuchi_sphere_projection(int zone[3], int screen_npx, int screen_npy, double screenD, double screenW, double screenH);
-    void compute_Kikuchi_intensity_projection(SED *sed, double threshold_ratio, double interceptK);
+    void compute_Kikuchi_intensity_projection(double threshold_ratio, double interceptK);
 };
 
 // class KKD

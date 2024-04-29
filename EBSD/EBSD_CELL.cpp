@@ -20,11 +20,11 @@ EBSD_CELL::EBSD_CELL(const char* file_path, bool logging_flag)
     }else if(len>=5&&strcmp(file_path+len-5, ".hdf5")==0){
         flag=read_parameters_from_hdf5(file_path);
     }else{
-        printf("Error! Unrecognized file %s.", file_path);
+        printf("[ERROR] Unrecognized file %s.", file_path);
         exit(EXIT_FAILURE);  
     }
     if(!flag){
-        printf("Error! Unrecognized parameters in file %s.", file_path);
+        printf("[ERROR] Unrecognized parameters in file %s.", file_path);
         exit(EXIT_FAILURE);
     }
 
@@ -117,7 +117,7 @@ bool EBSD_CELL::read_parameters_from_nml(const char* file_path)
 {
     FILE *fp=fopen(file_path, "r");
     if(fp==NULL){
-        printf("Error! Unable to open file %s.\n", file_path);
+        printf("[ERROR] Unable to open file %s.\n", file_path);
     }
     fseek(fp, 0, SEEK_SET);
 
@@ -140,7 +140,7 @@ bool EBSD_CELL::read_parameters_from_nml(const char* file_path)
                 case 5: fscanf(fp, "%lf", &a); fscanf(fp, "%lf", &alpha); b=c=a; beta=gamma=alpha; break;
                 case 6: fscanf(fp, "%lf", &a); fscanf(fp, "%lf", &b); fscanf(fp, "%lf", &c); fscanf(fp, "%lf", &beta); break;
                 case 7: fscanf(fp, "%lf", &a); fscanf(fp, "%lf", &b); fscanf(fp, "%lf", &c); fscanf(fp, "%lf", &alpha); fscanf(fp, "%lf", &beta); fscanf(fp, "%lf", &gamma); break;
-                default: printf("Error! Unrecognized crystal system %d.", crystal_system); exit(EXIT_FAILURE);
+                default: printf("[ERROR] Unrecognized crystal system %d.", crystal_system); exit(EXIT_FAILURE);
             }
             keyi++;
             continue;
@@ -152,7 +152,7 @@ bool EBSD_CELL::read_parameters_from_nml(const char* file_path)
             if(1==space_group_setting) second_setting_flag=false;
             else if(2==space_group_setting) second_setting_flag=true;
             else{
-                printf("Error! Unrecognized space group setting %d.", space_group_setting);
+                printf("[ERROR] Unrecognized space group setting %d.", space_group_setting);
                 exit(EXIT_FAILURE);
             }
             keyi++;
@@ -165,7 +165,7 @@ bool EBSD_CELL::read_parameters_from_nml(const char* file_path)
             for(int j=0;j<napos;j++){
                 fscanf(fp, "%d", &apos_Z[j]);
                 if((apos_Z[j]<1)||(apos_Z[j]>TYPE_NUMBER)){
-                    printf("Error! Unrecognized atom number %d (not between 1 and 98).", apos_Z[j]);
+                    printf("[ERROR] Unrecognized atom number %d (not between 1 and 98).", apos_Z[j]);
                     exit(EXIT_FAILURE); 
                 }
                 for(int k=0;k<3;k++){
@@ -173,7 +173,7 @@ bool EBSD_CELL::read_parameters_from_nml(const char* file_path)
                 }
                 fscanf(fp, "%lf", &apos_occupation[j]);
                 if((apos_occupation[j]<0.0)||(apos_occupation[j]>1.0)){
-                    printf("Error! Unrecognized site occupation %.5f (not between 0.0 and 1.0).", apos_occupation[j]);
+                    printf("[ERROR] Unrecognized site occupation %.5f (not between 0.0 and 1.0).", apos_occupation[j]);
                     exit(EXIT_FAILURE); 
                 }
                 fscanf(fp, "%lf", &apos_DW[j]);
@@ -292,7 +292,7 @@ void EBSD_CELL::compute_space_matrices()
     double det=a*b*c*a*b*c*(1.0-calpha*calpha-cbeta*cbeta-cgamma*cgamma+2.0*calpha*cbeta*cgamma);
     vol=sqrt(det);
     if(vol<1e-6){
-        printf("Error! Suspiciously small volume with six lattice parameters, %.5f, %.5f, %.5f, %.5f, %.5f, and %.5f.", a, b, c, alpha, beta, gamma);
+        printf("[ERROR] Suspiciously small volume with six lattice parameters, %.5f, %.5f, %.5f, %.5f, %.5f, and %.5f.", a, b, c, alpha, beta, gamma);
         exit(EXIT_FAILURE);
     }
     dmt[0][0]=a*a; 
@@ -464,7 +464,7 @@ void EBSD_CELL::compute_symmetry_matrix_by_one_generator(double symmat[4][4], co
         case 'l': symmat[0][1]= 1.0; symmat[1][0]= 1.0; symmat[2][2]= 1.0; break;
         case 'm': symmat[0][1]= 1.0; symmat[1][0]=-1.0; symmat[2][2]=-1.0; break;
         case 'n': symmat[0][1]=-1.0; symmat[1][0]= 1.0; symmat[1][1]=-1.0; symmat[2][2]=1.0; break;
-        default: printf("Error! Unrecognized label %c (not between a and n).", generator[0]); exit(EXIT_FAILURE);
+        default: printf("[ERROR] Unrecognized label %c (not between a and n).", generator[0]); exit(EXIT_FAILURE);
     }
 
     for(int i=1;i<4;i++){//translational component (forward or reverse)
@@ -481,7 +481,7 @@ void EBSD_CELL::compute_symmetry_matrix_by_one_generator(double symmat[4][4], co
             case 'X': symmat[i-1][3]=-multiplier*3.0/8.0; break;
             case 'Y': symmat[i-1][3]=-multiplier/4.0; break;
             case 'Z': symmat[i-1][3]=-multiplier/8.0; break;
-            default: printf("Error! Unrecognized label %c (not in the 11 uppercase letters).", generator[i]); exit(EXIT_FAILURE);
+            default: printf("[ERROR] Unrecognized label %c (not in the 11 uppercase letters).", generator[i]); exit(EXIT_FAILURE);
         }
     }
 }
@@ -649,7 +649,7 @@ void EBSD_CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &
                 }else if('d'==space){
                     s[j]+=point_dmats[i][j][k]*g[k];
                 }else{
-                    printf("Error! Unrecognized space %c in star computation.", space);
+                    printf("[ERROR] Unrecognized space %c in star computation.", space);
                     exit(EXIT_FAILURE);
                 }
             }
@@ -773,7 +773,7 @@ double EBSD_CELL::dot(double hkl1[3], double hkl2[3], char space)
             res=hkl1[0]*hkl2[0]+hkl1[1]*hkl2[1]+hkl1[2]*hkl2[2];
             break;
         default:
-            printf("Error! Unrecognized space %c in dot computation.", space);
+            printf("[ERROR] Unrecognized space %c in dot computation.", space);
             exit(EXIT_FAILURE);
     }
     return res;
@@ -789,7 +789,7 @@ void EBSD_CELL::cross(double c_hkl[3], double hkl1[3], double hkl2[3], char insp
             c_hkl[2]=hkl1[0]*hkl2[1]-hkl1[1]*hkl2[0];
             break;
         default:
-            printf("Error! Unrecognized space %c in dot computation.", inspace);
+            printf("[ERROR] Unrecognized space %c in dot computation.", inspace);
             exit(EXIT_FAILURE);
     }
 
@@ -804,7 +804,7 @@ double EBSD_CELL::angle(double hkl1[3], double hkl2[3], char space)
 {
     double dot12=dot(hkl1, hkl2, space), len1=length(hkl1, space), len2=length(hkl2, space);
     if(0.0==len1||0.0==len2){
-        printf("Error! Zero length for vector [%d %d %d] or [%d %d %d] in angle computation.", 
+        printf("[ERROR] Zero length for vector [%d %d %d] or [%d %d %d] in angle computation.", 
                hkl1[0], hkl1[1], hkl1[2], hkl2[0], hkl2[1], hkl2[2]);
         exit(EXIT_FAILURE);
     }
@@ -844,7 +844,7 @@ double EBSD_CELL::get_interplanar_spacing(double g[3])
 {
     double dotgg=dot(g, g);
     if(dotgg<=0.0){
-        printf("Error! Zero reciprocal vector in interplanar spacing compution.");
+        printf("[ERROR] Zero reciprocal vector in interplanar spacing compution.");
         exit(EXIT_FAILURE);
     }
     return 1.0/sqrt(dotgg);
@@ -899,7 +899,7 @@ bool EBSD_CELL::is_centering_allowed(double g[3])
                 if(0!=res) is_allowed=false;
             }
         default:
-            printf("Error! Unrecognized centering symbol %c (not P, F, I, A, B, C, or R).", centering_symbol);
+            printf("[ERROR] Unrecognized centering symbol %c (not P, F, I, A, B, C, or R).", centering_symbol);
             exit(EXIT_FAILURE);
     }
     return is_allowed;
@@ -1132,7 +1132,7 @@ double EBSD_CELL::EI(double X)
 {
     double A1=8.57332, A2=18.05901, A3=8.63476, A4=0.26777, B1=9.57332, B2=25.63295, B3=21.09965, B4=3.95849;
     if(X>60.0){
-        printf("Error! the input of the function EI X > 60.");
+        printf("[ERROR] the input of the function EI X > 60.");
         exit(1);
     }
     if(X<-60.0) return 0.0;
@@ -1179,7 +1179,7 @@ double EBSD_CELL::IH2(double X)
     double INVX=1.0/X;
     int    I=int(200.0*INVX);
     if(I<0||I>DURCH_NUMBER-1){
-        printf("Error! Unrecognized index %d in searching durch table.\n", I);
+        printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
         exit(EXIT_FAILURE);
     }
     double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];

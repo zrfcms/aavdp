@@ -3,62 +3,22 @@
 #include <cstdlib>
 #include "main.h"
 
-double be_double(char str[])
-{
-    char *err;
-    double value=strtod(str, &err);
-    if(strlen(err)!='\0')
-    {
-        printf("Error! Input parameter %s should be float or int type", str);
-        exit(EXIT_FAILURE);
-    }
-    return value;
-}
-
-bool is_parameter(char str[])
-{
-    if(0==strncmp(str, "-", 1)){
-        return false;
-    }
-    return true;
-}
-
-void extension_delete(char c_str[], char str[])
-{
-    strcpy(c_str, str);
-    int pos=strrchr(c_str,'.')-c_str;
-    c_str[pos]='\0';
-}
-
 int main(int argc, char* argv[])
 {
-    int i=1;
-    if(0==strcmp(argv[i], "-kkd")){
+    int    i=1;
+    if(0==strcmp(argv[i], "--xrd")){
         i++;
-        char   sed_path[PATH_CHAR_NUMBER];
-        strcpy(sed_path, argv[i++]);
-        SED    sed(sed_path)
-        return 0;
-    }else if(0==strcmp(argv[i], "-sed")){
-        i++;
-        char   model_path[PATH_CHAR_NUMBER];
-        strcpy(model_path, argv[i++]);
-        char   types[10][10]={0};
-        double Kmagnitude_max=1.70;
-        double lambda=0.0251;
-        double spacing[3]={1.0, 1.0, 1.0};
-        int    zone[3]={0, 0, 0};
-        double intercept_radius=1.0/lambda;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
         char   name[PATH_CHAR_NUMBER];
-        extension_delete(name, model_path);
-        char   vtk_path[PATH_CHAR_NUMBER]; strcpy(vtk_path, name);
-        strcat(vtk_path, ".sed.vtk");
-        char   text_path[PATH_CHAR_NUMBER]; strcpy(text_path, name);
-        strcat(text_path, ".sed.vtk");
-        char   log_path[PATH_CHAR_NUMBER]; strcpy(log_path, name);
-        strcat(log_path, ".sed.vtk");
-        bool   is_spacing_ratio=false;
-        bool   is_zone_existing=false;
+        no_extension(name, input_path);
+        char   types[TYPE_INPUT_NUMBER][10]={0};
+        double lambda=1.54056;
+        double c[3]={0.1, 0.1, 0.1};
+        double min2Theta=0.0, max2Theta=180.0;
+        bool   is_lorentz_flag=false;
+        bool   is_spacing_auto=false;
+        bool   is_Bragg_flag=false;
+        char   xrd_path[PATH_CHAR_NUMBER]; strcpy(xrd_path, name);
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -67,65 +27,233 @@ int main(int argc, char* argv[])
                     strcpy(types[count++], argv[i++]);
                 }
                 continue;
-            }else if(0==strcmp(argv[i], "-Kmax")){
-                i++;
-                Kmagnitude_max=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-lambda")){
+            }else if(0==strcmp(argv[i], "-l")){
                 i++;
                 lambda=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-s")){
+            }else if(0==strcmp(argv[i], "-c")){
                 i++;
-                spacing[0]=be_double(argv[i++]);
-                spacing[1]=be_double(argv[i++]);
-                spacing[2]=be_double(argv[i++]);
+                c[0]=be_double(argv[i++]);
+                c[1]=be_double(argv[i++]);
+                c[2]=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-sr")){
+            }else if(0==strcmp(argv[i], "-2t")){
                 i++;
-                spacing[0]=be_double(argv[i++]);
-                spacing[1]=be_double(argv[i++]);
-                spacing[2]=be_double(argv[i++]);
-                is_spacing_ratio=true;
+                min2Theta=be_double(argv[i++]);
+                max2Theta=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-lp")){
+                i++;
+                is_lorentz_flag=true;
+                continue;
+            }else if(0==strcmp(argv[i], "-B")){
+                i++;
+                is_Bragg_flag=true;
+                continue;
+            }else if(0==strcmp(argv[i], "-auto")){
+                i++;
+                is_spacing_auto=true;
+                continue;
+            }
+        }
+        strcat(xrd_path, ".xrd");
+        MODEL model(input_path, types, lambda);
+        if(is_Bragg_flag){
+            XRD xrd(&model, is_lorentz_flag);
+            xrd.xrd(xrd_path);
+        }else{
+            XRD xrd(&model, c, min2Theta, max2Theta, is_lorentz_flag, is_spacing_auto);
+            xrd.xrd(xrd_path);
+        }
+    }else if(0==strcmp(argv[i], "--rdf")){
+        i++;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
+        char   name[PATH_CHAR_NUMBER];
+        no_extension(name, input_path);
+        double rmax=5.0;
+        int    nbin=200;
+        bool   is_partial_flag=false;
+        bool   is_nml_flag=false;
+        char   rdf_path[PATH_CHAR_NUMBER]; strcpy(rdf_path, name);
+        char   nml_path[PATH_CHAR_NUMBER]; strcpy(nml_path, name);
+        while(i<argc){
+            if(0==strcmp(argv[i], "-r")){
+                i++;
+                rmax=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-n")){
+                i++;
+                nbin=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-partial")){
+                i++;
+                is_partial_flag=true;
+                strcat(rdf_path, ".partial");
+                continue;
+            }else if(0==strcmp(argv[i], "-nml")){
+                i++;
+                is_nml_flag=true;
+                continue;
+            }
+        }
+        strcat(rdf_path, ".rdf"); strcat(nml_path, ".nml");
+        RDF rdf(input_path, rmax, nbin, is_partial_flag);
+        rdf.rdf(rdf_path);
+        if(is_nml_flag) rdf.nml(nml_path);
+    }else if(0==strcmp(argv[i], "--ssf")){
+        i++;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
+        char   name[PATH_CHAR_NUMBER];
+        no_extension(name, input_path);
+        double qmax=5.0;
+        int    nbin=200;
+        char   ssf_path[PATH_CHAR_NUMBER]; strcpy(ssf_path, name); 
+        while(i<argc){
+            if(0==strcmp(argv[i], "-q")){
+                i++;
+                qmax=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-n")){
+                i++;
+                nbin=(int)be_double(argv[i++]);
+                continue;
+            }
+        }
+        strcat(ssf_path, ".ssf");
+        SSF ssf(input_path, qmax, nbin);
+        ssf.ssf(ssf_path);
+    }else if(0==strcmp(argv[i], "--sed")){
+        i++;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
+        char   name[PATH_CHAR_NUMBER];
+        no_extension(name, input_path);
+        char   types[TYPE_INPUT_NUMBER][10]={0};
+        double lambda=0.0251;
+        double Kmax=1.70;
+        double c[3]={0.1, 0.1, 0.1};
+        int    zone[3]={0, 0, 0};
+        double thickness=0.1;
+        bool   is_zone_existing=false;
+        bool   is_kkd_output=false;
+        while(i<argc){
+            if(0==strcmp(argv[i], "-e")){
+                i++;
+                int count=0;
+                while(i<argc&&is_parameter(argv[i])){
+                    strcpy(types[count++], argv[i++]);
+                }
+                continue;
+            }else if(0==strcmp(argv[i], "-l")){
+                i++;
+                lambda=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-r")){
+                i++;
+                Kmax=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-c")){
+                i++;
+                c[0]=be_double(argv[i++]);
+                c[1]=be_double(argv[i++]);
+                c[2]=be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
                 zone[0]=(int)be_double(argv[i++]);
                 zone[1]=(int)be_double(argv[i++]);
                 zone[2]=(int)be_double(argv[i++]);
-                intercept_radius=1.0/lambda;
                 is_zone_existing=true;
                 continue;
-            }else if(0==strcmp(argv[i], "-dr")){
+            }else if(0==strcmp(argv[i], "-t")){
                 i++;
-                intercept_radius=be_double(argv[i++]);
+                thickness=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-vtk")){
+            }else if(0==strcmp(argv[i], "-kkd")){
                 i++;
-                strcpy(vtk_path, argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-text")){
-                i++;
-                strcpy(text_path, argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-log")){
-                i++;
-                strcpy(log_path, argv[i++]);
+                is_kkd_output=true;
                 continue;
             }
         }
-        EMODEL model(model_path, types, lambda);
-        if(is_spacing_ratio){
-            model.compute_reciprocal_spacing(spacing, spacing);
-        }
+        char   vtk_path[PATH_CHAR_NUMBER]; strcpy(vtk_path, name); 
+        char   *u; to_string(zone[0], u);
+        char   *v; to_string(zone[1], v);
+        char   *w; to_string(zone[2], w);
+        char   uvw[]="."; strcat(uvw, u); strcat(uvw, v); strcat(uvw, w);
+        strcat(vtk_path, uvw); strcat(vtk_path, ".vtk");
+        EMODEL model(input_path, types, lambda);
         if(is_zone_existing){
-            SED sed(&model, spacing, zone, intercept_radius, Kmagnitude_max);
-            sed.result(vtk_path, text_path);
+            SED sed(&model, c, zone, thickness, Kmax);
+            sed.vtk(vtk_path);
         }else{
-            SED sed(&model, spacing, Kmagnitude_max);
-            sed.result(vtk_path, text_path);
+            SED sed(&model, c, Kmax);
+            sed.vtk(vtk_path);
+            if(is_kkd_output){
+                char   kkd_path[PATH_CHAR_NUMBER]; strcpy(kkd_path, name);
+                strcat(kkd_path, uvw); strcat(kkd_path, ".kkd");
+                sed.kkd(kkd_path);
+            }
         }
-    }else{
-        printf("Error! Unrecognized command %s.\n", argv[1]);
+    }else if(0==strcmp(argv[i], "--kkd")){
+        i++;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
+        char   name[PATH_CHAR_NUMBER];
+        no_extension(name, input_path);
+        int zone[3]={0};
+        double threshold=0.001;
+        double dist=3.0;
+        int    dpi=512;
+        int    width=6;
+        int    height=4;
+        char   background='w';
+        bool   is_zone_existing=false;
+        while(i<argc){
+            if(0==strcmp(argv[i], "-z")){
+                i++;
+                zone[0]=(int)be_double(argv[i++]);
+                zone[1]=(int)be_double(argv[i++]);
+                zone[2]=(int)be_double(argv[i++]);
+                is_zone_existing=true;
+                continue;
+            }else if(0==strcmp(argv[i], "-thr")){
+                i++;
+                threshold=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-d")){
+                i++;
+                dist=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-dpi")){
+                i++;
+                dpi=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-w")){
+                i++;
+                width=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-h")){
+                i++;
+                height=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-b")){
+                i++;
+                background=(argv[i++])[0];
+            }
+        }
+        char   img_path[PATH_CHAR_NUMBER]; strcpy(img_path, name);
+        char   *u; to_string(zone[0], u);
+        char   *v; to_string(zone[1], v);
+        char   *w; to_string(zone[2], w);
+        char   uvw[]="."; strcat(uvw, u); strcat(uvw, v); strcat(uvw, w);
+        strcat(img_path, uvw); strcat(img_path, ".png");
+        if(is_zone_existing){
+            KKD kkd(input_path, zone, threshold, dist, dpi, width, height);
+            kkd.img(img_path, background);
+        }else{
+            KKD kkd(input_path, threshold, dist, dpi, width, height);
+            kkd.img(img_path, background);
+        }
+    }
+    else{
+        printf("[ERROR] Unrecognized command %s.\n", argv[i]);
     }
 }
