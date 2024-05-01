@@ -202,11 +202,8 @@ void MODEL::matrix_lattice(double mat[3][3])
     rsm[0][1]=bc[1]; rsm[1][1]=ca[1]; rsm[2][1]=ab[1];
     rsm[0][2]=bc[2]; rsm[1][2]=ca[2]; rsm[2][2]=ab[2];
     matrix_constant(rsm, 1.0/vol, rsm);
-    double t_mat[3][3];
-    matrix_transpose(t_mat, dsm);
-    matrix_multiply(dmt, t_mat, dsm);
-    matrix_transpose(t_mat, rsm);
-    matrix_multiply(rmt, t_mat, rsm);
+    matrix_multiply(dmt, dsm, dsm);
+    matrix_multiply(rmt, rsm, rsm);
 }
 
 MODEL::~MODEL()
@@ -229,6 +226,11 @@ double MODEL::get_reciprocal_vector_length(double g[3])
     double len=vector_dot(g, r_g);
     len=sqrt(len);
     return len;
+}
+
+void MODEL::reciprocal_to_cartesian(double c_g[3], double r_g[3])
+{
+    vector_rotate(c_g, rsm, r_g);
 }
 
 void MODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3])
@@ -285,10 +287,13 @@ complex<double> MODEL::get_atomic_structure_factor(double theta, double g[3], bo
         int    t=type_index[atom_type[i]-1];
         const double *A=X_A[t], *B=X_B[t], C=X_C[t];
         double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-        res+=get_atomic_scattering_factor(S, A, B, C)*complex<double>(cos(q), sin(q));
+        double F=get_atomic_scattering_factor(S, A, B, C);
+        res+=F*complex<double>(cos(q), sin(q));
     }
-    double Lp=sqrt((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
-    res*=complex<double>(Lp, 0.0);
+    if(is_lorentz_flag){
+        double Lp=sqrt((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
+        res*=Lp;
+    }
     return res;
 }
 

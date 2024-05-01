@@ -18,8 +18,8 @@ public:
     int    numk=0;
     int    **kvector=nullptr;
     double *Ktheta=nullptr;
-    complex<double> *Kfactor=nullptr;
     double *Kintensity=nullptr;
+    int *multiplicity=nullptr;
     XRD(MODEL *model, double spacingK[3], double min2Theta, double max2Theta, bool is_lorentz, bool is_spacing_auto);
     XRD(MODEL *model, bool is_lorentz);
     XRD(const char *xrd_path);
@@ -30,6 +30,7 @@ private:
     int    kmin[3], kmax[3];
     double intensity_min=1.0e8, intensity_max=0.0;
     void   unique();
+    void   quick_sort(int low, int high);
     void   count_diffraction_vector(MODEL *model, double spacingK[3], double minTheta, double maxTheta);
     void   compute_diffraction_intensity(MODEL *model, double spacingK[3], double minTheta, double maxTheta);
     void   count_diffraction_vector(MODEL *model);

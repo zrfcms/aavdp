@@ -34,7 +34,7 @@ class AAVDPPlot(object):
             if x<0: return r'$\overline{' + str(abs(x)) + '}$'
             else: return str(x)
         data = np.loadtxt(input, dtype = np.float32, skiprows = 1)
-        x, y = data[:, 3], data[:, 7]
+        x, y = data[:, 3], data[:, 5]
         bar = self.curve.bar(x, y, width = 0.5, linewidth = 0.0)
 
         hkl = data[:, :3].astype('int')
@@ -160,8 +160,12 @@ if __name__ == "__main__":
     # parser.add_argument('-clear', action='store_true', default=False, dest='clear', help='Clear the temporary folder that has existed')
     # parser.add_argument('-v', action='version', version='%(prog)s 1.0')
     # args = parser.parse_args()
-    p=Path("./examples/B4C_ssf/B4C_mp696746.ssf")
-    a=Plot()
-    a.load(p)
-    a.rdf()
-    a.save(p.with_suffix('.png'))
+    # p=Path("./examples/B4C_ssf/B4C_mp696746.ssf")
+    # a=Plot()
+    # a.load(p)
+    # a.rdf()
+    # a.save(p.with_suffix('.png'))
+    p = Path(".\\examples\\CdS_xrd\\CdS.xrd")
+    a = AAVDPPlot(title = p.stem)
+    a.cxrd(p, xlim = (20, 180))
+    a.save(p.with_suffix('.jpg'))

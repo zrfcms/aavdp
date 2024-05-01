@@ -54,6 +54,7 @@ public:
     MODEL(const char *model_path, const char types[][10], double mlambda=XLAMBDA, char mmode='x');
     ~MODEL();
     double get_reciprocal_vector_length(double g[3]);
+    void   reciprocal_to_cartesian(double c_g[3], double r_g[3]);
     void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
     complex<double> get_atomic_structure_factor(double theta, double g[3], bool is_lorentz_flag);
     complex<double> get_atomic_structure_factor(double theta, double g[3]);
