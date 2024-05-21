@@ -17,11 +17,10 @@ plt.rcParams['font.size'] = 18
 plt.rcParams['axes.unicode_minus'] = False
 class AAVDPPlot(object):
 
-    def __init__(self, xlabel=r'2$\theta$', ylabel='Intensity (A.U.)', title='Simulated XRD pattern'):
+    def __init__(self, xlabel=r'2$\theta$', ylabel='Intensity (A.U.)'):
         _, curve = plt.subplots(1, 1, figsize = (8, 5), dpi = 120, constrained_layout = True)
         curve.set_xlabel(xlabel)
         curve.set_ylabel(ylabel)
-        curve.set_title(title)
         curve.tick_params(which = 'both', width = 1)
         curve.tick_params(which = 'major', length = 6)
         curve.tick_params(which = 'minor', length = 4)
@@ -160,12 +159,13 @@ if __name__ == "__main__":
     # parser.add_argument('-clear', action='store_true', default=False, dest='clear', help='Clear the temporary folder that has existed')
     # parser.add_argument('-v', action='version', version='%(prog)s 1.0')
     # args = parser.parse_args()
-    # p=Path("./examples/B4C_ssf/B4C_mp696746.ssf")
-    # a=Plot()
-    # a.load(p)
-    # a.rdf()
-    # a.save(p.with_suffix('.png'))
-    p = Path(".\\examples\\CdS_xrd\\CdS.xrd")
-    a = AAVDPPlot(title = p.stem)
-    a.cxrd(p, xlim = (20, 180))
-    a.save(p.with_suffix('.jpg'))
+    # p=Path("./examples/Cu_ssf/Cu_amorphous.ssf")
+    p=Path("./examples/CuZr_ssf/Cu50Zr50.liquid.ssf")
+    a=Plot()
+    a.load(p, skiprows=0, usecols_y=(4, ))
+    a.rdf(ylim=(0.0, 1.2))
+    a.save(p.with_suffix('.png'))
+    # p = Path(".\\examples\\cry_xrd\\CdS.xrd")
+    # a = AAVDPPlot(title = p.stem)
+    # a.cxrd(p, xlim = (20, 180))
+    # a.save(p.with_suffix('.jpg'))

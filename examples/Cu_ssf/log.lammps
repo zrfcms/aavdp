@@ -1,0 +1,309 @@
+LAMMPS (24 Jan 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (../comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+#-------------------------VARIABLES DEFINITION----------------------------
+variable latparam equal 3.615
+variable ftemp equal 300
+variable ltemp equal 2000
+
+#-----------------------INITIALIZATION---------------------
+units           metal
+dimension       3
+boundary        p p p
+atom_style      atomic
+
+#-----------------------ATOM DEFINITION----------------------
+lattice         fcc ${latparam}
+lattice         fcc 3.615
+Lattice spacing in x,y,z = 3.615 3.615 3.615
+region         whole block 0 5 0 5 0 5
+create_box     2 whole
+Created orthogonal box = (0 0 0) to (18.075 18.075 18.075)
+  1 by 1 by 1 MPI processor grid
+lattice         fcc ${latparam} orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+lattice         fcc 3.615 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+Lattice spacing in x,y,z = 3.615 3.615 3.615
+create_atoms   1 region whole
+Created 500 atoms
+  create_atoms CPU = 0 secs
+
+#-----------------------FORCE FIELDS-------------------------
+pair_style      eam/fs
+pair_coeff      * * Cu-Zr_2.eam.fs Cu Zr
+
+#-----------------------SETTINGS--------------------------------
+neighbor 0.5 bin
+neigh_modify every 5 delay 0 check yes
+
+#-----------------------HEATING,QUENCHING,EQUILIBRATION----------
+reset_timestep 0
+timestep 0.001
+thermo 5000
+
+velocity all create ${ftemp} 825577 dist gaussian
+velocity all create 300 825577 dist gaussian
+
+dump 1 all custom 265000 Cu_*.lammps id type x y z
+dump_modify 1 format line "%d %d %g %g %g"
+
+compute Rdf all rdf 200 * * cutoff 5.0
+fix frdf all ave/time 1 1 265000 c_Rdf[*] file Cu_rdf.txt mode vector
+
+fix 1 all nvt temp ${ftemp} ${ftemp} 1.0 drag 0.2
+fix 1 all nvt temp 300 ${ftemp} 1.0 drag 0.2
+fix 1 all nvt temp 300 300 1.0 drag 0.2
+run 10000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Neighbor list info ...
+  update every 5 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8.1
+  ghost atom cutoff = 8.1
+  binsize = 4.05, bins = 5 5 5
+  2 neighbor lists, perpetual/occasional/extra = 1 1 0
+  (1) pair eam/fs, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+  (2) compute rdf, occasional
+      attributes: half, newton on, cut 5.5
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 5.385 | 5.385 | 5.385 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0          300   -1640.5247            0   -1621.1745    31374.152 
+    5000    247.19498   -1622.3675            0   -1606.4232     41444.03 
+   10000    315.95769   -1622.1448            0   -1601.7653    42199.165 
+Loop time of 12.9041 on 1 procs for 10000 steps with 500 atoms
+
+Performance: 66.955 ns/day, 0.358 hours/ns, 774.945 timesteps/s
+80.8% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 12.487     | 12.487     | 12.487     |   0.0 | 96.77
+Neigh   | 0.23205    | 0.23205    | 0.23205    |   0.0 |  1.80
+Comm    | 0.074995   | 0.074995   | 0.074995   |   0.0 |  0.58
+Output  | 0.020951   | 0.020951   | 0.020951   |   0.0 |  0.16
+Modify  | 0.082474   | 0.082474   | 0.082474   |   0.0 |  0.64
+Other   |            | 0.006965   |            |       |  0.05
+
+Nlocal:    500 ave 500 max 500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2930 ave 2930 max 2930 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    47347 ave 47347 max 47347 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 47347
+Ave neighs/atom = 94.694
+Neighbor list builds = 250
+Dangerous builds = 0
+unfix 1
+
+fix 1 all npt temp ${ftemp} ${ltemp} 4.00 iso 0 0 1 drag 0.2
+fix 1 all npt temp 300 ${ltemp} 4.00 iso 0 0 1 drag 0.2
+fix 1 all npt temp 300 2000 4.00 iso 0 0 1 drag 0.2
+run 30000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Per MPI rank memory allocation (min/avg/max) = 5.385 | 5.385 | 5.385 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+   10000    315.95769   -1622.1448            0   -1601.7653    42199.165    5905.2042 
+   15000    332.20167     -1621.83            0   -1600.4027    3372.2075    6069.4675 
+   20000    378.40033   -1616.9656            0   -1592.5585    3021.2534     6084.763 
+   25000    463.79501   -1611.1275            0   -1581.2124   -3535.9315    6134.3935 
+   30000    552.88437   -1601.7398            0   -1566.0783   -6831.4647    6173.7875 
+   35000    680.25797   -1591.2898            0   -1547.4126   -8336.4955    6210.9133 
+   40000    822.93386   -1576.7448            0   -1523.6649   -20063.823    6304.9594 
+Loop time of 39.9916 on 1 procs for 30000 steps with 500 atoms
+
+Performance: 64.814 ns/day, 0.370 hours/ns, 750.158 timesteps/s
+82.4% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 37.759     | 37.759     | 37.759     |   0.0 | 94.42
+Neigh   | 1.1434     | 1.1434     | 1.1434     |   0.0 |  2.86
+Comm    | 0.25549    | 0.25549    | 0.25549    |   0.0 |  0.64
+Output  | 0.011071   | 0.011071   | 0.011071   |   0.0 |  0.03
+Modify  | 0.75481    | 0.75481    | 0.75481    |   0.0 |  1.89
+Other   |            | 0.06748    |            |       |  0.17
+
+Nlocal:    500 ave 500 max 500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2930 ave 2930 max 2930 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    44284 ave 44284 max 44284 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 44284
+Ave neighs/atom = 88.568
+Neighbor list builds = 1129
+Dangerous builds = 0
+unfix 1
+
+fix 1 all npt temp ${ltemp} ${ltemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 ${ltemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 2000 1.0 iso 0 0 1 drag 0.2
+run 10000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Per MPI rank memory allocation (min/avg/max) = 5.385 | 5.385 | 5.385 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+   40000    822.93386   -1576.7448            0   -1523.6649   -20063.823    6304.9594 
+   45000    1455.3915   -1517.7293            0   -1423.8554    11473.943    6317.8088 
+   50000    1724.2021   -1439.8308            0   -1328.6183     8358.511    6641.2501 
+Loop time of 13.2193 on 1 procs for 10000 steps with 500 atoms
+
+Performance: 65.359 ns/day, 0.367 hours/ns, 756.471 timesteps/s
+86.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 12.295     | 12.295     | 12.295     |   0.0 | 93.01
+Neigh   | 0.52083    | 0.52083    | 0.52083    |   0.0 |  3.94
+Comm    | 0.095933   | 0.095933   | 0.095933   |   0.0 |  0.73
+Output  | 0.002975   | 0.002975   | 0.002975   |   0.0 |  0.02
+Modify  | 0.2727     | 0.2727     | 0.2727     |   0.0 |  2.06
+Other   |            | 0.03195    |            |       |  0.24
+
+Nlocal:    500 ave 500 max 500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2736 ave 2736 max 2736 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    41331 ave 41331 max 41331 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 41331
+Ave neighs/atom = 82.662
+Neighbor list builds = 592
+Dangerous builds = 0
+unfix 1
+
+fix 1 all npt temp ${ltemp} ${ftemp} 4.00 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 ${ftemp} 4.00 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 300 4.00 iso 0 0 1 drag 0.2
+run 195000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Per MPI rank memory allocation (min/avg/max) = 5.385 | 5.385 | 5.385 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+   50000    1724.2021   -1439.8308            0   -1328.6183     8358.511    6641.2501 
+   55000    1697.4126   -1423.3248            0   -1313.8403   -7893.8977    6823.1636 
+   60000    1880.1681   -1419.0879            0   -1297.8155   -1640.1185    6806.0923 
+   65000    1994.8396   -1414.2679            0   -1285.5991    4638.5034    6766.0555 
+   70000    1913.5311   -1404.4245            0   -1281.0001    3831.4865    6832.4791 
+   75000    1802.4371    -1404.777            0   -1288.5183    10347.058    6759.7112 
+   80000    1823.6637   -1417.1154            0   -1299.4876   -1382.3052    6764.5044 
+   85000    1793.3736    -1420.461            0   -1304.7869    3042.4201     6757.253 
+   90000    1700.6198   -1422.7223            0   -1313.0309   -8353.9725    6776.1538 
+   95000    1603.3043   -1423.2124            0   -1319.7979   -9023.4968    6790.9803 
+  100000    1585.2332   -1429.5753            0   -1327.3264   -4236.5512     6785.826 
+  105000    1586.0332     -1437.58            0   -1335.2796   -990.27374    6678.7136 
+  110000    1525.1761   -1440.7826            0   -1342.4075    459.93251    6666.8558 
+  115000     1493.053   -1447.2393            0   -1350.9362    1716.4914    6640.1067 
+  120000    1428.8834   -1451.2188            0   -1359.0547   -359.07754    6614.7238 
+  125000    1489.6481   -1461.9704            0   -1365.8869    9414.6038    6524.6199 
+  130000    1394.3291   -1463.3025            0   -1373.3672   -452.67363    6572.6342 
+  135000     1347.585   -1468.0834            0    -1381.163    10050.002    6475.4432 
+  140000    1252.3734   -1470.4633            0   -1389.6842   -3095.3911    6526.0338 
+  145000    1167.9745   -1473.1376            0   -1397.8023    558.51613    6521.3229 
+  150000    1215.5496   -1484.1104            0   -1405.7064   -2676.2893    6496.6487 
+  155000    1228.6332   -1493.1328            0   -1413.8849   -7054.3376    6483.1532 
+  160000    1111.5299   -1493.9752            0   -1422.2806     2249.134    6435.0719 
+  165000    1036.6172   -1497.7803            0   -1430.9176    3754.6204    6421.7345 
+  170000    1041.0994   -1506.6298            0   -1439.4781    -4341.872    6421.5998 
+  175000    979.34621   -1510.8188            0   -1447.6502    -3005.659    6401.6012 
+  180000    900.37416   -1512.9051            0   -1454.8303    7505.3328    6345.7333 
+  185000    917.43359   -1521.7472            0   -1462.5719   -939.28523    6370.7625 
+  190000    828.49206   -1523.4742            0   -1470.0358    3966.9459    6336.4849 
+  195000    791.31533   -1529.0151            0   -1477.9746    3118.6794    6331.8431 
+  200000    784.83733   -1536.6483            0   -1486.0257    12873.235     6263.962 
+  205000    719.00968   -1540.3907            0    -1494.014    4622.4199      6281.65 
+  210000    659.82883   -1544.1522            0   -1501.5927   -6131.4479    6327.8971 
+  215000    624.74546   -1549.0681            0   -1508.7715   -1225.4426     6299.764 
+  220000      607.226   -1554.7774            0   -1515.6109   -2182.2051    6284.3797 
+  225000    545.73539   -1557.4533            0    -1522.253   -1209.6761    6271.1192 
+  230000    469.62949   -1558.8998            0   -1528.6083    4218.4338    6241.3924 
+  235000    450.97067   -1563.8134            0   -1534.7254    224.11383    6248.2419 
+  240000     415.5816   -1567.5208            0   -1540.7155    -872.9992    6244.3081 
+  245000    365.68603   -1570.4067            0   -1546.8197   -809.83925    6237.0975 
+Loop time of 246.203 on 1 procs for 195000 steps with 500 atoms
+
+Performance: 68.431 ns/day, 0.351 hours/ns, 792.028 timesteps/s
+85.8% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 229.69     | 229.69     | 229.69     |   0.0 | 93.29
+Neigh   | 9.7647     | 9.7647     | 9.7647     |   0.0 |  3.97
+Comm    | 1.7109     | 1.7109     | 1.7109     |   0.0 |  0.69
+Output  | 0.077873   | 0.077873   | 0.077873   |   0.0 |  0.03
+Modify  | 4.659      | 4.659      | 4.659      |   0.0 |  1.89
+Other   |            | 0.2991     |            |       |  0.12
+
+Nlocal:    500 ave 500 max 500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2825 ave 2825 max 2825 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    43424 ave 43424 max 43424 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 43424
+Ave neighs/atom = 86.848
+Neighbor list builds = 10538
+Dangerous builds = 0
+unfix 1
+
+fix 1 all npt temp ${ftemp} ${ftemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 300 ${ftemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 300 300 1.0 iso 0 0 1 drag 0.2
+run 20000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Per MPI rank memory allocation (min/avg/max) = 5.385 | 5.385 | 5.385 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+  245000    365.68603   -1570.4067            0   -1546.8197   -809.83925    6237.0975 
+  250000    307.05818   -1577.7098            0   -1557.9043    5713.0816    6194.5054 
+  255000    313.66639   -1577.0004            0   -1556.7686    26.735699    6217.9961 
+  260000    314.14573     -1576.06            0   -1555.7974    1656.7044    6212.4047 
+  265000    308.15379   -1576.3915            0   -1556.5154     2779.122    6211.9695 
+Loop time of 25.4008 on 1 procs for 20000 steps with 500 atoms
+
+Performance: 68.029 ns/day, 0.353 hours/ns, 787.378 timesteps/s
+87.5% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 24.16      | 24.16      | 24.16      |   0.0 | 95.12
+Neigh   | 0.54221    | 0.54221    | 0.54221    |   0.0 |  2.13
+Comm    | 0.18201    | 0.18201    | 0.18201    |   0.0 |  0.72
+Output  | 0.010606   | 0.010606   | 0.010606   |   0.0 |  0.04
+Modify  | 0.4688     | 0.4688     | 0.4688     |   0.0 |  1.85
+Other   |            | 0.03712    |            |       |  0.15
+
+Nlocal:    500 ave 500 max 500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    2840 ave 2840 max 2840 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    43661 ave 43661 max 43661 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 43661
+Ave neighs/atom = 87.322
+Neighbor list builds = 590
+Dangerous builds = 0
+unfix 1
+
+uncompute Rdf
+unfix frdf
+undump 1
+
+#------------------------SIMULATION DONE--------------------
+print "All done"
+All done
+Total wall time: 0:05:37

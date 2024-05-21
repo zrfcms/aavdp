@@ -11,29 +11,38 @@
 #define ZERO_LIMIT 0.000001
 using namespace std;
 
+struct KNODE{
+    int    k[3];
+    double theta;
+    double intensity;
+    int    multiplicity=0;
+    KNODE *next=nullptr;
+};
+
 //x-ray diffraction
 class XRD
 {
 public:
     int    numk=0;
-    int    **kvector=nullptr;
-    double *Ktheta=nullptr;
-    double *Kintensity=nullptr;
-    int *multiplicity=nullptr;
-    XRD(MODEL *model, double spacingK[3], double min2Theta, double max2Theta, bool is_lorentz, bool is_spacing_auto);
+    KNODE  *khead=nullptr;
+    KNODE  *ktail=nullptr;
+    XRD(MODEL *model, double spacing[3], double min2Theta, double max2Theta, bool is_lorentz, bool is_spacing_auto);
     XRD(MODEL *model, bool is_lorentz);
-    XRD(const char *xrd_path);
     ~XRD();
     void   xrd(const char *xrd_path);
+    void   xrd(const char *xrd_path, int nbin);
 private:
-    bool   is_lorentz_flag;
-    int    kmin[3], kmax[3];
+    bool   is_lorentz_flag=true;
+    int    kmin[3]={10000, 10000, 10000}, kmax[3]={-10000, -10000, -10000};
+    double spacingK[3]={0.1, 0.1, 0.1};
+    double minTheta=0.0, maxTheta=PI/2.0;
     double intensity_min=1.0e8, intensity_max=0.0;
-    void   unique();
-    void   quick_sort(int low, int high);
-    void   count_diffraction_vector(MODEL *model, double spacingK[3], double minTheta, double maxTheta);
-    void   compute_diffraction_intensity(MODEL *model, double spacingK[3], double minTheta, double maxTheta);
-    void   count_diffraction_vector(MODEL *model);
+    void   copy_knode_data(KNODE *knode1, KNODE *knode2);
+    void   swap_knode_data(KNODE *knode1, KNODE *knode2);
+    void   quick_sort(KNODE *kstart, KNODE *kend);
+    void   quick_unique();
+    void   add_k_node(int h, int k, int l, double theta, double intensity, int multiplicity);
+    void   compute_diffraction_intensity(MODEL *model, double spacingK[3]);
     void   compute_diffraction_intensity(MODEL *model);
 };
 

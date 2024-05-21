@@ -1,8 +1,10 @@
-inc=-I ./src/include:./src/QB:./src/QSPG:./src:./src/MATH:./src/MODEL:./src/SED:./src/KKD:./src/RDF:./src/SSF:./src/XRD
-lib=./lib/libpng16.a ./lib/libz.a
+inc=-I ./include/lapacke:./include/hdf5:./include/libpng:./src/QSPG/spglib:./src/QB:./src/QSPG:./src/MATH:./src/HDF5:./src/MODEL:./src/XRD:./src/SED:./src/KKD:./src/DKD:./src/RDF:./src/SSF
+lib=./lib/liblapacke.a ./lib/liblapack.a \
+./lib/libcblas.a ./lib/librefblas.a ./lib/libm.a ./lib/libgfortran.dll.a ./lib/libhdf5.dll.a \
+./lib/libpng16.a ./lib/libz.a
 CXX=g++.exe
 CC=gcc.exe
-src=$(wildcard ./src/*.cpp ./src/QB/*.cpp ./src/MATH/*.cpp ./src/MODEL/*.cpp ./src/SED/*.cpp ./src/KKD/*.cpp ./src/RDF/*.cpp ./src/SSF/*.cpp ./src/XRD/*.cpp)
+src=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
 obj=$(patsubst %.cpp, %.o, $(src))
 
 AAVDP: $(obj)
@@ -13,7 +15,7 @@ AAVDP: $(obj)
 
 %.o: %.cpp
 	@echo $<
-	$(CXX) -MMD $< -c -o $@ -g -std=c++0x
+	$(CXX) -MMD $< -c -o $@ -g 
 
 .PHONY: clean
 clean: 
@@ -35,7 +37,7 @@ clean:
 
 # %.o: %.cpp
 # 	@echo $<
-# 	$(CXX) -MMD $< -c -o $@ -g
+# 	$(CXX) -MMD $< -c -o $@ -g -std=c++0x
 
 # .PHONY: clean
 # clean: 

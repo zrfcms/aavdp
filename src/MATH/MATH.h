@@ -1,21 +1,68 @@
 #ifndef __AAVDP_MATH_H__
 #define __AAVDP_MATH_H__
 #include <cmath>
+#include <cstring>
 #include "../include/libpng/png.h"
+
+#define PATH_CHAR_NUMBER 100
+#define EXT_CHAR_NUMBER 10
+#define TYPE_INPUT_NUMBER 10
 
 #define KEY_CHAR_NUMBER 100
 #define KEY_LINE_NUMBER 100
 
 #define PI 3.141592653589793
+#define TWO_PI 6.283185307179586
+#define FOUR_PI 12.566370614359172
 #define DEG_TO_RAD 0.017453292519943295 //PI/180
 
-extern void image(const char* png_path, unsigned char *pixels, int width, int height);
+#define PI_SQRT_HALF 0.886226925452758 //sqrt(PI)/2
+#define PI_HALF_SQRT 1.253314137315500 //sqrt(PI/2)
+#define PI_INVERSE 0.318309886183791 //1/PI
+#define PI_PREG 1.55512030155621410 //2*sqrt(PI)/3^(3/4)
+#define PI_PREC 0.9068996821171090 //PI/2*sqrt(3)
+#define PI_PREB 1.0500751358086640 //3^(1/4)*sqrt(2/PI)
+#define PI_PRED 2.0943951023931950 //2*PI/3
+#define PI_PREA 0.5250375679043320 //3^(1/4)/sqrt(2*PI)
+#define PI_PREE 0.7598356856515930 //3^(-1/4)
+#define PI_PREF 0.7598356856515930 //3^(-1/4)
+#define DEG_TO_RAD 0.017453292519943295 //PI/180
+#define SQRT_3 1.732050807568877 //sqrt(3)
+#define SQRT_3_INVERSE 0.577350269190 //1/sqrt(3)
+#define SQRT_HALF_3 0.866025403780 //sqrt(3)/2
 
-extern void matrix_copy(double c_mat[3][3], double mat[3][3]);
+#define SCATTERING_EVENT_NUMBER 500 //Number of scattering events along one trajectory
+#define CEN_TO_ANG 1.0E8
+#define ZERO 1e-12
+#define ONE 0.99999
+#define CONST_IN_AREA_INV 1.5273987E19 //1.0/(5.21E-21*(4*PI))
+
+template <typename T>
+extern T max(T a, T b);
+template <typename T>
+extern T min(T a, T b);
+
+template <typename T>
+T max(T a, T b)
+{
+	return (a>b?a:b);
+}
+
+template <typename T>
+T min(T a, T b)
+{
+	return (a<b?a:b);
+}
+
+extern void int_to_str(char str[], int num);
+extern void merge_path(char file_path[], char exts[][10], int num);
+extern void split_path(char name[], char ext[], const char file_path[]);
+
+template <typename T>
+extern void matrix_copy(T c_mat[3][3], T mat[3][3]);
 extern void matrix_constant(double k_mat[3][3], double k, double mat[3][3]);
 extern void matrix_transpose(double t_mat[3][3], double mat[3][3]);
 extern void matrix_multiply(double mat[3][3], double mat1[3][3], double mat2[3][3]);
-
 template <typename T>
 extern void vector_copy(T c_v[3], T v[3]);
 extern double vector_dot(double v1[3], double v2[3]);
@@ -27,6 +74,7 @@ extern void vector_plus(double v[3], double v1[3], double v2[3]);
 extern void vector_difference(double v[3], double v1[3], double v2[3]);
 extern void vector_multiply(double v[3], double v1[3], double v2[3]);
 extern void vector_rotate(double r_v[3], double R[3][3], double v[3]);
+extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
 
 template <typename T>
 void vector_copy(T c_v[3], T v[3])
@@ -34,15 +82,33 @@ void vector_copy(T c_v[3], T v[3])
     c_v[0]=v[0]; c_v[1]=v[1]; c_v[2]=v[2];
 }
 
-struct QUATERNION
+template <typename T>
+void matrix_copy(T c_mat[3][3], T mat[3][3])
 {
-    double c1, c2, c3, c4;
-};
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            c_mat[i][j]=mat[i][j];
+        }
+    }
+}
 
-extern QUATERNION quate_conjg(QUATERNION q);
-extern QUATERNION quate_multi(QUATERNION q1, QUATERNION q2);
-extern void quate_rotate(double r_v[3], double v[3], QUATERNION q);
-extern QUATERNION quate_convert(double v[3], double angle);
+extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym);
+extern int get_sextant(double x, double y);
+extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius=1.0);
+
+// struct QUATERNION
+// {
+//     double c1, c2, c3, c4;
+// };
+
+// extern QUATERNION quate_conjg(QUATERNION q);
+// extern QUATERNION quate_multi(QUATERNION q1, QUATERNION q2);
+// extern void quate_rotate(double r_v[3], double v[3], QUATERNION q);
+// extern QUATERNION quate_convert(double v[3], double angle);
 
 template <typename T>
 extern void mallocate(T **data, int size);
@@ -309,5 +375,43 @@ void unreshape_4d(T **wdata, T ****data, int nrow, int ncol, int nlayer, int nbl
             }
         }
     }
+}
+
+extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
+template <typename T>
+extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);
+
+template <typename T>
+void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background)
+{
+    int numpx=width*resolution, numpy=height*resolution;
+    int multiplier=min(numpx/ncol, numpy/nrow);
+    numpx=ncol*multiplier; numpy=nrow*multiplier;
+    double **warr; callocate_2d(&warr, numpy, numpx, 0.0);
+    for(int i=0;i<nrow;i++){
+        for(int j=0;j<ncol;j++){
+            for(int k=0;k<multiplier;k++){
+                for(int n=0;n<multiplier;n++){
+                    warr[i*multiplier+k][j*multiplier+n]=arr[i][j];
+                }
+            }
+        }
+    }
+    int nump=numpx*numpy;
+    double *wdata; unreshape_2d(&wdata, warr, numpy, numpx);
+    double wmax=wdata[0], wmin=wdata[0];
+    for(int i=0;i<nump;i++){
+        if(wmax<wdata[i]) wmax=wdata[i];
+        if(wmin>wdata[i]) wmin=wdata[i];
+    }
+    double wdiff=wmax-wmin;
+    double wref=is_black_background?wmin:wmax;
+
+    unsigned char *pixels;
+    mallocate(&pixels, 3*nump);
+    for(int i=0;i<nump;i++){
+        pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(wref-wdata[i])/wdiff*255.0);
+    }
+    image_pixels(png_path, pixels, numpx, numpy);
 }
 #endif

@@ -2,25 +2,25 @@
 #define __AAVDP_RDF_H__
 #include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"
+#define THREE_QUARTER_PIINV 0.238732414637843
 
 class RDF
 {
 public:
-    int    numij=0, numrbin=0;
-    int    **ij=nullptr;
-    double *rho0ij=nullptr;
+    int    numrbin=0, numij=0;
+    double *rhoij=nullptr;
     double *rij=nullptr;
+    int    **ij=nullptr;
     double **gij=nullptr;
-    RDF(const char *model_path, double rmax, int nbin, bool is_partial_flag);
+    RDF(const char *model_path, double rmax, int nbin, bool is_partial=false);
     ~RDF();
     void rdf(const char *rdf_path);
-    void nml(const char *ssf_path);
+    // void nml(const char *ssf_path);
 private:
-    double dr;
     double vol;
-    void   volume(QB_tools *QB);
-    void   compute(QB_tools *QB, double rmax);
-    void   compute(QB_tools *QB, double rmax, int typei, int typej, int pair_id);
+    void   set_volume(double mat[3][3]);
+    void   compute(QB_tools *QB, int natom, double rmax, double rbin, int pairij_id=0);
+    void   compute(QB_tools *QB, int natom, double rmax, double rbin, int typei, int typej, int pairij_id);
 };
 
 #endif

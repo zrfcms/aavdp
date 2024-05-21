@@ -4,26 +4,25 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <complex>
 #include <fstream>
 #include <ctime>
 #include "../MATH/MATH.h"
+#include "../RDF/RDF.h"
 
 class SSF
 {
 public:
-    int    numqbin=0;
+    int    numqbin=0, numij=0;
     double *qij=nullptr;
-    double *Sij=nullptr;
-    SSF(const char *rdf_path, double qmax, double nbin);
+    int    **ij=nullptr;
+    double **Sij=nullptr;
+    SSF(const char *model_path, double qmax, int nbin, bool is_partial=false);
     ~SSF();
-    void ssf(const char *ssf_path);
+    void    ssf(const char *ssf_path);
 private:
-    int    numrbin=0;
-    double rho0;
-    double dr;
-    double *rij=nullptr;
-    double *gij=nullptr;
-    void read(const char *nml_path);
+    void   compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], int NspacingK[3], int pairij_id=0);
+    void   compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], int NspacingK[3], int typei, int typej, int pairij_id);
 };
 
 #endif

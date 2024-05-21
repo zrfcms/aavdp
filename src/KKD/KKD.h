@@ -7,8 +7,7 @@
 #include <fstream>
 #include <ctime>
 #include "../MATH/MATH.h"
-#define KEY_CHAR_NUMBER 20
-#define KEY_LINE_NUMBER 50
+
 using namespace std;
 
 //kinematic Kikuchi diffraction

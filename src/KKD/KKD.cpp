@@ -193,7 +193,7 @@ void KKD::img(const char* img_path, char mode)
     for(int i=0;i<num;i++){
         pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(Iref-wdata[i])/diff*255.0);
     }
-    image(img_path, pixels, numpx, numpy);
+    image_pixels(img_path, pixels, numpx, numpy);
     printf("Image data stored in %s.\n", img_path);
 }
 
