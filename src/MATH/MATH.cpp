@@ -42,109 +42,6 @@ void split_path(char name[], char ext[], const char file_path[])
     }
 }
 
-void matrix_constant(double k_mat[3][3], double k, double mat[3][3])
-{
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            k_mat[i][j]=k*mat[i][j];
-        }
-    }
-}
-
-void matrix_transpose(double t_mat[3][3], double mat[3][3])
-{
-    double c_mat[3][3];
-    matrix_copy(c_mat, mat);
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            t_mat[i][j]=c_mat[j][i];
-        }
-    }
-}
-
-void matrix_multiply(double mat[3][3], double mat1[3][3], double mat2[3][3])
-{
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            mat[i][j]=0.0;
-            for(int k=0;k<3;k++){
-                mat[i][j]+=mat1[i][k]*mat2[k][j];
-            }
-        }
-    }
-}
-
-double vector_dot(double v1[3], double v2[3])
-{
-    return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
-}
-
-double vector_length(double v[3])
-{
-    return sqrt(vector_dot(v, v));
-}
-
-void vector_normalize(double n_v[3], double v[3])
-{
-    double len_v=vector_length(v);
-    if(0.0!=len_v){
-        n_v[0]=v[0]/len_v; n_v[1]=v[1]/len_v; n_v[2]=v[2]/len_v;
-    }else{
-        n_v[0]=0.0; n_v[1]=0.0; n_v[2]=0.0; 
-    }
-}
-
-void vector_cross(double v[3], double v1[3], double v2[3])
-{
-    v[0]=v1[1]*v2[2]-v1[2]*v2[1];
-    v[1]=v1[2]*v2[0]-v1[0]*v2[2];
-    v[2]=v1[0]*v2[1]-v1[1]*v2[0];
-}
-
-void vector_constant(double k_v[3], double k, double v[3])
-{
-    k_v[0]=k*v[0]; k_v[1]=k*v[1]; k_v[2]=k*v[2];
-}
-
-void vector_plus(double v[3], double v1[3], double v2[3])
-{
-    v[0]=v1[0]+v2[0]; v[1]=v1[1]+v2[1]; v[2]=v1[2]+v2[2];
-}
-
-void vector_difference(double v[3], double v1[3], double v2[3])
-{
-    v[0]=v1[0]-v2[0]; v[1]=v1[1]-v2[1]; v[2]=v1[2]-v2[2];
-}
-
-void vector_multiply(double v[3], double v1[3], double v2[3])
-{
-    v[0]=v1[0]*v2[0]; v[1]=v1[1]*v2[1]; v[2]=v1[2]*v2[2];
-}
-
-void vector_rotate(double r_v[3], double R[3][3], double v[3])
-{
-    double c_v[3];
-    vector_copy(c_v, v);
-    for(int i=0;i<3;i++){
-        r_v[i]=0.0;
-        for(int j=0;j<3;j++){
-            r_v[i]+=R[i][j]*c_v[j];
-        }
-    }
-}
-
-void vector_rotate(double r_v[3], int R[3][3], double v[3])
-{
-    double c_v[3];
-    vector_copy(c_v, v);
-    for(int i=0;i<3;i++){
-        r_v[i]=0.0;
-        for(int j=0;j<3;j++){
-            r_v[i]+=(double)R[i][j]*c_v[j];
-        }
-    }
-}
-
 // QUATERNION quate_conjg(QUATERNION q)
 // {
 //     QUATERNION qc={q.c1, -q.c2, -q.c3, -q.c4};
@@ -411,6 +308,18 @@ void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, doub
             for(int i=0;i<3;i++){
                 xyz[i]=xyz[i]/(radius*radius+sum_q2);
             }
+        }
+    }
+}
+
+void vector_rotate(double r_v[3], int R[3][3], double v[3])
+{
+    double c_v[3];
+    vector_copy(c_v, v);
+    for(int i=0;i<3;i++){
+        r_v[i]=0.0;
+        for(int j=0;j<3;j++){
+            r_v[i]+=(double)R[i][j]*c_v[j];
         }
     }
 }

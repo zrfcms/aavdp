@@ -1,0 +1,125 @@
+EMEBSDmaster: Executable Path:C:/code/cygwin/home/15743/EMsoft-5.0.0-Win64/bin\EMEBSDmaster.exe
+EMEBSDmaster: Start Time: 2024:06:04 19:53:51.902
+EMEBSDmaster: Insert EMSOFTPATHNAME=C:/code/cygwin/home/15743/EMsoft-5.0.0-Win64/bin
+EMEBSDmaster: Output from EMEBSDmaster follows next....
+===========================================================
+
+
+
+ Copyright (C) 2001-2019 Marc De Graef Research Group/CMU
+ EMsoft comes with ABSOLUTELY NO WARRANTY.
+ This is free software, and you are welcome to redistribute it
+ under certain conditions; see License.txt file for details.
+
+
+ Program name         : EMEBSDmaster.f90
+ Purpose              : EBSD Energy-dependent Master Pattern Simulation
+ Platform             : Windows
+ Source code version  : 5_0_0_0
+ Source code Revision : 
+ Build Date/Time      : 2019-10-14 17:39:04Z
+
+ See https://github.com/EMsoft-org/EMsoft/wiki for selected help pages.
+
+
+ Jun  4 2024   7:53:51.928 PM
+
+
+Number of command line arguments detected:           1
+ -> completed reading Monte Carlo data from C:\Users\15743\Desktop\Ni.h5
+
+ --> total number of BSE electrons in MC data set        2000
+ReadDataHDF: There is no Source data set in this structure file
+
+
+-->Crystal Structure Information<--
+  a [nm]             :  0.35236
+  b [nm]             :  0.35236
+  c [nm]             :  0.35236
+  alpha [deg]        : 90.00000
+  beta  [deg]        : 90.00000
+  gamma [deg]        : 90.00000
+  Volume [nm^3]      :  0.04374816
+  Space group #      : 225
+  Space group symbol : F m 3 m
+  Generator String   :16aODDaDODbOOOcOOOdOOOeOOO0
+   Structure is centrosymmetric
+  # generators       :   8
+  # symmetry matrices: 192
+  # point sym. matr. :  48
+
+
+  Number of asymmetric atom positions           1
+  General position / atomic number / multiplicity :   1/28/  4 (Ni)
+   Equivalent positions  (x y z  occ  DWF)
+         >    0.00000,  0.00000,  0.00000,  1.00000,  0.00350
+         >    0.00000,  0.50000,  0.50000,  1.00000,  0.00350
+         >    0.50000,  0.00000,  0.50000,  1.00000,  0.00350
+         >    0.50000,  0.50000,  0.00000,  1.00000,  0.00350
+
+
+ Mean inner potential [V] 0.2912E+02
+ Wavelength corrected for refraction
+ Relativistic correction factor [gamma] 0.1022E+01
+ Relativistic Accelerating Potential [V] 0.1115E+05
+ Electron Wavelength [nm] 0.1162E-01
+ Interaction constant [V nm]^(-1) 0.2478E-01
+ Range of reflections along a*, b* and c* =           4           4           4
+ Normal absorption length [nm] =   35.60170    
+
+ Generating Fourier coefficient lookup table ...Done
+
+ Range of reflections along a*, b* and c* =           4           4           4
+
+Generating Sgh coefficient lookup table ...Done
+
+
+  WARNING: USER=
+  WARNING: file \.config\EMsoft\EMsoftConfig.json not found 
+  -----> Trying environment variables next ... 
+
+EMdatapathname was not defined in the json file
+
+  WARNING: EMDATAPATHNAME environment variable was NOT defined as a backup.
+     ----> using absolute path convention
+
+
+
+ Starting computation for energy bin (in reverse order)   2 of    2; energy [keV] = 11.00
+
+# independent beam directions to be considered =    1327
+ Attempting to set number of threads to   1
+
+ -> Average number of strong reflections =   15
+ -> Average number of weak reflections   =   27
+Execution time [s]:           0
+Intermediate data stored in file C:\Users\15743\Desktop\Ni.h5
+
+
+ Starting computation for energy bin (in reverse order)   1 of    2; energy [keV] = 10.00
+
+ Mean inner potential [V] 0.2906E+02
+ Wavelength corrected for refraction
+ Relativistic correction factor [gamma] 0.1020E+01
+ Relativistic Accelerating Potential [V] 0.1013E+05
+ Electron Wavelength [nm] 0.1219E-01
+ Interaction constant [V nm]^(-1) 0.2595E-01
+ Range of reflections along a*, b* and c* =           4           4           4
+ Normal absorption length [nm] =   32.79539    
+
+ Generating Fourier coefficient lookup table ...Done
+
+# independent beam directions to be considered =    1327
+ Attempting to set number of threads to   1
+
+ -> Average number of strong reflections =   15
+ -> Average number of weak reflections   =   27
+Execution time [s]:           0
+Final data stored in file C:\Users\15743\Desktop\Ni.h5
+
+Total execution time [s]           0
+
+EMEBSDmaster Completed
+===========================================================
+EMEBSDmaster: Finished: 2024:06:04 19:53:52.746
+EMEBSDmaster: Output File Location: C:\Users\15743\Desktop\Ni.h5

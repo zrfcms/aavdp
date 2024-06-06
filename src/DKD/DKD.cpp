@@ -110,9 +110,9 @@ void DKD_KVECTOR::free_k_node(DKD_KNODE *khead)
 
 DKD_GVECTOR::DKD_GVECTOR(CELL *cell, BETHE bethe, double k[3], double fn[3], double cutoff)
 {
-    double g[3]={0.0, 0.0, 0.0};
     int imh=cell->HKL[0], imk=cell->HKL[1], iml=cell->HKL[2];
     int cx=imh*2, cy=imk*2, cz=iml*2;
+    double g[3]={0.0, 0.0, 0.0};
     complex<double> Ug=cell->LUTUg[cx][cy][cz];
     complex<double> qg=cell->LUTqg[cx][cy][cz];
     double sg=0.0;
@@ -174,7 +174,7 @@ DKD_GVECTOR::DKD_GVECTOR(CELL *cell, BETHE bethe, double k[3], double fn[3], dou
             if(cell->is_double_diffrac[ix][iy][iz]){
                 temp=1.0e4;
             }else{
-                temp=sgp/abs(cell->LUTUg[ix][iy][iz]);
+                temp=sgp/fabs(cell->LUTUg[ix][iy][iz]);
             }
             if(temp<imin) imin=temp;
         }
@@ -223,12 +223,10 @@ void DKD_GVECTOR::add_g_vector(double hkl[3], complex<double> Ug, complex<double
     }
     gtail->next=new DKD_GNODE;
     gtail=gtail->next;
-    gtail->number=numg;
     gtail->hkl[0]=hkl[0]; gtail->hkl[1]=hkl[1]; gtail->hkl[2]=hkl[2];
     gtail->Ug=Ug;
     gtail->qg=qg;
     gtail->sg=sg;
-    gtail->family_number=0;
     gtail->is_double_diffrac=is_double_diffrac;
     numg++;
 }
@@ -253,15 +251,11 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
 
     CELL cell(hdf5_path);
     int npos=cell.npos; napos=cell.napos;
-    cell.centering='F';//*point
-    cell.set_sampling_type();
-    cell.compute_lattice_matrices();
-    cell.compute_point_symmetry_matrices();
     cell.compute_reflection_range(dmin);
     cell.compute_Bloch_wave_coefficients();
     printf("Range of reflections along a*, b*, and c* = %d, %d, and %d.\n", cell.HKL[0], cell.HKL[1], cell.HKL[2]);
 
-    clock_t start, finish, time;
+    clock_t start, finish;
     start=clock();
     int iEstart=numEbin-1, imp=nump/2;
     callocate_4d(&mLPNH, cell.napos, 1, nump, nump, 0.0);
@@ -269,7 +263,7 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
     callocate_3d(&mSPNH, 1, nump, nump, 0.0);
     callocate_3d(&mSPSH, 1, nump, nump, 0.0);
     for(int iE=iEstart;iE>=0;iE--){
-        clock_t istart, ifinish, itime;
+        clock_t istart, ifinish;
         istart=clock();
         printf("Starting computation for energy bin (in reverse order) %d of %d; ", iE+1, numEbin);
         //set the accelerating voltage and compute the Fourier coefficients
@@ -438,13 +432,13 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
         printf("mLPNH max: %.5f min: %.5f, mLPSH max: %.5f min: %.5f\n", max_LPNH, min_LPNH, max_LPSH, min_LPSH);
         printf("-> Average number of strong reflections = %d.\n", int(round(double(sum_strong)/double(kvec.numk))));
         printf("-> Average number of weak reflections = %d.\n", int(round(double(sum_weak)/double(kvec.numk))));
-        ifinish=clock(); itime=ifinish-istart;
-        printf("Execution time [s]: %.2f.\n", itime);
+        ifinish=clock();
+        printf("Execution time [s]: %.2f.\n", double(ifinish-istart)/CLOCKS_PER_SEC);
         hdf5(hdf5_path, iE);
         printf("Intermediate data stored in file %s.\n", hdf5_path);
     }
-    finish=clock(); time=finish-start;
-    printf("Execution time [s]: %.2f.\n", time);
+    finish=clock();
+    printf("Execution time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
     printf("Intermediate data stored in file %s.\n", hdf5_path);
 }
 
@@ -452,77 +446,60 @@ void DKD::compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECT
 {
     DKD_GNODE *rtemp=gvec->ghead->next;
     int imh=2*cell->HKL[0], imk=2*cell->HKL[1], iml=2*cell->HKL[2];
-    int ir=0;
-    while(rtemp!=nullptr){
+    double k0_2=2.0/cell->fouri0.lambda, k0_2i=0.5*cell->fouri0.lambda;
+    for(int ir=0;ir<gvec->nstrong;ir++){
         DKD_GNODE *ctemp=gvec->ghead->next;
-        int ic=0;
-        while(ctemp!=nullptr){
+        for(int ic=0;ic<gvec->nstrong;ic++){
             int ih, ik, il;
             if(ic!=ir){
-                if(0!=gvec->nweak){
-                    complex<double> wsum(0.0, 0.0);
-                    DKD_GNODE *wtemp=gvec->headw;
-                    while(wtemp!=nullptr){
-                        complex<double> Ughp, Uhph;
-                        complex<double> temp(1.0/wtemp->sg, 0.0);
-                        ih=rtemp->hkl[0]-wtemp->hkl[0]+imh;
-                        ik=rtemp->hkl[1]-wtemp->hkl[1]+imk;
-                        il=rtemp->hkl[2]-wtemp->hkl[2]+iml;
-                        Ughp=cell->LUTUg[ih][ik][il];
-                        ih=wtemp->hkl[0]-ctemp->hkl[0]+imh;
-                        ik=wtemp->hkl[1]-ctemp->hkl[1]+imk;
-                        il=wtemp->hkl[2]-ctemp->hkl[2]+iml;
-                        Uhph=cell->LUTUg[ih][ik][il];
-                        wsum+=Ughp*Uhph*temp;
-                        wtemp=wtemp->nextw;
-                    }
-                    ih=rtemp->hkl[0]-ctemp->hkl[0]+imh;
-                    ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
-                    il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
-                    complex<double> temp(0.5*cell->fouri0.lambda, 0.0);
-                    dynmat[ir][ic]=cell->LUTUg[ih][ik][il]-temp*wsum;
-                }else{
-                    ih=rtemp->hkl[0]-ctemp->hkl[0]+imh;
-                    ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
-                    il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
-                    dynmat[ir][ic]=cell->LUTUg[ih][ik][il];
+                complex<double> wsum(0.0, 0.0);
+                DKD_GNODE *wtemp=gvec->headw;
+                for(int iw=0;iw<gvec->nweak;iw++){
+                    complex<double> Ughp, Uhph;
+                    ih=rtemp->hkl[0]-wtemp->hkl[0]+imh;
+                    ik=rtemp->hkl[1]-wtemp->hkl[1]+imk;
+                    il=rtemp->hkl[2]-wtemp->hkl[2]+iml;
+                    Ughp=cell->LUTUg[ih][ik][il];
+                    ih=wtemp->hkl[0]-ctemp->hkl[0]+imh;
+                    ik=wtemp->hkl[1]-ctemp->hkl[1]+imk;
+                    il=wtemp->hkl[2]-ctemp->hkl[2]+iml;
+                    Uhph=cell->LUTUg[ih][ik][il];
+                    wsum+=Ughp*Uhph*complex<double>(1.0/wtemp->sg, 0.0);
+                    wtemp=wtemp->nextw;
                 }
+                wsum*=complex<double>(k0_2i, 0.0);
+                ih=rtemp->hkl[0]-ctemp->hkl[0]+imh;
+                ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
+                il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
+                dynmat[ir][ic]=cell->LUTUg[ih][ik][il]-wsum;
             }else{
-                if(0!=gvec->nweak){
-                    double wsgsum=0.0;
-                    DKD_GNODE *wtemp=gvec->headw;
-                    while(wtemp!=nullptr){
-                        complex<double> Ughp;
-                        ih=rtemp->hkl[0]-wtemp->hkl[0]+imh;
-                        ik=rtemp->hkl[1]-wtemp->hkl[1]+imk;
-                        il=rtemp->hkl[2]-wtemp->hkl[2]+iml;
-                        Ughp=cell->LUTUg[ih][ik][il];
-                        wsgsum+=fabs(Ughp)*fabs(Ughp)/wtemp->sg;
-                        wtemp=wtemp->nextw;
-                    }
-                    wsgsum*=cell->fouri0.lambda/2.0;
-                    dynmat[ir][ir].real(2.0*rtemp->sg/cell->fouri0.lambda-wsgsum); dynmat[ir][ir].imag(cell->fouri0.Upmod);
-                }else{
-                    dynmat[ir][ir].real(2.0*rtemp->sg/cell->fouri0.lambda); dynmat[ir][ir].imag(cell->fouri0.Upmod);
+                double wsum=0.0;
+                DKD_GNODE *wtemp=gvec->headw;
+                for(int iw=0;iw<gvec->nweak;iw++){
+                    complex<double> Ughp;
+                    ih=rtemp->hkl[0]-wtemp->hkl[0]+imh;
+                    ik=rtemp->hkl[1]-wtemp->hkl[1]+imk;
+                    il=rtemp->hkl[2]-wtemp->hkl[2]+iml;
+                    Ughp=cell->LUTUg[ih][ik][il];
+                    wsum+=fabs(Ughp)*fabs(Ughp)/wtemp->sg;
+                    wtemp=wtemp->nextw;
                 }
+                wsum*=k0_2i;
+                dynmat[ir][ir]=complex<double>(k0_2*rtemp->sg-wsum, cell->fouri0.Upmod);
             }
             ctemp=ctemp->nexts;
-            ic++;
         }
         rtemp=rtemp->nexts;
-        ir++;
     }
 }
 
 void DKD::compute_Sgh_matrices(complex<double>*** Sgh, CELL *cell, DKD_GVECTOR* gvec)
 {
-    DKD_GNODE *rtemp=gvec->ghead->next;
-    int ir=0;
     int imh=2*cell->HKL[0], imk=2*cell->HKL[1], iml=2*cell->HKL[2];
-    while(rtemp!=nullptr){
+    DKD_GNODE *rtemp=gvec->ghead->next;
+    for(int ir=0;ir<gvec->nstrong;ir++){
         DKD_GNODE *ctemp=gvec->ghead->next;
-        int ic=0;
-        while(ctemp!=nullptr){
+        for(int ic=0;ic<gvec->nstrong;ic++){
             int ih, ik, il;
             ih=ctemp->hkl[0]-rtemp->hkl[0]+imh;
             ik=ctemp->hkl[1]-rtemp->hkl[1]+imk;
@@ -530,15 +507,13 @@ void DKD::compute_Sgh_matrices(complex<double>*** Sgh, CELL *cell, DKD_GVECTOR* 
             for(int i=0;i<napos;i++){
                 Sgh[i][ir][ic]=cell->LUTSgh[i][ih][ik][il];
             }
-            ic++;
             ctemp=ctemp->nexts;
         }
-        ir++;
         rtemp=rtemp->nexts;
     }
 }
 
-void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int ZMAX, double THICK, double DEPTHSTEP, double KN, int NS)
+void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS)
 {
     int INFO;
     char JOBVL='N', JOBVR='V';
@@ -597,13 +572,13 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
         }
     }
     complex<double> **IJK; callocate_2d(&IJK, NS, NS, 0.0+0.0i);
-    double TPI=TWO_PI*DEPTHSTEP, DZT=DEPTHSTEP/THICK;
+    double TPI=TWO_PI*DZ, DZT=DZ/Z;
     for(int j=0;j<NS;j++){
         for(int k=0;k<NS;k++){
             complex<double> sumq(0.0, 0.0);
             complex<double> q(TPI*(NW[j].imag()+NW[k].imag()), TPI*(NW[j].real()-NW[k].real()));
             if(q.real()<0.0) q=-q;
-            for(int iz=0;iz<ZMAX;iz++){
+            for(int iz=0;iz<IZMAX;iz++){
                 sumq+=EWF[iz]*exp(-double(iz)*q);
             }
             IJK[j][k]=conj(NCGINV[j][0])*sumq*NCGINV[k][0];

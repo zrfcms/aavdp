@@ -18,7 +18,7 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
     space_group=QD->spacegroup_number;
     strcpy(space_group_symbol, QD->international_symbol);
     hall_number=QD->hall_number;
-    matrix_copy(lattice, QD->std_lattice);
+    matrix_constant(lattice, 0.1, QD->std_lattice);
     const char CENTERING[]={'0', 'P', 'I', 'F', 'A', 'B', 'C', '0', 'R'};
     int centeringi=SG.centering; centering=CENTERING[centeringi];
     if(QD->choice[0]=='2') is_second_setting=true;
@@ -49,6 +49,9 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
         }
     }
     compute_atomic_density();
+    set_sampling_type();
+    compute_lattice_matrices();
+    compute_point_symmetry_matrices();
     QSPGDataset_free_dataset(QD);
     QB_free_atom(&QB);
     logging();
@@ -134,14 +137,17 @@ void CELL::compute_atomic_density()
         ave_M+=M*apos_multi[i]*apos_occupation[i]; ave_Z+=Z*apos_multi[i];
         num_M+=apos_multi[i]*apos_occupation[i]; num_Z+=apos_multi[i];
     }
-    density=ave_M/(vol*1.0e-21*AVOGADRO_CONSTANT)*1.0e3;
+    density=ave_M/(vol*1.0e-21*AVOGADRO_CONSTANT);
     ave_M/=num_M; ave_Z/=num_Z;
 }
 
 CELL::CELL(const char *hdf5_path)
 {
-    double **lat, **tra, ***pos; int ***rot;
-    char cen[2];
+    double **lat;
+    double **dm, **rm, **ds, **rs;
+    int ***rot;
+    double **tra, ***dmat, ***rmat, ***pos;
+    char center[2];
     int setting, trigonal, hexagonal;
     size_t size1, size2, size3;
     HDF5 hdf;
@@ -151,14 +157,23 @@ CELL::CELL(const char *hdf5_path)
     hdf.read("/CrystalStructure/SpaceGroupNumber", space_group);
     hdf.read("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
     hdf.read("/CrystalStructure/HallNumber", hall_number);
-    hdf.read("/CrystalStructure/CenteringVector", cen);
+    hdf.read("/CrystalStructure/CenteringVector", center);
+    hdf.read("/CrystalStructure/SamplingType", sampling_type);
     hdf.read("/CrystalStructure/IsSecondSetting", setting);
     hdf.read("/CrystalStructure/IsTrigonal", trigonal);
     hdf.read("/CrystalStructure/IsHexagonal", hexagonal);
+    hdf.read("/CrystalStructure/Volume", vol);
     hdf.read_array_2d("/CrystalStructure/Lattice", &lat, size1, size2);
+    hdf.read_array_2d("/CrystalStructure/DirectSpaceMatrix", &ds, size1, size2);
+    hdf.read_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", &rs, size1, size2);
+    hdf.read_array_2d("/CrystalStructure/DirectMetricTensor", &dm, size1, size2);
+    hdf.read_array_2d("/CrystalStructure/ReciprocalMetricTensor", &rm, size1, size2);
+    hdf.read("/CrystalStructure/PointSymmetryNumber", npointsym);
     hdf.read("/CrystalStructure/SymmetryNumber", nsymmetry);
     hdf.read_array_3d("/CrystalStructure/SymmetryRotations", &rot, size1, size2, size3);
     hdf.read_array_2d("/CrystalStructure/SymmetryTranslations", &tra, size1, size2);
+    hdf.read_array_3d("/CrystalStructure/PointSymmetryDmatrices", &dmat, size1, size2, size3);
+    hdf.read_array_3d("/CrystalStructure/PointSymmetryRmatrices", &rmat, size1, size2, size3);
     hdf.read("/CrystalStructure/AsymmetricNumber", napos);
     hdf.read("/CrystalStructure/PositionNumber", npos);
     hdf.read_array("/CrystalStructure/AsymmetricType", &apos_type, size1);
@@ -172,10 +187,12 @@ CELL::CELL(const char *hdf5_path)
     hdf.read("/CrystalStructure/AveragedAtomicNumber", ave_Z);
     hdf.read("/CrystalStructure/Density", density);
     hdf.close();
-    mallocate_3d(&apos_pos, napos, nsymmetry, 3);
+    callocate_3d(&apos_pos, napos, nsymmetry, 3, 0.0);
     for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
             lattice[i][j]=lat[i][j];
+            dmt[i][j]=dm[i][j]; rmt[i][j]=rm[i][j];
+            dsm[i][j]=ds[i][j]; rsm[i][j]=rs[i][j];
         }
     }
     for(int i=0;i<192;i++){
@@ -186,6 +203,14 @@ CELL::CELL(const char *hdf5_path)
             }
         }
     }
+    for(int i=0;i<48;i++){
+        for(int j=0;j<3;j++){
+            for(int k=0;k<3;k++){
+                point_dmats[i][j][k]=dmat[j][k][i];
+                point_rmats[i][j][k]=rmat[j][k][i];
+            }
+        }
+    }
     for(int i=0;i<napos;i++){
         for(int j=0;j<nsymmetry;j++){
             for(int k=0;k<3;k++){
@@ -193,71 +218,41 @@ CELL::CELL(const char *hdf5_path)
             }
         }
     }
-    centering=cen[0];
+    deallocate_2d(lat, 3);
+    deallocate_2d(dm, 3); deallocate_2d(rm, 3);
+    deallocate_2d(ds, 3); deallocate_2d(rs, 3);
+    deallocate_3d(rot, 3, 3);
+    deallocate_2d(tra, 192);
+    deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
+    deallocate_3d(pos, nsymmetry, 3);
+    centering=center[0];
     is_second_setting=setting==1?true:false;
     is_trigonal=trigonal==1?true:false;
     is_hexagonal=hexagonal==1?true:false;
     logging();
 }
 
-void CELL::logging()
-{
-    printf("-->Crystal Structure Information<--\n");
-    printf("Point group        : %d\n", point_group);
-    printf("Point group symbol : %s\n", point_group_symbol);
-    printf("Space group        : %d\n", space_group);
-    printf("Space group symbol : %s\n", space_group_symbol);
-    printf("Hall number        : %d\n", hall_number);
-    printf("Centering vector   : %c\n", centering);
-    printf("Second setting? ");
-    if(is_second_setting) printf("Yes\n");
-    else printf("No\n");
-    printf("Trigonal? ");
-    if(is_trigonal) printf("Yes\n");
-    else printf("No\n");
-    printf("Hexagonal? ");
-    if(is_hexagonal) printf("Yes\n");
-    else printf("No\n");
-
-    printf("Lattice:\n");
-    for(int i=0;i<3;i++){
-        printf("> %.5f, %.5f, %.5f\n", lattice[i][0], lattice[i][1], lattice[i][2]);
-    }
-    printf("Number of symmetry operations: %d\n", nsymmetry);
-    printf("Number of asymmetric atomic positions: %d\n", napos);
-    for(int i=0;i<napos;i++){
-        printf("General atomic position, atomic number, atomic mass, multiplicity, site occupation, Debye-Waller factor: %d, %d, %.5f, %d, %.5f, %.5f\n", i+1, apos_Z[i], apos_M[i], apos_multi[i], apos_occupation[i], apos_DW[i]);
-        printf("Equivalent atomic positions (x, y, z):\n");
-        for(int j=0;j<apos_multi[i];j++){
-            printf("> %.5f, %.5f, %.5f\n", apos_pos[i][j][0], apos_pos[i][j][1], apos_pos[i][j][2]);
-        }
-    }
-    printf("Number of atomic positions: %d\n", npos);
-    printf("Density [in g/cm^3], atomic number averaged, atomic mass averaged [g/mol] = %.5f, %.5f, %.5f\n", density, ave_Z, ave_M);
-}
-
-CELL::~CELL()
-{
-    if(napos!=0){
-        deallocate(apos_type);
-        deallocate(apos_multi);
-        deallocate_3d(apos_pos, napos, nsymmetry);
-        deallocate(apos_Z);
-        deallocate(apos_M);
-        deallocate(apos_DW);
-        deallocate(apos_occupation);
-    }
-}
-
 void CELL::hdf5(const char* hdf5_path)
 {
-    double **lat; mallocate_2d(&lat, 3, 3);
-    int ***rot; mallocate_3d(&rot, 3, 3, 192);
-    double **tra; mallocate_2d(&tra, 192, 3);
-    double ***pos; mallocate_3d(&pos, nsymmetry, 3, napos);
+    double **lat;
+    double **dm, **rm, **ds, **rs;
+    callocate_2d(&lat, 3, 3, 0.0);
+    callocate_2d(&dm, 3, 3, 0.0); 
+    callocate_2d(&rm, 3, 3, 0.0);
+    callocate_2d(&ds, 3, 3, 0.0); 
+    callocate_2d(&rs, 3, 3, 0.0);
+    int ***rot; 
+    double **tra, ***dmat, ***rmat, ***pos;
+    callocate_3d(&rot, 3, 3, 192, 0);
+    callocate_2d(&tra, 192, 3, 0.0);
+    callocate_3d(&dmat, 3, 3, 48, 0.0); 
+    callocate_3d(&rmat, 3, 3, 48, 0.0);
+    callocate_3d(&pos, nsymmetry, 3, napos, 0.0);
     for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
             lat[i][j]=lattice[i][j];
+            dm[i][j]=dmt[i][j]; rm[i][j]=rmt[i][j];
+            ds[i][j]=dsm[i][j]; rs[i][j]=rsm[i][j];
         }
     }
     for(int i=0;i<192;i++){
@@ -268,6 +263,14 @@ void CELL::hdf5(const char* hdf5_path)
             }
         }
     }
+    for(int i=0;i<48;i++){
+        for(int j=0;j<3;j++){
+            for(int k=0;k<3;k++){
+                dmat[j][k][i]=point_dmats[i][j][k];
+                rmat[j][k][i]=point_rmats[i][j][k];
+            }
+        }
+    }
     for(int i=0;i<napos;i++){
         for(int j=0;j<nsymmetry;j++){
             for(int k=0;k<3;k++){
@@ -275,7 +278,7 @@ void CELL::hdf5(const char* hdf5_path)
             }
         }
     }
-    char cen[]={centering, '\0'};
+    char center[]={centering, '\0'};
     HDF5 hdf;
     hdf.open(hdf5_path);
     hdf.write_group("/CrystalStructure");
@@ -284,14 +287,23 @@ void CELL::hdf5(const char* hdf5_path)
     hdf.write("/CrystalStructure/SpaceGroupNumber", space_group);
     hdf.write("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
     hdf.write("/CrystalStructure/HallNumber", hall_number);
-    hdf.write("/CrystalStructure/CenteringVector", cen);
+    hdf.write("/CrystalStructure/CenteringVector", center);
+    hdf.write("/CrystalStructure/SamplingType", sampling_type);
     hdf.write("/CrystalStructure/IsSecondSetting", is_second_setting);
     hdf.write("/CrystalStructure/IsTrigonal", is_trigonal);
     hdf.write("/CrystalStructure/IsHexagonal", is_hexagonal);
+    hdf.write("/CrystalStructure/Volume", vol);
     hdf.write_array_2d("/CrystalStructure/Lattice", lat, 3, 3);
+    hdf.write_array_2d("/CrystalStructure/DirectSpaceMatrix", ds, 3, 3);
+    hdf.write_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", rs, 3, 3);
+    hdf.write_array_2d("/CrystalStructure/DirectMetricTensor", dm, 3, 3);
+    hdf.write_array_2d("/CrystalStructure/ReciprocalMetricTensor", rm, 3, 3);
     hdf.write("/CrystalStructure/SymmetryNumber", nsymmetry);
+    hdf.write("/CrystalStructure/PointSymmetryNumber", npointsym);
     hdf.write_array_3d("/CrystalStructure/SymmetryRotations", rot, 3, 3, 192);
     hdf.write_array_2d("/CrystalStructure/SymmetryTranslations", tra, 192, 3);
+    hdf.write_array_3d("/CrystalStructure/PointSymmetryDmatrices", dmat, 3, 3, 48);
+    hdf.write_array_3d("/CrystalStructure/PointSymmetryRmatrices", rmat, 3, 3, 48);
     hdf.write("/CrystalStructure/AsymmetricNumber", napos);
     hdf.write("/CrystalStructure/PositionNumber", npos);
     hdf.write_array("/CrystalStructure/AsymmetricType", apos_type, napos);
@@ -305,6 +317,66 @@ void CELL::hdf5(const char* hdf5_path)
     hdf.write("/CrystalStructure/AveragedAtomicNumber", ave_Z);
     hdf.write("/CrystalStructure/Density", density);
     hdf.close();
+    deallocate_2d(lat, 3);
+    deallocate_2d(dm, 3); deallocate_2d(rm, 3);
+    deallocate_2d(ds, 3); deallocate_2d(rs, 3);
+    deallocate_3d(rot, 3, 3);
+    deallocate_2d(tra, 192);
+    deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
+    deallocate_3d(pos, nsymmetry, 3);
+}
+
+void CELL::logging()
+{
+    double lx=lattice[0][0], ly=lattice[1][1], lz=lattice[2][2];
+    double xy=lattice[0][1], xz=lattice[0][2], yz=lattice[1][2];
+    double a0=lx, b0=sqrt(ly*ly+xy*xy), c0=sqrt(lz*lz+xz*xz+yz*yz);
+    double alpha=acos((xy*xz+ly*yz)/(b0*c0))*RAD_TO_DEG, beta=acos(xz/c0)*RAD_TO_DEG, gamma=acos(xy/b0)*RAD_TO_DEG;
+    printf("[INFO] LATTICE INFORMATION\n");
+    printf("[INFO] a [nm]             : %.5f\n", a0);
+    printf("[INFO] b [nm]             : %.5f\n", b0);
+    printf("[INFO] c [nm]             : %.5f\n", c0);
+    printf("[INFO] alpha [deg]        : %.5f\n", alpha);
+    printf("[INFO] beta  [deg]        : %.5f\n", beta);
+    printf("[INFO] gamma [deg]        : %.5f\n", gamma);
+    printf("[INFO] volume[nm^3]       : %.5f\n", vol);
+    printf("[INFO] SYMMETRY INFORMATION\n");
+    printf("[INFO] Space group        : %d\n", space_group);
+    printf("[INFO] Space group symbol : %s\n", space_group_symbol);
+    printf("[INFO] Point group        : %d\n", point_group);
+    printf("[INFO] Point group symbol : %s\n", point_group_symbol);
+    printf("[INFO] Hall number        : %d\n", hall_number);
+    printf("[INFO] Centering vector   : %c\n", centering);
+    printf("[INFO] Sampling type      : %d\n", sampling_type);
+    printf("[INFO] Number of symmetry operations      : %d\n", nsymmetry);
+    printf("[INFO] Number of point symmetry operations: %d\n", npointsym);
+    printf("[INFO] Is second setting (1, Yes; 0, No)  : %d\n", is_second_setting);
+    printf("[INFO] Is trigonal       (1, Yes; 0, No)  : %d\n", is_trigonal);
+    printf("[INFO] Is hexagonal      (1, Yes; 0, No)  : %d\n", is_hexagonal);
+    printf("[INFO] ATOMIC INFORMATION\n");
+    printf("[INFO] Number of asymmetric atomic positions: %d\n", napos);
+    for(int i=0;i<napos;i++){
+        printf("[INFO] General atomic position, atomic number, atomic mass, multiplicity, site occupation, Debye-Waller factor: %d, %d, %.5f, %d, %.5f, %.5f\n", i+1, apos_Z[i], apos_M[i], apos_multi[i], apos_occupation[i], apos_DW[i]);
+        printf("[INFO] Equivalent atomic positions (x, y, z):\n");
+        for(int j=0;j<apos_multi[i];j++){
+            printf("[INFO] > %.5f, %.5f, %.5f\n", apos_pos[i][j][0], apos_pos[i][j][1], apos_pos[i][j][2]);
+        }
+    }
+    printf("[INFO] Number of atomic positions: %d\n", npos);
+    printf("[INFO] Density [in g/cm^3], atomic number averaged, atomic mass averaged [g/mol] = %.5f, %.5f, %.5f\n", density, ave_Z, ave_M);
+}
+
+CELL::~CELL()
+{
+    if(napos!=0){
+        deallocate(apos_type);
+        deallocate(apos_multi);
+        deallocate_3d(apos_pos, napos, nsymmetry);
+        deallocate(apos_Z);
+        deallocate(apos_M);
+        deallocate(apos_DW);
+        deallocate(apos_occupation);
+    }
 }
 
 void CELL::set_sampling_type()
@@ -342,7 +414,7 @@ void CELL::compute_lattice_matrices()
 {
     double a[3], b[3], c[3];
     double bc[3], ca[3], ab[3];
-    matrix_constant(dsm, 0.1, lattice);//*point
+    matrix_copy(dsm, lattice);//*point
     matrix_transpose(dsm, dsm);
     vector_copy(a, dsm[0]);
     vector_copy(b, dsm[1]);
@@ -664,7 +736,7 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
     if(is_initial){
         callocate_4d(&LUTSgh, napos, imh*2+1, imk*2+1, iml*2+1, complex<double>(0.0, 0.0));
     }
-    printf("Generating Bloch wave coefficient lookup table ... ");
+    printf("[INFO] Generating Bloch wave coefficient lookup table ... ");
     for(int ih=-imh;ih<=imh;ih++){
         for(int ik=-imk;ik<=imk;ik++){
             for(int il=-iml;il<=iml;il++){
@@ -684,20 +756,20 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
             }
         }
     }
-    printf("Done!\n");
+    printf("[INFO] Done!\n");
 }
 
 void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
 {
-    printf("-->Fourier Coefficients Information<--\n");
+    printf("[INFO] -->Fourier Coefficients Information<--\n");
     update_Fourier_coefficient0(voltage);
-    printf("Mean inner potential in [V] %.5f\n", fouri0.Vmod);
-    printf("Wavelength corrected for refraction\n");
-    printf("Relativistic correction factor [gamma] in [V] %.5f\n", fouri0.gamma);
-    printf("Relativistic Accelerating Potential [V] %.5f\n", fouri0.voltage);
-    printf("Electron Wavelength [nm] %.5f\n", fouri0.lambda);
-    printf("Interaction constant [V nm^-1] %.5f\n", fouri0.sigma);
-    printf("Normal absorption length [nm] = %.5f\n", fouri0.sigp);
+    printf("[INFO] Mean inner potential in [V] %.5f\n", fouri0.Vmod);
+    printf("[INFO] Wavelength corrected for refraction\n");
+    printf("[INFO] Relativistic correction factor [gamma] in [V] %.5f\n", fouri0.gamma);
+    printf("[INFO] Relativistic Accelerating Potential [V] %.5f\n", fouri0.voltage);
+    printf("[INFO] Electron Wavelength [nm] %.5f\n", fouri0.lambda);
+    printf("[INFO] Interaction constant [V nm^-1] %.5f\n", fouri0.sigma);
+    printf("[INFO] Normal absorption length [nm] = %.5f\n", fouri0.sigp);
 
     int imh=2*HKL[0], imk=2*HKL[1], iml=2*HKL[2];
     if(is_initial){
@@ -709,7 +781,7 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
     LUTUg[imh][imk][iml]=fouri0.Ug; LUTqg[imh][imk][iml]=fouri0.qg;
 
     double g[3];
-    printf("Generating Fourier coefficient lookup table ... ");
+    printf("[INFO] Generating Fourier coefficient lookup table ... ");
     for(int ih=-imh;ih<=imh;ih++){
         for(int ik=-imk;ik<=imk;ik++){
             for(int il=-iml;il<=iml;il++){
@@ -725,7 +797,7 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
             }
         }
     }
-    printf("Done!\n");
+    printf("[INFO] Done!\n");
 }
 
 void CELL::update_Fourier_coefficient0(double voltage)
@@ -993,102 +1065,79 @@ double CELL::I2(double BI, double BJ, double G, double U)
     return RI2;
 }
 
-MODEL::MODEL(const char *model_path, const char types[][10], double mlambda, char mmode)
+MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda)
 {
     lambda=mlambda;
-    mode=mmode;
-    const char (*TYPE)[10]=nullptr;
-    int TYPE_NUM=0;
-    switch(mode){
-    case 'x':
-        TYPE=X_TYPE;
-        TYPE_NUM=X_TYPE_NUMBER;
-        break;
-    case 'e':
-        TYPE=E_TYPE;
-        TYPE_NUM=E_TYPE_NUMBER;
-    default:
-        printf("[ERROR] Unrecognized diffraction mode %c.", mode);
-        exit(EXIT_FAILURE);
-    }
-
     QB_tools QB;
     QB_init(&QB);
     QB_read_lmp(&QB, model_path);
+    set_lattice(QB.mat);
     is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
     ntype=QB.TypeNumber;
-    callocate(&type_index, ntype, -1);
-    index_type(types, TYPE, TYPE_NUM);
     natom=QB.TotalNumber;
     mallocate(&atom_type, natom);
+    mallocate(&atom_DW, natom);
     mallocate_2d(&atom_pos, natom, 3);
     for(int i=0;i<natom;i++){
         atom_pos[i][0]=QB.atom[i].x; 
         atom_pos[i][1]=QB.atom[i].y; 
         atom_pos[i][2]=QB.atom[i].z;
         atom_type[i]=QB.atom[i].type;
+        atom_DW[i]=DWs[atom_type[i]-1];
     }
-    QSPG_refined(&QB, &QB, SYMPREC);
-    quatify_lattice(QB.mat);
     QB_free_atom(&QB);
 }
 
-void MODEL::index_type(const char types[][10], const char TYPE[][10], int TYPE_NUM)
-{
-    for(int i=0;i<ntype;i++){
-        for(int j=0;j<TYPE_NUM;j++){
-            if(0==strcmp(types[i], TYPE[j])){
-                type_index[i]=j;
-                break;
-            }
-        }
-    }
-}
-
-void MODEL::quatify_lattice(double mat[3][3])
+void MODEL::set_lattice(double mat[3][3])
 {
     double lx=mat[0][0], ly=mat[1][1], lz=mat[2][2];
     double xy=mat[1][0], xz=mat[2][0], yz=mat[2][1];
-    dimension[0]=lx; dimension[1]=sqrt(xy*xy+ly*ly); dimension[2]=sqrt(xz*xz+yz*yz+lz*lz);
-
-    double a[3]={lx, 0.0, 0.0}, b[3]={xy, ly, 0.0}, c[3]={xz, yz, lz};
-    double bc[3], ca[3], ab[3];
-    vector_cross(bc, b, c);
-    vector_cross(ca, c, a);
-    vector_cross(ab, a, b);
-    double vol=vector_dot(a, bc);
-    vector_constant(bc, 1.0/vol, bc);
-    vector_constant(ca, 1.0/vol, ca);
-    vector_constant(ab, 1.0/vol, ab);
-    dimensionK[0]=vector_length(bc); dimensionK[1]=vector_length(ca); dimensionK[2]=vector_length(ab);
-    vector_copy(dsm[0], a);
-    vector_copy(dsm[1], b);
-    vector_copy(dsm[2], c);
-    vector_copy(rsm[0], bc);
-    vector_copy(rsm[1], ca);
-    vector_copy(rsm[2], ab);
-    for(int i=0;i<3;i++){
-        vector_normalize(dsm[i], dsm[i]);
-        vector_normalize(rsm[i], rsm[i]);
+    if(fabs(xy)<1.0e-6&&fabs(xz)<1.0e-6&&fabs(yz)<1.0e-6){
+        is_orthogonal=true;
+        double mat[3][3]={{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+        matrix_copy(dsm, mat); matrix_copy(rsm, mat);
+        matrix_copy(dmt, mat); matrix_copy(rmt, mat);
+        dimension[0]=lx; dimension[1]=ly; dimension[2]=lz;
+        dimensionK[0]=1.0/lx; dimensionK[1]=1.0/ly; dimensionK[2]=1.0/lz;
+    }else{
+        is_orthogonal=false;
+        double a[3]={lx, 0.0, 0.0}, b[3]={xy, ly, 0.0}, c[3]={xz, yz, lz};
+        double bc[3], ca[3], ab[3];
+        vector_cross(bc, b, c);
+        vector_cross(ca, c, a);
+        vector_cross(ab, a, b);
+        double vol=vector_dot(a, bc);
+        vector_constant(bc, 1.0/vol, bc);
+        vector_constant(ca, 1.0/vol, ca);
+        vector_constant(ab, 1.0/vol, ab);
+        vector_copy(dsm[0], a);
+        vector_copy(dsm[1], b);
+        vector_copy(dsm[2], c);
+        vector_copy(rsm[0], bc);
+        vector_copy(rsm[1], ca);
+        vector_copy(rsm[2], ab);
+        for(int i=0;i<3;i++){
+            vector_normalize(dsm[i], dsm[i]);
+            vector_normalize(rsm[i], rsm[i]);
+        }
+        matrix_transpose(dsm, dsm);
+        matrix_transpose(rsm, rsm);
+        double t_mat[3][3];
+        matrix_transpose(t_mat, dsm);
+        matrix_multiply(dmt, t_mat, dsm);
+        matrix_transpose(t_mat, rsm);
+        matrix_multiply(rmt, t_mat, rsm);
+        dimension[0]=lx; dimension[1]=sqrt(xy*xy+ly*ly); dimension[2]=sqrt(xz*xz+yz*yz+lz*lz);
+        dimensionK[0]=vector_length(bc); dimensionK[1]=vector_length(ca); dimensionK[2]=vector_length(ab);
     }
-    matrix_transpose(dsm, dsm);
-    matrix_transpose(rsm, rsm);
-
-    double t_mat[3][3];
-    matrix_transpose(t_mat, dsm);
-    matrix_multiply(dmt, t_mat, dsm);
-    matrix_transpose(t_mat, rsm);
-    matrix_multiply(rmt, t_mat, rsm);
 }
 
 MODEL::~MODEL()
 {
-    if(ntype>0){
-        deallocate(type_index);
-    }
     if(natom>0){
         deallocate_2d(atom_pos, natom);
         deallocate(atom_type);
+        deallocate(atom_DW);
     }
 }
 
@@ -1133,136 +1182,34 @@ void MODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3
     }
 }
 
-double MODEL::get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C)//xrd
+XMODEL::XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
 {
-    double res=0.0;
-    for(int i=0;i<4;i++){
-        res+=A[i]*exp(-B[i]*S*S);//S, scattering vector
-    }
-    res+=C;
-    return res;
-}
-
-double MODEL::get_atomic_scattering_factor(double S, const double A[5], const double B[5])
-{
-    double res=0.0;
-    for(int i=0;i<5;i++){
-        res+=A[i]*exp(-B[i]*S*S);//S, scattering vector
-    }
-    return res;
-}
-
-complex<double> MODEL::get_atomic_structure_factor(double theta, double g[3], bool is_lorentz_flag)//xrd
-{
-    complex<double> res(0.0, 0.0);
-    double S=sin(theta)/lambda;
-    for(int i=0;i<natom;i++){
-        int    t=type_index[atom_type[i]-1];
-        const double *A=X_A[t], *B=X_B[t], C=X_C[t];
-        double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-        double F=get_atomic_scattering_factor(S, A, B, C);
-        res+=F*complex<double>(cos(q), sin(q));
-    }
-    if(is_lorentz_flag){
-        double Lp=sqrt((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
-        res*=Lp;
-    }
-    return res;
-}
-
-complex<double> MODEL::get_atomic_structure_factor(double theta, double g[3])
-{
-    complex<double> res(0.0, 0.0);
-    double S=sin(theta)/lambda;
-    if(0.0<=S<=2.0){
-        for(int i=0;i<natom;i++){
-            int    t=type_index[atom_type[i]-1];
-            const double *A=E_A1[t], *B=E_B1[t];
-            double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-            res+=get_atomic_scattering_factor(S, A, B)*complex<double>(cos(q), sin(q));
-        }
-    }else if(2.0<S<=6.0){
-        for(int i=0;i<natom;i++){
-            int    t=type_index[atom_type[i]-1];
-            const double *A=E_A1[t], *B=E_B1[t];
-            double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-            res+=get_atomic_scattering_factor(S, A, B)*complex<double>(cos(q), sin(q));
-        }
-    }else{
-        res+=complex<double>(0.0, 0.0);
-    }
-    return res;
-}
-
-double MODEL::get_diffraction_intensity(double theta, double g[3], bool is_lorentz_flag)
-{
-    complex<double> F=get_atomic_structure_factor(theta, g, is_lorentz_flag);
-    double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    return res;
-}
-
-double MODEL::get_diffraction_intensity(double theta, double g[3])
-{
-    complex<double> F=get_atomic_structure_factor(theta, g);
-    double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    return res;
-}
-
-double MODEL::get_diffraction_intensity(complex<double> F)
-{
-    double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    return res;
-}
-
-XMODEL::XMODEL(const char *model_path, const char types[][10], double mlambda)
-{
-    lambda=mlambda;
-    QB_tools QB;
-    QB_init(&QB);
-    QB_read_lmp(&QB, model_path);
-    dimension[0]=QB.boundx; dimension[1]=QB.boundy; dimension[2]=QB.boundz;
-    is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
-    ntype=QB.TypeNumber;
     callocate(&type_index, ntype, -1);
     for(int i=0;i<ntype;i++){
-        for(int j=0;j<X_TYPE_NUMBER;j++){
+        int j;
+        for(j=0;j<X_TYPE_NUMBER;j++){
             if(0==strcmp(types[i], X_TYPE[j])){
                 type_index[i]=j;
                 break;
             }
         }
+        if(j==X_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for x-ray diffraction", types[i]);
     }
-    natom=QB.TotalNumber;
-    mallocate(&atom_type, natom);
-    mallocate_2d(&atom_pos, natom, 3);
-    for(int i=0;i<natom;i++){
-        atom_pos[i][0]=QB.atom[i].x; 
-        atom_pos[i][1]=QB.atom[i].y; 
-        atom_pos[i][2]=QB.atom[i].z;
-        atom_type[i]=QB.atom[i].type;
-    }
-    QB_free_atom(&QB);
 }
 
 XMODEL::~XMODEL()
 {
     if(ntype>0){
         deallocate(type_index);
-        ntype=0;
-    }
-    if(natom>0){
-        deallocate_2d(atom_pos, natom);
-        deallocate(atom_type);
-        natom=0;
     }
 }
 
-void XMODEL::update_incident_wavelength(double mlambda)
+double XMODEL::get_Debye_Waller_factor(double S, double DW)
 {
-    lambda=mlambda;
+    return exp(-DW*S*S);//S, scattering vector
 }
 
-double XMODEL::get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C)
+double XMODEL::get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C)//xrd
 {
     double res=0.0;
     for(int i=0;i<4;i++){
@@ -1272,7 +1219,7 @@ double XMODEL::get_atomic_scattering_factor(double S, const double A[4], const d
     return res;
 }
 
-complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])
+complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
 {
     complex<double> res(0.0, 0.0);
     double S=sin(theta)/lambda;
@@ -1280,67 +1227,135 @@ complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])
         int    t=type_index[atom_type[i]-1];
         const double *A=X_A[t], *B=X_B[t], C=X_C[t];
         double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-        res+=get_atomic_scattering_factor(S, A, B, C)*complex<double>(cos(q), sin(q));
+        res+=get_Debye_Waller_factor(S, atom_DW[i])*get_atomic_scattering_factor(S, A, B, C)*complex<double>(cos(q), sin(q));
     }
     return res;
 }
 
-double XMODEL::get_diffraction_intensity(double theta, double g[3])
+// complex<double> XMODEL::get_atomic_scattering_factor(double S, int type)//xrd
+// {
+//     double O[11]={2.960427, 2.508818, 0.637853, 0.722838, 1.142756, 0.027014,
+//                   14.182259, 5.936858, 0.112726, 34.958481, 0.390240};
+//     double Al[11]={4.730796, 2.313951, 1.541980, 1.117564, 3.154754, 0.139509,
+//                    3.628931, 43.051166, 0.095960, 108.932389, 1.555918};
+//     double f1Al=2.10718e-1, f2Al=2.45924e-1, fntAl=-3.43610e-3;
+//     double f1O=4.78150e-2, f2O=3.20985e-2, fntO=-2.19440e-3;
+//     double res=0.0;
+//     complex<double> F(0.0, 0.0);
+//     if(1==type){
+//         for(int i=0;i<5;i++){
+//             res+=O[i]*exp(-O[i+6]*S*S);//S, scattering vector
+//         }
+//         res+=O[5];
+//     }else if(2==type){
+//         for(int i=0;i<5;i++){
+//             res+=Al[i]*exp(-Al[i+6]*S*S);//S, scattering vector
+//         }
+//         res+=Al[5];
+//     }
+//     if(1==type){
+//         F+=complex<double>(res+f1O+fntO, f2O);
+//     }else if(2==type){
+//         F+=complex<double>(res+f1Al+fntAl, f2Al);
+//     }
+//     return F;
+// }
+
+// complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
+// {
+//     complex<double> res(0.0, 0.0);
+//     double S=sin(theta)/lambda;
+//     for(int i=0;i<natom;i++){
+//         int    t=atom_type[i];
+//         double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+//         res+=get_Debye_Waller_factor(S, atom_DW[i])*get_atomic_scattering_factor(S, t)*complex<double>(cos(q), sin(q));
+//     }
+//     if(fabs(g[0]-0.0)<1e-8&&fabs(g[1]-0.0)<1e-8) printf("%.8f %.8f\n", res.real(), res.imag());
+//     return res;
+// }
+
+double XMODEL::get_diffraction_intensity(double theta, double g[3], bool is_lorentz)
 {
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
+    if(is_lorentz){
+        res*=((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
+    }
     return res;
 }
 
-EMODEL::EMODEL(const char *model_path, const char types[][10], double mlambda)
+NMODEL::NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
 {
-    lambda=mlambda;
-    QB_tools QB;
-    QB_init(&QB);
-    QB_read_lmp(&QB, model_path);
-    dimension[0]=QB.boundx; dimension[1]=QB.boundy; dimension[2]=QB.boundz;
-    is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
-    ntype=QB.TypeNumber;
     callocate(&type_index, ntype, -1);
     for(int i=0;i<ntype;i++){
-        for(int j=0;j<E_TYPE_NUMBER;j++){
+        int j;
+        for(j=0;j<N_TYPE_NUMBER;j++){
+            if(0==strcmp(types[i], N_TYPE[j])){
+                type_index[i]=j;
+                break;
+            }
+        }
+        if(j==N_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for neutron diffraction", types[i]);
+    }
+}
+
+NMODEL::~NMODEL()
+{
+    if(ntype>0){
+        deallocate(type_index);
+    }
+}
+
+double NMODEL::get_Debye_Waller_factor(double S, double DW)
+{
+    return exp(-DW*S*S);//S, scattering vector
+}
+
+complex<double> NMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
+{
+    complex<double> res(0.0, 0.0);
+    double S=sin(theta)/lambda;
+    for(int i=0;i<natom;i++){
+        int    t=type_index[atom_type[i]-1];
+        double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+        res+=get_Debye_Waller_factor(S, atom_DW[i])*N_N[t]*complex<double>(cos(q), sin(q));
+    }
+    return res;
+}
+
+double NMODEL::get_diffraction_intensity(double theta, double g[3], bool is_lorentz)
+{
+    complex<double> F=get_atomic_structure_factor(theta, g);
+    double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
+    if(is_lorentz){
+        res*=(1.0/(sin(theta)*sin(theta)*cos(theta)));
+    }
+    return res;
+}
+
+EMODEL::EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
+{
+    callocate(&type_index, ntype, -1);
+    for(int i=0;i<ntype;i++){
+        int j;
+        for(j=0;j<E_TYPE_NUMBER;j++){
             if(0==strcmp(types[i], E_TYPE[j])){
                 type_index[i]=j;
                 break;
             }
         }
+        if(j==E_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for electron diffraction", types[i]);
     }
-    natom=QB.TotalNumber;
-    mallocate(&atom_type, natom);
-    mallocate_2d(&atom_pos, natom, 3);
-    for(int i=0;i<natom;i++){
-        atom_pos[i][0]=QB.atom[i].x; 
-        atom_pos[i][1]=QB.atom[i].y; 
-        atom_pos[i][2]=QB.atom[i].z;
-        atom_type[i]=QB.atom[i].type;
-    }
-    QB_free_atom(&QB);
 }
 
 EMODEL::~EMODEL()
 {
     if(ntype>0){
         deallocate(type_index);
-        ntype=0;
-    }
-    if(natom>0){
-        deallocate_2d(atom_pos, natom);
-        deallocate(atom_type);
-        natom=0;
     }
 }
 
-void EMODEL::update_incident_wavelength(double mlambda)
-{
-    lambda=mlambda;
-}
-
-double EMODEL::get_atomic_scattering_factor(double S, const double A[5], const double B[5])
+double EMODEL::get_atomic_scattering_factor(double S, const double A[5], const double B[5])//sed
 {
     double res=0.0;
     for(int i=0;i<5;i++){
@@ -1349,7 +1364,7 @@ double EMODEL::get_atomic_scattering_factor(double S, const double A[5], const d
     return res;
 }
 
-complex<double> EMODEL::get_atomic_structure_factor(double theta, double g[3])
+complex<double> EMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
 {
     complex<double> res(0.0, 0.0);
     double S=sin(theta)/lambda;
@@ -1378,31 +1393,4 @@ double EMODEL::get_diffraction_intensity(double theta, double g[3])
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
     return res;
-}
-
-void EMODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3])
-{
-    double dimensionK[3];
-    if((!is_periodic[0])&&(!is_periodic[1])&&(!is_periodic[2])){
-        for(int i=0;i<3;i++){
-          dimensionK[i]=1.0;
-        }
-    }else{
-        double averageK=0.0;
-        for(int i=0;i<3;i++){
-            if(is_periodic[i]){
-                dimensionK[i]=1.0/dimension[i];
-                averageK+=dimensionK[i];
-            }
-        }
-        averageK=averageK/double(is_periodic[0]+is_periodic[1]+is_periodic[2]);
-        for(int i=0;i<3;i++){
-            if(!is_periodic[i]){
-                dimensionK[i]=averageK;
-            }
-        }
-    }
-    for(int i=0;i<3;i++){
-        spacing[i]=dimensionK[i]*spacing_ratio[i];
-    }
 }

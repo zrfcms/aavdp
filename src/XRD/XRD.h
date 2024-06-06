@@ -9,14 +9,13 @@
 #include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"
 #define ZERO_LIMIT 0.000001
-using namespace std;
 
-struct KNODE{
+struct XRD_KNODE{
     int    k[3];
     double theta;
     double intensity;
     int    multiplicity=0;
-    KNODE *next=nullptr;
+    XRD_KNODE *next=nullptr;
 };
 
 //x-ray diffraction
@@ -24,26 +23,23 @@ class XRD
 {
 public:
     int    numk=0;
-    KNODE  *khead=nullptr;
-    KNODE  *ktail=nullptr;
-    XRD(MODEL *model, double spacing[3], double min2Theta, double max2Theta, bool is_lorentz, bool is_spacing_auto);
-    XRD(MODEL *model, bool is_lorentz);
+    XRD_KNODE  *khead=nullptr;
+    XRD_KNODE  *ktail=nullptr;
+    XRD(XMODEL *model, double min2Theta, double max2Theta, double spacing[3], bool is_spacing_auto, bool is_lorentz);
     ~XRD();
-    void   xrd(const char *xrd_path);
-    void   xrd(const char *xrd_path, int nbin);
+    void   xrd(const char *xrd_path, int nbin=0);
 private:
     bool   is_lorentz_flag=true;
-    int    kmin[3]={10000, 10000, 10000}, kmax[3]={-10000, -10000, -10000};
     double spacingK[3]={0.1, 0.1, 0.1};
+    int    kmin[3]={10000, 10000, 10000}, kmax[3]={-10000, -10000, -10000};
     double minTheta=0.0, maxTheta=PI/2.0;
     double intensity_min=1.0e8, intensity_max=0.0;
-    void   copy_knode_data(KNODE *knode1, KNODE *knode2);
-    void   swap_knode_data(KNODE *knode1, KNODE *knode2);
-    void   quick_sort(KNODE *kstart, KNODE *kend);
+    void   copy_knode_data(XRD_KNODE *knode1, XRD_KNODE *knode2);
+    void   swap_knode_data(XRD_KNODE *knode1, XRD_KNODE *knode2);
+    void   quick_sort(XRD_KNODE *kstart, XRD_KNODE *kend);
     void   quick_unique();
     void   add_k_node(int h, int k, int l, double theta, double intensity, int multiplicity);
-    void   compute_diffraction_intensity(MODEL *model, double spacingK[3]);
-    void   compute_diffraction_intensity(MODEL *model);
+    void   compute_diffraction_intensity(XMODEL *model);
 };
 
 #endif

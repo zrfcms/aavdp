@@ -51,7 +51,7 @@ public:
     double depthstep;//stepsize for depth-energy accumulator array [in nm]
     int    num_e;//Total number of electrons to try
     int    nump;
-    int    numz;
+    int    numpz;
 
     int    numEbin;//int((EkeV-Ehistmin)/Ebinsize)+1
     int    numzbin;//int(depthmax/depthstep)+1

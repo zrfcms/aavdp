@@ -9,7 +9,7 @@ DKD_MC::DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, d
 
     this->numEbin=int((EkeV-Ehistmin)/Ebin)+1; 
     this->numzbin=int(depthmax/depthstep)+1;
-    this->numz=(nump-1)/10+1;
+    this->numpz=(nump-1)/10+1;
 
     CELL cell(hdf5_path);
     this->ave_M=cell.ave_M; 
@@ -17,21 +17,33 @@ DKD_MC::DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, d
     this->density=cell.density;
 
     callocate_3d(&this->accum_E, this->numEbin, this->nump, this->nump, 0);
-    callocate_4d(&this->accum_z, this->numEbin, this->numzbin, this->numz, this->numz, 0);
+    callocate_4d(&this->accum_z, this->numEbin, this->numzbin, this->numpz, this->numpz, 0);
     int count_E=0;
     for(int i=0;i<this->multiplier;i++){
         compute(count_E, this->prime_seed+i+1);
     }
 }
 
+allocate(init_seeds(4*globalworkgrpsz*globalworkgrpsz),stat=istat)
+init_seeds = 0
+do i = 1,globalworkgrpsz
+    do j = 1,globalworkgrpsz
+        do k = 1,4
+            init_seeds(4*((i-1)*globalworkgrpsz+(j-1))+k) = rnseeds(4*((i-1)*globalworkgrpsz+j)+k)
+        end do
+    end do
+end do
+init_seeds(1)
+
 void DKD_MC::compute(int &count, int seed)
 {
     printf("[INFO] Starting computation of spatial and energy distributions of back-scattered electrons for seed %d...\n", seed);
-    int imp=(nump-1)/2, imz=(numz-1)/2;
+    int imp=(nump-1)/2, imz=(numpz-1)/2;
     double Emin=Ehistmin-Ebin/2.0;
     double dirx=cos((90.0-sigma)*DEG_TO_RAD), dirz=-sin((90.0-sigma)*DEG_TO_RAD);
     double tano=tan(omega*DEG_TO_RAD);
     rng.seed(seed);
+
     int count_e=0;
     for(int ie=0;ie<num_e;ie++){
         //Set the initial energy, coordinate, and direction (cosine) for this incident electron
@@ -88,7 +100,7 @@ void DKD_MC::compute(int &count, int seed)
 //Set the free path for the energy and scale it by a random number
 void DKD_MC::update_free_path(double &step, double &alpha, double E)
 {
-    alpha=3.4e-3*pow(ave_Z, 2.0/3.0)/E;
+    alpha=3.4e-3*pow(ave_Z, 0.66666667)/E;
     double R=rng.uniform();
     double energy=E*(E+1024.0)/ave_Z/(E+511.0);
     double area_inv=CONST_IN_AREA_INV*energy*energy*(alpha*(1.0+alpha));
@@ -147,7 +159,7 @@ DKD_MC::DKD_MC(const char *hdf5_path)
     hdf.read("/MonteCarlo/EnergyPixelNumber", nump);
     hdf.read("/MonteCarlo/EnergyBinNumber", numEbin);
     hdf.read("/MonteCarlo/DepthStepNumber", numzbin);
-    hdf.read("/MonteCarlo/DepthPixelNumber", numz);
+    hdf.read("/MonteCarlo/DepthPixelNumber", numpz);
     hdf.read("/MonteCarlo/Multiplier", multiplier);
     hdf.read_array_3d("/MonteCarlo/EnergyProjectionArray", &aaccum_E, size1, size2, size3);
     hdf.read_array_4d("/MonteCarlo/DepthProjectionArray", &aacum_z, size1, size2, size3, size4);
@@ -159,14 +171,14 @@ DKD_MC::DKD_MC(const char *hdf5_path)
     // hdf.read("/NMLparameters/MCCLNameList/depthmax", depthmax);
     // hdf.read("/NMLparameters/MCCLNameList/depthstep", depthstep);
     // hdf.read("/EMData/MCOpenCL/totnum_el", num_e);
-    // hdf.read("/NMLparameters/MCCLNameList/multiplier", multiplier);
     // hdf.read("/NMLparameters/MCCLNameList/numsx", nump);
     // hdf.read("/EMData/MCOpenCL/numEbins", numEbin);
     // hdf.read("/EMData/MCOpenCL/numzbins", numzbin);
     // hdf.read_array_3d("/EMData/MCOpenCL/accum_e", &aaccum_E, size1, size2, size3);
     // hdf.read_array_4d("/EMData/MCOpenCL/accum_z", &aacum_z, size1, size2, size3, size4);
+    // numpz=nump/10+1;
     mallocate_3d(&accum_E, numEbin, nump, nump);
-    mallocate_4d(&accum_z, numEbin, numzbin, numz, numz);
+    mallocate_4d(&accum_z, numEbin, numzbin, numpz, numpz);
     for(int i=0;i<numEbin;i++){
         for(int j=0;j<nump;j++){
             for(int k=0;k<nump;k++){
@@ -176,28 +188,28 @@ DKD_MC::DKD_MC(const char *hdf5_path)
     }
     for(int i=0;i<numEbin;i++){
         for(int j=0;j<numzbin;j++){
-            for(int k=0;k<numz;k++){
-                for(int n=0;n<numz;n++){
+            for(int k=0;k<numpz;k++){
+                for(int n=0;n<numpz;n++){
                     accum_z[i][j][k][n]=aacum_z[k][n][j][i];
                 }
             }
         }
     }
     deallocate_3d(aaccum_E, nump, nump);
-    deallocate_4d(aacum_z, numz, numz, numEbin);
+    deallocate_4d(aacum_z, numpz, numpz, numEbin);
 }
 
 DKD_MC::~DKD_MC()
 {
     deallocate_3d(accum_E, numEbin, nump);
-    deallocate_4d(accum_z, numEbin, numzbin, numz);
+    deallocate_4d(accum_z, numEbin, numzbin, numpz);
 }
 
 void DKD_MC::hdf5(const char *hdf5_path)
 {
     int ***aaccum_E, ****aacum_z;
     mallocate_3d(&aaccum_E, nump, nump, numEbin);
-    mallocate_4d(&aacum_z, numz, numz, numzbin, numEbin);
+    mallocate_4d(&aacum_z, numpz, numpz, numzbin, numEbin);
     for(int i=0;i<numEbin;i++){
         for(int j=0;j<nump;j++){
             for(int k=0;k<nump;k++){
@@ -207,8 +219,8 @@ void DKD_MC::hdf5(const char *hdf5_path)
     }
     for(int i=0;i<numEbin;i++){
         for(int j=0;j<numzbin;j++){
-            for(int k=0;k<numz;k++){
-                for(int n=0;n<numz;n++){
+            for(int k=0;k<numpz;k++){
+                for(int n=0;n<numpz;n++){
                     aacum_z[k][n][j][i]=accum_z[i][j][k][n];
                 }
             }
@@ -229,12 +241,12 @@ void DKD_MC::hdf5(const char *hdf5_path)
     hdf.write("/MonteCarlo/EnergyPixelNumber", nump);
     hdf.write("/MonteCarlo/EnergyBinNumber", numEbin);
     hdf.write("/MonteCarlo/DepthStepNumber", numzbin);
-    hdf.write("/MonteCarlo/DepthPixelNumber", numz);
+    hdf.write("/MonteCarlo/DepthPixelNumber", numpz);
     hdf.write_array_3d("/MonteCarlo/EnergyProjectionArray", aaccum_E, nump, nump, numEbin);
-    hdf.write_array_4d("/MonteCarlo/DepthProjectionArray", aacum_z, numz, numz, numzbin, numEbin);
+    hdf.write_array_4d("/MonteCarlo/DepthProjectionArray", aacum_z, numpz, numpz, numzbin, numEbin);
     hdf.close();
     deallocate_3d(aaccum_E, nump, nump);
-    deallocate_4d(aacum_z, numz, numz, numzbin);
+    deallocate_4d(aacum_z, numpz, numpz, numzbin);
     printf("Monte-carlo data stored in %s.\n", hdf5_path);
 }
 
@@ -274,8 +286,8 @@ void DKD_MC::set_energies_and_depths()
     }
     izmax=0;
     for(int iE=0;iE<numEbin;iE++){
-        for(int ix=0;ix<numz;ix++){
-            for(int iy=0;iy<numz;iy++){
+        for(int ix=0;ix<numpz;ix++){
+            for(int iy=0;iy<numpz;iy++){
                 int sum_z=0;
                 for(int i=0;i<numzbin;i++){
                     sum_z+=accum_z[iE][i][ix][iy];
@@ -290,4 +302,65 @@ void DKD_MC::set_energies_and_depths()
         }
         depths[iE]=double(izmax)*depthstep;
     }
+}
+
+void DKD_MC::compute(int &count, int seed)
+{
+    printf("[INFO] Starting computation of spatial and energy distributions of back-scattered electrons for seed %d...\n", seed);
+    int imp=(nump-1)/2, imz=(numpz-1)/2;
+    double Emin=Ehistmin-Ebin/2.0;
+    double dirx=cos((90.0-sigma)*DEG_TO_RAD), dirz=-sin((90.0-sigma)*DEG_TO_RAD);
+    double tano=tan(omega*DEG_TO_RAD);
+    rng.seed(seed);
+    int count_e=0;
+    for(int ie=0;ie<num_e;ie++){
+        //Set the initial energy, coordinate, and direction (cosine) for this incident electron
+        double E0=EkeV;
+        double dir[3]={dirx, 0.0, dirz};
+        double xyz[3]={0.0, 0.0, 0.0};
+        double alpha=0.0, step=0.0;
+        update_free_path(step, alpha, E0);
+        update_incident_coordinate(xyz, dir, step);
+
+        int jt=0; double R;
+        while(jt<SCATTERING_EVENT_NUMBER){
+            update_incident_energy(E0, step);
+            if(E0<0.0) break; //Exit if the energy becomes low enough
+            double dirt[3], xyzt[3];
+            vector_copy(dirt, dir); vector_copy(xyzt, xyz);
+            update_incident_direction(dirt, alpha);
+            update_free_path(step, alpha, E0);
+            update_incident_coordinate(xyzt, dirt, step);
+
+            double zmax=xyzt[1]*tano;
+            if(xyzt[2]>zmax){//Determine whether the electron exit the crystal
+                double dxy[2]; int ierr;
+                compute_square_Lambert(dxy, ierr, dirt);  //Coordinate in the Lambert projection
+                dxy[0]*=(double)imp; dxy[1]*=(double)imp;
+                int ipx=int(round(dxy[1])), ipy=int(round(-dxy[0]));
+                if(fabs(ipx)<=imp&&fabs(ipy)<=imp){
+                    if(E0>Emin){
+                        int iE=round((E0-Ehistmin)/Ebin);
+                        int iz=round(0.1*fabs(xyz[2]/dirt[2])/depthstep);
+                        accum_E[iE][ipx+imp][ipy+imp]++;
+                        count++;
+                        if((iz>=0)&&(iz<numzbin)){
+                            ipx=round(ipx/10.0);
+                            ipy=round(ipy/10.0);
+                            accum_z[iE][iz][ipx+imz][ipy+imz]++;
+                        }
+                    }
+                }
+                break;
+            }
+            vector_copy(dir, dirt); vector_copy(xyz, xyzt);
+            jt++;
+        }
+        count_e++;
+        if(0==count_e%1000){
+            printf("[INFO] Completed incident electrons %d of %d\n", count_e, num_e);
+            printf("[INFO] Back-scattered electrons hits = %d\n", count);
+        }
+    }
+    printf("[INFO] Ending computation of spatial and energy distributions of back-scattered electrons for seed %d\n", seed);
 }

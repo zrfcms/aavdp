@@ -1,2 +1,0 @@
-./AAVDP.exe -sed ./examples/Ni_sed/Ni_10x10x10_000.lmp -e Ni -s 0.056818 0.056818 0.056818
-./AAVDP.exe -sed ./examples/Fe_sed/Fe_10x10x10_000.lmp -e Fe -s 0.070045 0.070045 0.070045

@@ -1,45 +1,30 @@
 #include "XRD.h"
 
-XRD::XRD(MODEL *model, double spacing[3], double min2Theta, double max2Theta, bool is_lorentz, bool is_spacing_auto)
+XRD::XRD(XMODEL *model, double min2Theta, double max2Theta, double spacing[3], bool is_spacing_auto, bool is_lorentz)
 {
-    printf("Starting...\n");
-    double spacingK[3];
+    printf("[INFO] Starting computation of x-ray diffraction...\n");
     if(is_spacing_auto){
         model->compute_reciprocal_spacing(spacingK, spacing);
     }else{
         vector_copy(spacingK, spacing);
     }
-    minTheta=min2Theta/2.0*DEG_TO_RAD, maxTheta=max2Theta/2.0*DEG_TO_RAD;
-    double Kmagnitude_max=2.0*sin(maxTheta)/model->lambda;
+    minTheta=min2Theta/2.0*DEG_TO_RAD; maxTheta=max2Theta/2.0*DEG_TO_RAD;
+    double Kmagnitude_max=2.0/model->lambda*sin(maxTheta);
     for(int i=0;i<3;i++){
         int NspacingK=ceil(Kmagnitude_max/spacingK[i]);
         kmin[i]=-NspacingK; kmax[i]=NspacingK;
     }
     is_lorentz_flag=is_lorentz;
-    compute_diffraction_intensity(model, spacingK);
-    printf("Ending...\n");
-}
-
-XRD::XRD(MODEL *model, bool is_lorentz)
-{
-    printf("Starting...\n");
-    double Kmagnitude_max[3];
-    vector_constant(Kmagnitude_max, 2.0/model->lambda, model->dimension);
-    for(int i=0;i<3;i++){
-        int NspacingK=ceil(Kmagnitude_max[i]);
-        kmin[i]=-NspacingK; kmax[i]=NspacingK;
-    }
-    is_lorentz_flag=is_lorentz;
     compute_diffraction_intensity(model);
     quick_unique();
-    printf("Ending...\n");
+    printf("[INFO] Ending computation of x-ray diffraction\n");
 }
 
 XRD::~XRD()
 {
-    KNODE *cur=khead;
+    XRD_KNODE *cur=khead;
     while(cur!=nullptr){
-        KNODE *temp=cur;
+        XRD_KNODE *temp=cur;
         cur=cur->next;
         delete temp;
     }
@@ -48,13 +33,13 @@ XRD::~XRD()
 void XRD::add_k_node(int h, int k, int l, double theta, double intensity, int multiplicity)
 {
     if(ktail==nullptr){
-        khead=ktail=new KNODE;
+        khead=ktail=new XRD_KNODE;
         ktail->k[0]=h; ktail->k[1]=k; ktail->k[2]=l;
         ktail->theta=theta; ktail->intensity=intensity;
         ktail->multiplicity=multiplicity;
         numk++;
     }else{
-        ktail->next=new KNODE;
+        ktail->next=new XRD_KNODE;
         ktail=ktail->next;
         ktail->k[0]=h; ktail->k[1]=k; ktail->k[2]=l;
         ktail->theta=theta; ktail->intensity=intensity;
@@ -63,59 +48,11 @@ void XRD::add_k_node(int h, int k, int l, double theta, double intensity, int mu
     }
 }
 
-void XRD::compute_diffraction_intensity(MODEL *model)
+void XRD::compute_diffraction_intensity(XMODEL *model)
 {
-    printf("Starting computation of diffraction intensity...\n");
-    clock_t start, finish;
-    start=clock();
-    int countk=0;
-    for(int ih=kmin[0];ih<=kmax[0];ih++){
-        for(int ik=kmin[1];ik<=kmax[1];ik++){
-            for(int il=kmin[2];il<=kmax[2];il++){
-                if(0==ih&&0==ik&&0==il) continue;
-                double k[3]={double(ih)*model->dimensionK[0], double(ik)*model->dimensionK[1], double(il)*model->dimensionK[2]};
-                double Kmag=model->get_reciprocal_vector_length(k);
-                if(2>=Kmag*model->lambda){
-                    model->reciprocal_to_cartesian(k, k);
-                    double theta=asin(0.5*model->lambda*Kmag);
-                    double intensity=model->get_diffraction_intensity(theta, k, is_lorentz_flag);
-                    if(intensity>ZERO_LIMIT){
-                        if(ih<kmin[0]) kmin[0]=ih;
-                        if(ik<kmin[1]) kmin[1]=ik;
-                        if(il<kmin[2]) kmin[2]=il;
-                        if(ih>kmax[0]) kmax[0]=ih;
-                        if(ik>kmax[1]) kmax[1]=ik;
-                        if(il>kmax[2]) kmax[2]=il;
-                        if(intensity<intensity_min) intensity_min=intensity;
-                        if(intensity>intensity_max) intensity_max=intensity;
-                        add_k_node(ih, ik, il, theta, intensity, 0);
-                        countk++;
-                    }
-                }
-            }
-        }
-    }
-    numk=countk;
-    printf("Ending computation of diffraction intensity\n");
-    finish=clock();
-    printf("Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
-    printf("Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
-    printf("Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
-    printf("Number of diffraction intensity: %d\n", numk);
-    printf("Range of diffraction intensity: %.8f %.8f,", intensity_min, intensity_max);
-    if(is_lorentz_flag){
-        printf(" including lorentz factor\n");
-    }else{
-        printf("\n");
-    }
-}
-
-void XRD::compute_diffraction_intensity(MODEL *model, double spacingK[3])
-{
-    printf("Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
-    printf("Range of diffraction angle in reciprocal space (degree): %.8f %.8f\n", 2.0*minTheta/DEG_TO_RAD, 2.0*maxTheta/DEG_TO_RAD);
-    printf("Starting computation of diffraction intensity...\n");
+    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+    printf("[INFO] Range of diffraction angle in reciprocal space (degree): %.8f %.8f\n", 2.0*minTheta/DEG_TO_RAD, 2.0*maxTheta/DEG_TO_RAD);
+    printf("[INFO] Starting computation of diffraction intensity...\n");
     clock_t start, finish;
     start=clock();
     int countk=0;
@@ -125,16 +62,17 @@ void XRD::compute_diffraction_intensity(MODEL *model, double spacingK[3])
                 if(0==ih&&0==ik&&0==il) continue;
                 double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
                 double Kmag=model->get_reciprocal_vector_length(K);
-                if(2>=Kmag*model->lambda){
+                if(2.0>=Kmag*model->lambda){
+                    model->reciprocal_to_cartesian(K, K);
                     double theta=asin(0.5*model->lambda*Kmag);
-                    if((theta<=maxTheta)&&(theta>=minTheta)){
+                    double intensity=model->get_diffraction_intensity(theta, K, is_lorentz_flag);
+                    if((intensity>ZERO_LIMIT)&&(theta<=maxTheta)&&(theta>=minTheta)){
                         if(ih<kmin[0]) kmin[0]=ih;
                         if(ik<kmin[1]) kmin[1]=ik;
                         if(il<kmin[2]) kmin[2]=il;
                         if(ih>kmax[0]) kmax[0]=ih;
                         if(ik>kmax[1]) kmax[1]=ik;
                         if(il>kmax[2]) kmax[2]=il;
-                        double intensity=model->get_diffraction_intensity(theta, K, is_lorentz_flag);
                         if(intensity<intensity_min) intensity_min=intensity;
                         if(intensity>intensity_max) intensity_max=intensity;
                         add_k_node(ih, ik, il, theta, intensity, 0);
@@ -145,22 +83,22 @@ void XRD::compute_diffraction_intensity(MODEL *model, double spacingK[3])
         }
     }
     numk=countk;
-    printf("Ending computation of diffraction intensity\n");
+    printf("[INFO] Ending computation of diffraction intensity\n");
     finish=clock();
-    printf("Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
-    printf("Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
-    printf("Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
-    printf("Number of diffraction intensity: %d\n", countk);
-    printf("Range of diffraction intensity: %.8f %.8f,", intensity_min, intensity_max);
+    printf("[INFO] Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
+    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
+    printf("[INFO] Number of diffraction intensity: %d\n", countk);
+    printf("[INFO] Range of diffraction intensity: %.8f %.8f ", intensity_min, intensity_max);
     if(is_lorentz_flag){
-        printf(" including lorentz factor\n");
+        printf("including lorentz factor\n");
     }else{
         printf("\n");
     }
 }
 
-void XRD::copy_knode_data(KNODE *knode1, KNODE *knode2)
+void XRD::copy_knode_data(XRD_KNODE *knode1, XRD_KNODE *knode2)
 {
     vector_copy(knode1->k, knode2->k);
     knode1->theta=knode2->theta;
@@ -168,20 +106,20 @@ void XRD::copy_knode_data(KNODE *knode1, KNODE *knode2)
     knode1->multiplicity=knode2->multiplicity;
 }
 
-void XRD::swap_knode_data(KNODE *knode1, KNODE *knode2)
+void XRD::swap_knode_data(XRD_KNODE *knode1, XRD_KNODE *knode2)
 {
-    KNODE *ktemp=new KNODE;
+    XRD_KNODE *ktemp=new XRD_KNODE;
     copy_knode_data(ktemp, knode1);
     copy_knode_data(knode1, knode2);
     copy_knode_data(knode2, ktemp);
     delete ktemp;
 }
 
-void XRD::quick_sort(KNODE *kstart, KNODE *kend)
+void XRD::quick_sort(XRD_KNODE *kstart, XRD_KNODE *kend)
 {
     if(kstart==nullptr||kend==nullptr||kstart==kend) return;
-    KNODE *knode1=kstart;
-    KNODE *knode2=kstart->next;
+    XRD_KNODE *knode1=kstart;
+    XRD_KNODE *knode2=kstart->next;
     double theta=kstart->theta;
     while(knode2!=kend->next&&knode2!=nullptr){
         if(knode2->theta<theta){
@@ -201,7 +139,7 @@ void XRD::quick_unique()
 {
     quick_sort(khead, ktail);
     int countk=0;
-    KNODE *kslow=khead, *kfast=khead;
+    XRD_KNODE *kslow=khead, *kfast=khead;
     while(kfast!=nullptr){
         if(fabs(kfast->theta-kslow->theta)>ZERO_LIMIT) {
             kslow->next=kfast;
@@ -213,7 +151,7 @@ void XRD::quick_unique()
     }
     numk=countk+1;
 
-    KNODE *ktemp=khead;
+    XRD_KNODE *ktemp=khead;
     intensity_min=1.0e8; intensity_max=0.0;
     for(int i=0;i<numk&&ktemp!=nullptr;i++){
         ktemp->intensity*=(double)ktemp->multiplicity;
@@ -221,64 +159,118 @@ void XRD::quick_unique()
         if(ktemp->intensity>intensity_max) intensity_max=ktemp->intensity;
         ktemp=ktemp->next;
     }
-    printf("Number of unique diffraction intensity: %d\n", numk);
-    printf("Range of diffraction intensity: %.8f %.8f,", intensity_min, intensity_max);
+    printf("[INFO] Number of unique diffraction intensity: %d\n", numk);
+    printf("[INFO] Range of diffraction intensity: %.8f %.8f ", intensity_min, intensity_max);
     if(is_lorentz_flag){
-        printf(" including lorentz factor\n");
+        printf("including lorentz factor\n");
     }else{
         printf("\n");
     }
 }
 
-void XRD::xrd(const char *xrd_path)
-{
-    FILE *fp=nullptr;
-    fp=fopen(xrd_path,"w");
-    fprintf(fp,"# 2theta\tintensity\tintensity_norm\n");
-    double constn=100.0/intensity_max;
-    KNODE *ktemp=khead;
-    for(int i=0;i<numk&&ktemp!=nullptr;i++){
-        fprintf(fp, "%.8f\t%.8f\t%.8f\n",
-                    2*ktemp->theta/DEG_TO_RAD, ktemp->intensity, constn*ktemp->intensity);
-        fflush(fp);
-        ktemp=ktemp->next;
-    }
-    fclose(fp);
-    printf("Information for x-ray pattern stored in %s.\n", xrd_path);
-}
-
 void XRD::xrd(const char *xrd_path, int nbin)
 {
-    if(0==nbin){
-        xrd(xrd_path); return;
-    }
-    double *kintensity=nullptr;
-    callocate(&kintensity, nbin, 0.0);
-    KNODE *ktemp=khead;
-    double tbin=(maxTheta-minTheta)/double(nbin);
-    for(int i=0;i<numk&&ktemp!=nullptr;i++){
-        int j=int((ktemp->theta-minTheta)/tbin);
-        kintensity[j]+=ktemp->intensity;
-        ktemp=ktemp->next;
-    }
-    double imax=kintensity[0];
-    for(int i=1;i<nbin;i++){
-        if(imax<kintensity[i]) imax=kintensity[i];
-    }
-
     FILE *fp=nullptr;
     fp=fopen(xrd_path,"w");
-    fprintf(fp,"# 2theta\tintensity\tintensity_norm\n");
-    double constn=100.0/imax;
-    for(int i=0;i<nbin;i++){
-        fprintf(fp, "%.8f\t%.8f\t%.8f\n",
-                    2*(minTheta+tbin*(i+0.5))/DEG_TO_RAD, kintensity[i], constn*kintensity[i]);
-        fflush(fp);
+    if(0==nbin){
+        double constn=100.0/intensity_max;
+        XRD_KNODE *ktemp=khead;
+        fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d points)\n", numk);
+        for(int i=0;i<numk&&ktemp!=nullptr;i++){
+            fprintf(fp, "%.8f\t%.8f\t%.8f\n",
+                        2*ktemp->theta/DEG_TO_RAD, ktemp->intensity, constn*ktemp->intensity);
+            fflush(fp);
+            ktemp=ktemp->next;
+        }
+    }else{
+        double *kintensity=nullptr;
+        callocate(&kintensity, nbin, 0.0);
+        XRD_KNODE *ktemp=khead;
+        double tbin=(maxTheta-minTheta)/double(nbin);
+        for(int i=0;i<numk&&ktemp!=nullptr;i++){
+            int j=int((ktemp->theta-minTheta)/tbin);
+            kintensity[j]+=ktemp->intensity;
+            ktemp=ktemp->next;
+        }
+        double imax=kintensity[0];
+        for(int i=1;i<nbin;i++){
+            if(imax<kintensity[i]) imax=kintensity[i];
+        }
+        double constn=100.0/imax;
+        fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d bins)\n", nbin);
+        for(int i=0;i<nbin;i++){
+            fprintf(fp, "%.8f\t%.8f\t%.8f\n",
+                        2*(minTheta+tbin*(i+0.5))/DEG_TO_RAD, kintensity[i], constn*kintensity[i]);
+            fflush(fp);
+        }
+        deallocate(kintensity);
     }
     fclose(fp);
-    deallocate(kintensity);
-    printf("Information for x-ray pattern stored in %s.\n", xrd_path);
+    printf("[INFO] Information for x-ray pattern stored in %s\n", xrd_path);
 }
+
+// XRD::XRD(XMODEL *model, bool is_lorentz)
+// {
+//     printf("Starting...\n");
+//     double Kmagnitude_max[3];
+//     vector_constant(Kmagnitude_max, 2.0/model->lambda, model->dimension);
+//     for(int i=0;i<3;i++){
+//         int NspacingK=ceil(Kmagnitude_max[i]);
+//         kmin[i]=-NspacingK; kmax[i]=NspacingK;
+//     }
+//     is_lorentz_flag=is_lorentz;
+//     compute_diffraction_intensity(model);
+//     quick_unique();
+//     printf("Ending...\n");
+// }
+
+// void XRD::compute_diffraction_intensity(XMODEL *model)
+// {
+//     printf("Starting computation of diffraction intensity...\n");
+//     clock_t start, finish;
+//     start=clock();
+//     int countk=0;
+//     for(int ih=kmin[0];ih<=kmax[0];ih++){
+//         for(int ik=kmin[1];ik<=kmax[1];ik++){
+//             for(int il=kmin[2];il<=kmax[2];il++){
+//                 if(0==ih&&0==ik&&0==il) continue;
+//                 double k[3]={double(ih)*model->dimensionK[0], double(ik)*model->dimensionK[1], double(il)*model->dimensionK[2]};
+//                 double Kmag=model->get_reciprocal_vector_length(k);
+//                 if(2>=Kmag*model->lambda){
+//                     model->reciprocal_to_cartesian(k, k);
+//                     double theta=asin(0.5*model->lambda*Kmag);
+//                     double intensity=model->get_diffraction_intensity(theta, k, is_lorentz_flag);
+//                     if(intensity>ZERO_LIMIT){
+//                         if(ih<kmin[0]) kmin[0]=ih;
+//                         if(ik<kmin[1]) kmin[1]=ik;
+//                         if(il<kmin[2]) kmin[2]=il;
+//                         if(ih>kmax[0]) kmax[0]=ih;
+//                         if(ik>kmax[1]) kmax[1]=ik;
+//                         if(il>kmax[2]) kmax[2]=il;
+//                         if(intensity<intensity_min) intensity_min=intensity;
+//                         if(intensity>intensity_max) intensity_max=intensity;
+//                         add_k_node(ih, ik, il, theta, intensity, 0);
+//                         countk++;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     numk=countk;
+//     printf("Ending computation of diffraction intensity\n");
+//     finish=clock();
+//     printf("Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
+//     printf("Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+//     printf("Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+//     printf("Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
+//     printf("Number of diffraction intensity: %d\n", numk);
+//     printf("Range of diffraction intensity: %.8f %.8f,", intensity_min, intensity_max);
+//     if(is_lorentz_flag){
+//         printf(" including lorentz factor\n");
+//     }else{
+//         printf("\n");
+//     }
+// }
 
 // void XRD::quick_sort(int low, int high)
 // {

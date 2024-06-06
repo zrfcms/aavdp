@@ -25,7 +25,8 @@
 #define AVOGADRO_CONSTANT 6.02214076e23
 #define PLANK_CONSTANT 6.62607015e-34 //J·s
 
-#define XLAMBDA 1.54059
+#define XLAMBDA 1.54180
+#define NLAMBDA 1.54180
 #define ELAMBDA 0.02510
 
 using namespace std;
@@ -65,14 +66,23 @@ public:
     char   space_group_symbol[11];
     int    hall_number;
     char   centering;//P, F, I, A, B, C, R, forming Bravais lattice combined with crystal system
+    int    sampling_type;
     bool   is_second_setting=false;
     bool   is_trigonal=false;
     bool   is_hexagonal=false;//determine whether to use hexagonal indices
 
     double lattice[3][3];
+    double vol;
+    double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
+    double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
+    
     int    nsymmetry;
     int    sym_rotations[192][3][3];
     double sym_translations[192][3];
+    int    npointsym;
+    double point_dmats[48][3][3];//point group matrices in direct space
+    double point_rmats[48][3][3];//point group matrices in reciprocal space
+
     int    npos=0, napos=0;//total number of asymmetric atoms
     int    *apos_type;
     int    *apos_multi=nullptr;//multiplicity for each asymmetric atomic position
@@ -88,17 +98,6 @@ public:
     ~CELL();
     void   logging();
     void   hdf5(const char* hdf5_path);
-
-    int    sampling_type;
-    double vol;
-    double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
-    double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
-    int    npointsym;
-    double point_dmats[48][3][3];//point group matrices in direct space
-    double point_rmats[48][3][3];//point group matrices in reciprocal space
-    void   set_sampling_type();
-    void   compute_lattice_matrices();
-    void   compute_point_symmetry_matrices();
     double dot(double v1[3], double v2[3], char space='r');
     double length(double v[3], char space='r');
     double angle(double v1[3], double v2[3], char space='r');
@@ -125,6 +124,9 @@ public:
 private:
     void   compute_asymmetric_atomic_positions(double (*atom_pos)[3], int *atom_type, int natom);
     void   compute_atomic_density();
+    void   set_sampling_type();
+    void   compute_lattice_matrices();
+    void   compute_point_symmetry_matrices();
 
     complex<double> get_scattering_amplitude(double G, double U, int Z, double V);
     double get_Debye_Waller_factor(double G, double U);
@@ -141,75 +143,61 @@ private:
 class MODEL
 {
 public:
-    char   mode='x';
-    double lambda=XLAMBDA;
-
     double dimension[3];
     double dimensionK[3];
-    int    is_periodic[3];
-    int    ntype=0;
-    int    *type_index=nullptr;
+    bool   is_periodic[3];
     int    natom=0;
     double **atom_pos=nullptr;
     int    *atom_type=nullptr;
-    MODEL(const char *model_path, const char types[][10], double mlambda=XLAMBDA, char mmode='x');
+    double *atom_DW=nullptr;
+    int    ntype=0;
+    int    *type_index=nullptr;
+    double lambda;
+    bool   is_orthogonal=true;
+    MODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda);
     ~MODEL();
     double get_reciprocal_vector_length(double g[3]);
     void   reciprocal_to_cartesian(double c_g[3], double r_g[3]);
     void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
-    complex<double> get_atomic_structure_factor(double theta, double g[3], bool is_lorentz_flag);
-    complex<double> get_atomic_structure_factor(double theta, double g[3]);
-    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz_flag);
-    double get_diffraction_intensity(double theta, double g[3]);
-    double get_diffraction_intensity(complex<double> F);
 private:
     double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
     double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
-    void   index_type(const char types[][10], const char TYPE[][10], int TYPE_NUM);
-    void   quatify_lattice(double mat[3][3]);
-    double get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C);
-    double get_atomic_scattering_factor(double S, const double A[5], const double B[5]);
+    void   set_lattice(double mat[3][3]);
 };
 
-class XMODEL
+class XMODEL:public MODEL
 {
 public:
-    double lambda=0.0;
-    double dimension[3];
-    int    is_periodic[3];
-    int    ntype=0;
-    int    *type_index=nullptr;
-    int    natom=0;
-    double **atom_pos=nullptr;
-    int    *atom_type=nullptr;
-    XMODEL(const char *model_path, const char types[][10], double mlambda=XLAMBDA);
+    XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=XLAMBDA);
     ~XMODEL();
-    void   update_incident_wavelength(double mlambda);
-    double get_diffraction_intensity(double theta, double k[3]);
+    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz);
 private:
+    double get_Debye_Waller_factor(double S, double DW);
+    //complex<double> get_atomic_scattering_factor(double S, int type);
     double get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C);
-    complex<double> get_atomic_structure_factor(double theta, double k[3]);
+    complex<double> get_atomic_structure_factor(double theta, double g[3]);
 };
 
-class EMODEL
+class NMODEL:public MODEL
 {
 public:
-    double lambda=0.0;
-    double dimension[3];
-    int    is_periodic[3];
-    int    ntype=0;
-    int    *type_index=nullptr;
-    int    natom=0;
-    double **atom_pos=nullptr;
-    int    *atom_type=nullptr;
-    EMODEL(const char *model_path, const char types[][10], double mlambda=ELAMBDA);
+    NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=NLAMBDA);
+    ~NMODEL();
+    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz);
+private:
+    double get_Debye_Waller_factor(double S, double DW);
+    complex<double> get_atomic_structure_factor(double theta, double g[3]);
+};
+
+class EMODEL:public MODEL
+{
+public:
+    EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=ELAMBDA);
     ~EMODEL();
-    void   update_incident_wavelength(double mlambda);
-    double get_diffraction_intensity(double theta, double k[3]);
-    void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
+    double get_diffraction_intensity(double theta, double g[3]);
 private:
     double get_atomic_scattering_factor(double S, const double A[5], const double B[5]);
-    complex<double> get_atomic_structure_factor(double theta, double k[3]);
+    complex<double> get_atomic_structure_factor(double theta, double g[3]);
 };
 
 #endif

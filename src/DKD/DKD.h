@@ -44,11 +44,9 @@ private:
 };
 
 struct DKD_GNODE{
-    int    number;//reflection number
     double hkl[3];//Miller indices
     complex<double> Ug, qg;
     double sg;//excitation error
-    int    family_number;
     bool   is_double_diffrac;
     bool   is_weak, is_strong;
     DKD_GNODE  *next=nullptr;
@@ -86,11 +84,11 @@ public:
     DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, double c_sg);
     DKD(const char* hdf5_path);
     ~DKD();
-    void   img(const char *img_path, double dimension=6, int resolution=256);
+    void   img(const char *img_path, double dimension=6, int resolution=512);
 private:
     void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECTOR *gvec);
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DKD_GVECTOR *gvec);
-    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int ZMAX, double THICK, double DEPTHSTEP, double KN, int NS);
+    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
     double get_Lambert_interpolation(double xyz[3], double ****mat, bool is_hexagonal=false);
     void   hdf5(const char *hdf5_path, int offset=0);
 };

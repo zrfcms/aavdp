@@ -6,15 +6,12 @@
 
 #define PATH_CHAR_NUMBER 100
 #define EXT_CHAR_NUMBER 10
-#define TYPE_INPUT_NUMBER 10
-
-#define KEY_CHAR_NUMBER 100
-#define KEY_LINE_NUMBER 100
 
 #define PI 3.141592653589793
 #define TWO_PI 6.283185307179586
 #define FOUR_PI 12.566370614359172
 #define DEG_TO_RAD 0.017453292519943295 //PI/180
+#define RAD_TO_DEG 57.29577951308232 //180/PI
 
 #define PI_SQRT_HALF 0.886226925452758 //sqrt(PI)/2
 #define PI_HALF_SQRT 1.253314137315500 //sqrt(PI/2)
@@ -58,40 +55,6 @@ extern void int_to_str(char str[], int num);
 extern void merge_path(char file_path[], char exts[][10], int num);
 extern void split_path(char name[], char ext[], const char file_path[]);
 
-template <typename T>
-extern void matrix_copy(T c_mat[3][3], T mat[3][3]);
-extern void matrix_constant(double k_mat[3][3], double k, double mat[3][3]);
-extern void matrix_transpose(double t_mat[3][3], double mat[3][3]);
-extern void matrix_multiply(double mat[3][3], double mat1[3][3], double mat2[3][3]);
-template <typename T>
-extern void vector_copy(T c_v[3], T v[3]);
-extern double vector_dot(double v1[3], double v2[3]);
-extern double vector_length(double v[3]);
-extern void vector_normalize(double n_v[3], double v[3]);
-extern void vector_cross(double v[3], double v1[3], double v2[3]);
-extern void vector_constant(double k_v[3], double k, double v[3]);
-extern void vector_plus(double v[3], double v1[3], double v2[3]);
-extern void vector_difference(double v[3], double v1[3], double v2[3]);
-extern void vector_multiply(double v[3], double v1[3], double v2[3]);
-extern void vector_rotate(double r_v[3], double R[3][3], double v[3]);
-extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
-
-template <typename T>
-void vector_copy(T c_v[3], T v[3])
-{
-    c_v[0]=v[0]; c_v[1]=v[1]; c_v[2]=v[2];
-}
-
-template <typename T>
-void matrix_copy(T c_mat[3][3], T mat[3][3])
-{
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            c_mat[i][j]=mat[i][j];
-        }
-    }
-}
-
 extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym);
@@ -99,7 +62,6 @@ extern int get_sextant(double x, double y);
 extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2]);
 extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
 extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius=1.0);
-
 // struct QUATERNION
 // {
 //     double c1, c2, c3, c4;
@@ -109,6 +71,142 @@ extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ier
 // extern QUATERNION quate_multi(QUATERNION q1, QUATERNION q2);
 // extern void quate_rotate(double r_v[3], double v[3], QUATERNION q);
 // extern QUATERNION quate_convert(double v[3], double angle);
+
+template <typename T>
+extern void vector_copy(T c_v[3], T v[3]);
+template <typename T>
+extern void vector_constant(T k_v[3], T k, T v[3]);
+template <typename T>
+extern T vector_length(T v[3]);
+template <typename T>
+extern void vector_normalize(T n_v[3], T v[3]);
+template <typename T>
+extern T vector_dot(T v1[3], T v2[3]);
+template <typename T>
+extern void vector_cross(T v[3], T v1[3], T v2[3]);
+template <typename T>
+extern void vector_plus(T v[3], T v1[3], T v2[3]);
+template <typename T>
+extern void vector_difference(T v[3], T v1[3], T v2[3]);
+template <typename T>
+extern void vector_multiply(T v[3], T v1[3], T v2[3]);
+template <typename T>
+extern void vector_rotate(T r_v[3], T R[3][3], T v[3]);
+extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
+template <typename T>
+void vector_copy(T c_v[3], T v[3])
+{
+    c_v[0]=v[0]; c_v[1]=v[1]; c_v[2]=v[2];
+}
+template <typename T>
+void vector_constant(T k_v[3], T k, T v[3])
+{
+    k_v[0]=k*v[0]; k_v[1]=k*v[1]; k_v[2]=k*v[2];
+}
+template <typename T>
+T vector_length(T v[3])
+{
+    return sqrt(vector_dot(v, v));
+}
+template <typename T>
+void vector_normalize(T n_v[3], T v[3])
+{
+    T len_v=vector_length(v);
+    if(0.0!=len_v){
+        n_v[0]=v[0]/len_v; n_v[1]=v[1]/len_v; n_v[2]=v[2]/len_v;
+    }else{
+        n_v[0]=0.0; n_v[1]=0.0; n_v[2]=0.0; 
+    }
+}
+template <typename T>
+T vector_dot(T v1[3], T v2[3])
+{
+    return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
+}
+template <typename T>
+void vector_cross(T v[3], T v1[3], T v2[3])
+{
+    v[0]=v1[1]*v2[2]-v1[2]*v2[1];
+    v[1]=v1[2]*v2[0]-v1[0]*v2[2];
+    v[2]=v1[0]*v2[1]-v1[1]*v2[0];
+}
+template <typename T>
+void vector_plus(T v[3], T v1[3], T v2[3])
+{
+    v[0]=v1[0]+v2[0]; v[1]=v1[1]+v2[1]; v[2]=v1[2]+v2[2];
+}
+template <typename T>
+void vector_difference(T v[3], T v1[3], T v2[3])
+{
+    v[0]=v1[0]-v2[0]; v[1]=v1[1]-v2[1]; v[2]=v1[2]-v2[2];
+}
+template <typename T>
+void vector_multiply(T v[3], T v1[3], T v2[3])
+{
+    v[0]=v1[0]*v2[0]; v[1]=v1[1]*v2[1]; v[2]=v1[2]*v2[2];
+}
+template <typename T>
+void vector_rotate(T r_v[3], T R[3][3], T v[3])
+{
+    T c_v[3];
+    vector_copy(c_v, v);
+    for(int i=0;i<3;i++){
+        r_v[i]=0.0;
+        for(int j=0;j<3;j++){
+            r_v[i]+=R[i][j]*c_v[j];
+        }
+    }
+}
+
+template <typename T>
+extern void matrix_copy(T c_mat[3][3], T mat[3][3]);
+template <typename T>
+extern void matrix_constant(T k_mat[3][3], T k, T mat[3][3]);
+template <typename T>
+extern void matrix_transpose(T t_mat[3][3], T mat[3][3]);
+template <typename T>
+extern void matrix_multiply(T mat[3][3], T mat1[3][3], T mat2[3][3]);
+template <typename T>
+void matrix_copy(T c_mat[3][3], T mat[3][3])
+{
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            c_mat[i][j]=mat[i][j];
+        }
+    }
+}
+template <typename T>
+void matrix_constant(T k_mat[3][3], T k, T mat[3][3])
+{
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            k_mat[i][j]=k*mat[i][j];
+        }
+    }
+}
+template <typename T>
+void matrix_transpose(T t_mat[3][3], T mat[3][3])
+{
+    T c_mat[3][3];
+    matrix_copy(c_mat, mat);
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            t_mat[i][j]=c_mat[j][i];
+        }
+    }
+}
+template <typename T>
+void matrix_multiply(T mat[3][3], T mat1[3][3], T mat2[3][3])
+{
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            mat[i][j]=0.0;
+            for(int k=0;k<3;k++){
+                mat[i][j]+=mat1[i][k]*mat2[k][j];
+            }
+        }
+    }
+}
 
 template <typename T>
 extern void mallocate(T **data, int size);
@@ -146,13 +244,11 @@ template <typename T>
 extern void unreshape_3d(T **wdata, T ***data, int nrow, int ncol, int nlayer);
 template <typename T>
 extern void unreshape_4d(T **wdata, T ****data, int nrow, int ncol, int nlayer, int nblock);
-
 template <typename T>
 void mallocate(T **data, int size)
 {
     (*data)=new T[size];
 }
-
 template <typename T>
 void callocate(T **data, int size, T value)
 {
@@ -161,14 +257,12 @@ void callocate(T **data, int size, T value)
         (*data)[i]=value;
     }
 }
-
 template <typename T>
 void deallocate(T *data)
 {
     if(data==nullptr) return;
     delete [] data;
 }
-
 template <typename T>
 void mallocate_2d(T ***data, int nrow, int ncol)
 {
@@ -177,7 +271,6 @@ void mallocate_2d(T ***data, int nrow, int ncol)
         (*data)[i]=new T[ncol];
     }
 }
-
 template <typename T>
 void callocate_2d(T ***data, int nrow, int ncol, T value)
 {
@@ -188,7 +281,6 @@ void callocate_2d(T ***data, int nrow, int ncol, T value)
         }
     }
 }
-
 template <typename T>
 void deallocate_2d(T **data, int nrow)
 {
@@ -198,7 +290,6 @@ void deallocate_2d(T **data, int nrow)
     }
     delete [] data;
 }
-
 template <typename T>
 void mallocate_3d(T ****data, int nrow, int ncol, int nlayer)
 {
@@ -212,7 +303,6 @@ void mallocate_3d(T ****data, int nrow, int ncol, int nlayer)
         }
     }
 }
-
 template <typename T>
 void callocate_3d(T ****data, int nrow, int ncol, int nlayer, T value)
 {
@@ -225,7 +315,6 @@ void callocate_3d(T ****data, int nrow, int ncol, int nlayer, T value)
         }
     }
 }
-
 template <typename T>
 void deallocate_3d(T ***data, int nrow, int ncol)
 {
@@ -240,7 +329,6 @@ void deallocate_3d(T ***data, int nrow, int ncol)
     }
     delete [] data;
 }
-
 template <typename T>
 void mallocate_4d(T *****data, int nrow, int ncol, int nlayer, int nblock)
 {
@@ -261,7 +349,6 @@ void mallocate_4d(T *****data, int nrow, int ncol, int nlayer, int nblock)
         }
     }
 }
-
 template <typename T>
 void callocate_4d(T *****data, int nrow, int ncol, int nlayer, int nblock, T value)
 {
@@ -276,7 +363,6 @@ void callocate_4d(T *****data, int nrow, int ncol, int nlayer, int nblock, T val
         }
     }
 }
-
 template <typename T>
 void deallocate_4d(T ****data, int nrow, int ncol, int nlayer)
 {
@@ -298,7 +384,6 @@ void deallocate_4d(T ****data, int nrow, int ncol, int nlayer)
     }
     delete [] data;
 }
-
 template <typename T>
 void reshape_2d(T ***data, T *wdata, int nrow, int ncol)
 {
@@ -309,7 +394,6 @@ void reshape_2d(T ***data, T *wdata, int nrow, int ncol)
         }
     }
 }
-
 template <typename T>
 void unreshape_2d(T **wdata, T **data, int nrow, int ncol)
 {
@@ -320,7 +404,6 @@ void unreshape_2d(T **wdata, T **data, int nrow, int ncol)
         }
     }
 }
-
 template <typename T>
 void reshape_3d(T ****data, T *wdata, int nrow, int ncol, int nlayer)
 {
@@ -333,7 +416,6 @@ void reshape_3d(T ****data, T *wdata, int nrow, int ncol, int nlayer)
         }
     }
 }
-
 template <typename T>
 void unreshape_3d(T **wdata, T ***data, int nrow, int ncol, int nlayer)
 {
@@ -346,7 +428,6 @@ void unreshape_3d(T **wdata, T ***data, int nrow, int ncol, int nlayer)
         }
     }
 }
-
 template <typename T>
 void reshape_4d(T *****data, T *wdata, int nrow, int ncol, int nlayer, int nblock)
 {
@@ -361,7 +442,6 @@ void reshape_4d(T *****data, T *wdata, int nrow, int ncol, int nlayer, int nbloc
         }
     }
 }
-
 template <typename T>
 void unreshape_4d(T **wdata, T ****data, int nrow, int ncol, int nlayer, int nblock)
 {
@@ -380,7 +460,6 @@ void unreshape_4d(T **wdata, T ****data, int nrow, int ncol, int nlayer, int nbl
 extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
 template <typename T>
 extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);
-
 template <typename T>
 void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background)
 {

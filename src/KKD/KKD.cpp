@@ -1,93 +1,52 @@
 #include "KKD.h"
 
-KKD::KKD(const char *kkd_path, double threshold_ratio, double screenD, int screen_dpi, int screenW, int screenH)
+KKD::KKD(const char *hdf5_path, double threshold_ratio, double screenD, int screenW, int screen_dpi)
 {
-    read_diffraction_intensity_from_kkd(kkd_path);
-    double dK_eff=4*radiusK/sqrt(double(pow(screen_dpi, 2)*pow(screenD, 2)+1))*0.2;
-    int screen_npx=screen_dpi*screenW, screen_npy=screen_dpi*screenH;
-    compute_Kikuchi_sphere_projection(screen_npx);
-    compute_Kikuchi_intensity_projection(threshold_ratio, dK_eff);
+    printf("[INFO] Starting computation of kinematic Kikuchi diffraction...\n");
+    SED sed(hdf5_path);
+    compute_Kikuchi_sphere_projection(&sed, screenW, screen_dpi);
+    compute_Kikuchi_intensity_projection(&sed, threshold_ratio, screenD, screen_dpi);
+    printf("[INFO] Ending computation of kinematic Kikuchi diffraction\n");
 }
 
-KKD::KKD(const char *kkd_path, int zone[3], double threshold_ratio, double screenD, int screen_dpi, int screenW, int screenH)
+KKD::KKD(const char *hdf5_path, int zone[3], double threshold_ratio, double screenD, int screenW, int screenH, int screen_dpi)
 {
-    read_diffraction_intensity_from_kkd(kkd_path);
-    double dK_eff=4*radiusK/sqrt(double(pow(screen_dpi, 2)*pow(screenD, 2)+1));
-    int screen_npx=screen_dpi*screenW, screen_npy=screen_dpi*screenH;
-    compute_Kikuchi_sphere_projection(zone, screen_npx, screen_npy, screenD, screenW, screenH);
-    compute_Kikuchi_intensity_projection(threshold_ratio, dK_eff);
+    printf("[INFO] Starting computation of kinematic Kikuchi diffraction...\n");
+    SED sed(hdf5_path);
+    compute_Kikuchi_sphere_projection(&sed, zone, screenD, screenW, screenH, screen_dpi);
+    compute_Kikuchi_intensity_projection(&sed, threshold_ratio, screenD, screen_dpi);
+    printf("[INFO] Ending computation of kinematic Kikuchi diffraction\n");
 }
 
 KKD::~KKD()
 {
-    if(0!=numk){
-        deallocate_2d(Kvectors, numk);
-        deallocate(Kintensity);
-    }
     if(0!=numpx&&0!=numpy){
         deallocate_3d(screenG, numpy, numpx);
         deallocate_2d(screenI, numpy);
     }
 }
 
-void KKD::read_diffraction_intensity_from_kkd(const char *kkd_path)
+void KKD::compute_Kikuchi_sphere_projection(SED *sed, int screenW, int screen_dpi)
 {
-    FILE *fp=fopen(kkd_path, "r");
-    if(fp==NULL){
-        printf("[ERROR] Unable to open file %s.\n", kkd_path);
-    }
-    fseek(fp, 0, SEEK_SET);
-
-    char readbuff[KEY_CHAR_NUMBER]; int keyi=0;
-    for(int i=0;(keyi<2)&&(i<KEY_LINE_NUMBER);i++){
-        fscanf(fp, "%s", readbuff);
-        if('#'==readbuff[0]){
-            while(('\n'!=fgetc(fp))&&(!feof(fp)));
-            continue;
-        }
-        if(0==strcmp(readbuff, "Kikuchi_radius")){
-            fscanf(fp, "%lf", &radiusK);
-            keyi++;
-            continue;
-        }
-        if(0==strcmp(readbuff, "Kvectors")){
-            fscanf(fp, "%d", &numk);
-            mallocate_2d(&Kvectors, numk, 3);
-            mallocate(&Kintensity, numk);
-            for(int j=0;j<numk;j++){
-                fscanf(fp, "%lf", &Kvectors[j][0]);
-                fscanf(fp, "%lf", &Kvectors[j][1]);
-                fscanf(fp, "%lf", &Kvectors[j][2]);
-                fscanf(fp, "%lf", &Kintensity[j]);
-            }
-            keyi++;
-            continue;
-        }
-    }
-    if(2!=keyi){
-        printf("[ERROR] Unable to recognize information from %s.\n", kkd_path);
-    }
-}
-
-void KKD::compute_Kikuchi_sphere_projection(int screen_npx)
-{
+    int screen_npl=screenW*screen_dpi;
     double dp, dt;
-    dp=dt=2*PI/double(screen_npx-1);
-    numpx=screen_npx; numpy=screen_npx/2;
+    dp=dt=2*PI/double(screen_npl-1);
+    numpx=screen_npl; numpy=screen_npl/2;
     callocate_3d(&screenG, numpy, numpx, 3, 0.0);
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
             double phi=double(i)*dp;//azimuth angle, 0-2pi
             double theta=double(j)*dt;//polar angle, 0-pi
-            screenG[i][j][0]=radiusK*sin(theta)*cos(phi);//spherical to cartesian
-            screenG[i][j][1]=radiusK*sin(theta)*sin(phi);
-            screenG[i][j][2]=radiusK*cos(theta);
+            screenG[i][j][0]=sed->radiusE*sin(theta)*cos(phi);//spherical to cartesian
+            screenG[i][j][1]=sed->radiusE*sin(theta)*sin(phi);
+            screenG[i][j][2]=sed->radiusE*cos(theta);
         }
     }
 }
 
-void KKD::compute_Kikuchi_sphere_projection(int zone[3], int screen_npx, int screen_npy, double screenD, double screenW, double screenH)
+void KKD::compute_Kikuchi_sphere_projection(SED *sed, int zone[3], double screenD, double screenW, double screenH, int screen_dpi)
 {
+    int screen_npx=screen_dpi*screenW, screen_npy=screen_dpi*screenH;
     numpx=screen_npx; numpy=screen_npy;
     callocate_3d(&screenG, screen_npy, screen_npx, 3, screenD);
     double imW=screenW/2.0, imH=screenH/2.0;
@@ -113,38 +72,37 @@ void KKD::compute_Kikuchi_sphere_projection(int zone[3], int screen_npx, int scr
     for(int i=0;i<screen_npy;i++){
         for(int j=0;j<screen_npx;j++){
             vector_normalize(screenG[i][j], screenG[i][j]);
-            screenG[i][j][0]*=radiusK;
-            screenG[i][j][1]*=radiusK;
-            screenG[i][j][2]*=radiusK;
+            screenG[i][j][0]*=sed->radiusE;
+            screenG[i][j][1]*=sed->radiusE;
+            screenG[i][j][2]*=sed->radiusE;
             vector_rotate(screenG[i][j], R, screenG[i][j]);//zone axis transformation
         }
     }
 }
 
-void KKD::compute_Kikuchi_intensity_projection(double threshold_ratio, double interceptK)
+void KKD::compute_Kikuchi_intensity_projection(SED *sed, double threshold, double screenD, int screen_dpi)
 {
+    double dK=4.0*sed->radiusE/sqrt(double(pow(screen_dpi, 2)*pow(screenD, 2)+1));
     callocate_2d(&screenI, numpy, numpx, 0.0);
-    double Imax=Kintensity[0];
-    for(int i=1;i<numk;i++){
-        if(Imax<Kintensity[i]) Imax=Kintensity[i];
-    }
-    double intensity_threshold=Imax*threshold_ratio;
-    printf("Starting projection of diffraction intensity...\n");
-    clock_t start, finish, time;
+    printf("[INFO] Radius of Kikuchi sphere: %.8f\n", sed->radiusE);
+    printf("[INFO] Spacing between Kikuchi lines: %.8f\n", dK);
+    printf("[INFO] Starting projection of diffraction intensity on the Kikuchi pattern...\n");
+    clock_t start, finish;
     start=clock();
     int countk=0; int countp=0;
-    for(int i=0;i<numk;i++){
-        double Kmag=vector_length(Kvectors[i]);
-        if(Kmag>=0.2&&Kintensity[i]>=intensity_threshold){
-            double upper_bound=sqrt(radiusK*radiusK+Kmag*interceptK/2.0);
-            double lower_bound=sqrt(radiusK*radiusK-Kmag*interceptK/2.0);
+    double Kmag_threshold=1.0e-6;
+    for(int i=0;i<sed->numk;i++){
+        double Kmag=vector_length(sed->Kvectors[i]);
+        if(Kmag>Kmag_threshold&&sed->Kintensity[i]>threshold){
+            double upper_bound=sqrt(sed->radiusE*sed->radiusE+Kmag*dK/2.0);
+            double lower_bound=sqrt(sed->radiusE*sed->radiusE-Kmag*dK/2.0);
             for(int j=0;j<numpy;j++){
                 for(int k=0;k<numpx;k++){
                     double d[3];
-                    vector_difference(d, screenG[j][k], Kvectors[i]);
+                    vector_difference(d, screenG[j][k], sed->Kvectors[i]);
                     double dmag=vector_length(d);
                     if(dmag<=upper_bound&&dmag>=lower_bound){
-                        screenI[j][k]+=Kintensity[i];
+                        screenI[j][k]+=sed->Kintensity[i];
                     }
                 }
             }
@@ -152,13 +110,13 @@ void KKD::compute_Kikuchi_intensity_projection(double threshold_ratio, double in
         }
         countk++;
         if(0==countk%1000){
-            printf("Completed diffraction intensity %d of %d\n", countk, numk);
+            printf("[INFO] Completed diffraction intensity %d of %d\n", countk, sed->numk);
         }
     }
-    printf("Ending projection of diffraction intensity\n");
-    finish=clock(); time=finish-start;
-    printf("Projection time [s]: %.2f.\n", time);
-    printf("Number of diffraction vectors contributing to the Kikuchi pattern (|K|>=0.2 and I>=%.8f): %d\n", intensity_threshold, countp);
+    printf("[INFO] Ending projection of diffraction intensity on the Kikuchi pattern\n");
+    finish=clock();
+    printf("[INFO] Projection time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
+    printf("[INFO] Number of diffraction vectors contributing to the Kikuchi pattern (|K| > %.8f and I > %.8f): %d\n", Kmag_threshold, threshold, countp);
     intensity_min=screenI[0][0]; intensity_max=screenI[0][0];
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
@@ -166,7 +124,7 @@ void KKD::compute_Kikuchi_intensity_projection(double threshold_ratio, double in
             if(intensity_max<screenI[i][j]) intensity_max=screenI[i][j];
         }
     }
-    printf("Range of Kikuchi intensity: %.8f %.8f\n", intensity_min, intensity_max);
+    printf("[INFO] Range of Kikuchi line intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
 void KKD::img(const char* img_path, char mode)
@@ -194,7 +152,7 @@ void KKD::img(const char* img_path, char mode)
         pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(Iref-wdata[i])/diff*255.0);
     }
     image_pixels(img_path, pixels, numpx, numpy);
-    printf("Image data stored in %s.\n", img_path);
+    printf("[INFO] Image data for kinematic Kikuchi pattern stored in %s.\n", img_path);
 }
 
 // KKD::KKD(const char *file_path)

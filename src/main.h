@@ -2,12 +2,15 @@
 #define __AAVDP_MAIN__
 #include "./MODEL/MODEL.h"
 #include "./XRD/XRD.h"
+#include "./SND/SND.h"
 #include "./SED/SED.h"
 #include "./KKD/KKD.h"
 #include "./DKD/DKD_MC.h"
 #include "./DKD/DKD.h"
 #include "./RDF/RDF.h"
 #include "./SSF/SSF.h"
+
+#define TYPE_INPUT_NUMBER 10
 
 extern double be_double(char str[]);
 extern bool is_parameter(char str[]);
