@@ -8,35 +8,24 @@
 #include "../HDF5/HDF5.h"
 #include "../MODEL/MODEL.h"
 
+#define SCATTERING_EVENT_NUMBER 300 //Number of scattering events along one trajectory
+#define CEN_TO_ANG 1.0e8
+
 using namespace std;
 
 class RNG 
 {
 public:
-    int ns=4;
-    int state[4];
-
-    void seed(int seed){
-        state[0]=seed;
-        for(int i=1;i<ns;i++){
-            state[i]=default_seed[i];
-        }
-    }
-
-    double uniform(){
-        int imz=state[0]-state[2];
-        if(imz<0){
-            imz+=2147483579;
-        }
-        state[0]=state[1];
-        state[1]=state[2];
-        state[2]=imz;
-        state[3]=69069*state[3]+1013904243;
-        imz+=state[3];
-        return 0.5+0.23283064e-9*imz;
-    }
+    RNG(const char *rand_path, int seed_num);
+    ~RNG();
+    void   seed(int id);
+    double random();
+    int count[10]={0};
 private:
-    int default_seed[4] = {521288629, 362436069, 16163801, 1131199299};
+    int nseed=0;
+    int **default_seeds=nullptr;
+    int ns=4;
+    int state[4]={0};
 };
 
 class DKD_MC
@@ -54,7 +43,10 @@ public:
     int    numpz;
 
     int    numEbin;//int((EkeV-Ehistmin)/Ebinsize)+1
+    double *Ebins=nullptr;
     int    numzbin;//int(depthmax/depthstep)+1
+    int    izmax;
+    double *depths;
     int    ***accum_E=nullptr;//Energy accumulator array in the modified Lambert projection
     int    ****accum_z=nullptr;//Depth accumulator array in the modified Lambert projection
     DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, double Emin, double Ebin, double zmax, double zstep, int num_e, int nump);
@@ -63,19 +55,19 @@ public:
     void   hdf5(const char *hdf5_path);
     void   img(const char *img_path, double dimension=6.0, int resolution=256);
 
-    int    izmax;
-    double *Ebins, *depths;
     void   set_energies_and_depths();
 private:
-    RNG rng;
-    int    prime_seed=932117;
-    int    multiplier=8;
+    const int  nseed=100;
+    const char *rand_path="RandomSeeds.data";
+    RNG   *rng;
     double ave_Z, ave_M, density;
-    void   compute(int &count, int seed=932117);
-    void   update_free_path(double &step, double &alpha, double E);
+    void   compute(int &count_bse, int &count_e, int ne, int id);
+    void   compute(int &count_e, int ne, int id);
+    void   update_free_path(double &step, double &alpha, double E, double E0);
     void   update_incident_energy(double &E, double step);
     void   update_incident_direction(double dir[3], double alpha);
     void   update_incident_coordinate(double xyz[3], double dir[3], double step);
+    void   compute_depth_distribution();
 };
 
 #endif

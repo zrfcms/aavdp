@@ -28,8 +28,6 @@
 #define SQRT_3_INVERSE 0.577350269190 //1/sqrt(3)
 #define SQRT_HALF_3 0.866025403780 //sqrt(3)/2
 
-#define SCATTERING_EVENT_NUMBER 500 //Number of scattering events along one trajectory
-#define CEN_TO_ANG 1.0E8
 #define ZERO 1e-12
 #define ONE 0.99999
 #define CONST_IN_AREA_INV 1.5273987E19 //1.0/(5.21E-21*(4*PI))
@@ -54,14 +52,6 @@ T min(T a, T b)
 extern void int_to_str(char str[], int num);
 extern void merge_path(char file_path[], char exts[][10], int num);
 extern void split_path(char name[], char ext[], const char file_path[]);
-
-extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
-extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
-extern void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym);
-extern int get_sextant(double x, double y);
-extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2]);
-extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
-extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius=1.0);
 // struct QUATERNION
 // {
 //     double c1, c2, c3, c4;
@@ -207,6 +197,16 @@ void matrix_multiply(T mat[3][3], T mat1[3][3], T mat2[3][3])
         }
     }
 }
+
+extern void LambertSphereToPlane(double xy[2], double normxyz[3]);
+extern void compute_sphere_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym);
+extern int get_sextant(double x, double y);
+extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius=1.0);
 
 template <typename T>
 extern void mallocate(T **data, int size);
