@@ -198,8 +198,6 @@ void matrix_multiply(T mat[3][3], T mat1[3][3], T mat2[3][3])
     }
 }
 
-extern void LambertSphereToPlane(double xy[2], double normxyz[3]);
-extern void compute_sphere_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym);

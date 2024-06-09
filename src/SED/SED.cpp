@@ -294,7 +294,7 @@ void SED::sed(const char *sed_path, int xaxis[3], int zaxis[3], double thickness
 
     int numi=0; 
     int *Kindice; callocate(&Kindice, numk, 0);
-    double ithreshold=intensity_max*threshold_ratio, imax=0.0;
+    double ithreshold=threshold_ratio, imax=0.0;
     double imt=thickness/2.0;
     for(int i=0;i<numk;i++){
         if(Kintensity[i]>ithreshold&&fabs(vector_dot(Kvectors[i], z))<imt){

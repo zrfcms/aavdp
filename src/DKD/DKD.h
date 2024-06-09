@@ -30,7 +30,7 @@ struct DKD_KNODE{
 class DKD_KVECTOR
 {
 public:
-    DKD_KVECTOR(CELL *cell, int nump);//Rosca-Lambert
+    DKD_KVECTOR(CELL *cell, int npx, int npy);//Rosca-Lambert
     ~DKD_KVECTOR();
     int    numk=0;
     double **karray;

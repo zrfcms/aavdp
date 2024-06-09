@@ -1,6 +1,31 @@
 #include "DKD_MC.h"
 
-RNG::RNG(const char *rand_path, int nseed)
+void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]) 
+{
+    ierr=0;
+    xy[0]=0.0; xy[1]=0.0;
+    if(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]<1.0e-8){
+        ierr=1;
+    }else{
+        double mag=sqrt(xyz[0]*xyz[0] + xyz[1]*xyz[1] + xyz[2]*xyz[2]);
+        xyz[0]=xyz[0]/mag; xyz[1]=xyz[1]/mag; xyz[2]=xyz[2]/mag;
+        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
+            double q;
+            if((fabs(xyz[1])<=fabs(xyz[0]))&&(fabs(xyz[0])>1.0e-8)){
+                q=fabs(xyz[0])/xyz[0]*sqrt(2.0*(1.0+xyz[2]));
+                xy[0]=q*PI_SQRT_HALF; 
+                xy[1]=q*atan(xyz[1]/xyz[0])/PI_SQRT_HALF;
+            }else if(fabs(xyz[1])>1.0e-8){
+                q=fabs(xyz[1])/xyz[1]*sqrt(2.0*(1.0+xyz[2]));
+                xy[0]=q*atan(xyz[0]/xyz[1])/PI_SQRT_HALF; 
+                xy[1]=q*PI_SQRT_HALF;
+            }
+        }
+    }
+    xy[0]=xy[0]/PI_HALF_SQRT; xy[1]=xy[1]/PI_HALF_SQRT;
+}
+
+RNG::RNG(int nseed)
 {
     this->nseed=nseed;
     callocate_2d(&this->default_seeds, this->nseed, this->ns, 0);
@@ -54,11 +79,15 @@ double RNG::random(){
 
 DKD_MC::DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, double Emin, double Ebin, double zmax, double zstep, int num_e, int nump)
 {
+    CELL cell(hdf5_path);
+    this->ave_M=cell.ave_M; 
+    this->ave_Z=cell.ave_Z;
+    this->density=cell.density;
+
     this->omega=omega; this->sigma=sigma;
     this->EkeV=Emax; this->Ehistmin=Emin; this->Ebin=Ebin;
     this->depthmax=zmax; this->depthstep=zstep;
     this->num_e=num_e; this->nump=nump;
-
     this->numEbin=int((EkeV-Ehistmin)/Ebin)+1;
     callocate(&this->Ebins, this->numEbin, 0.0);
     for(int i=0;i<this->numEbin;i++){
@@ -67,235 +96,31 @@ DKD_MC::DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, d
     this->numzbin=int(depthmax/depthstep)+1;
     this->numpz=(nump-1)/10+1;
 
-    CELL cell(hdf5_path);
-    this->ave_M=cell.ave_M; 
-    this->ave_Z=cell.ave_Z;
-    this->density=cell.density;
-
     callocate_3d(&this->accum_E, this->numEbin, this->nump, this->nump, 0);
     callocate_4d(&this->accum_z, this->numEbin, this->numzbin, this->numpz, this->numpz, 0);
-    rng=new RNG(rand_path, nseed);
-    int ebin=int(ceil(double(num_e)/double(nseed)));
+    rng=new RNG(nbatch);
+    int ebin=int(ceil(double(num_e)/double(nbatch)));
     int count_bse=0, count_e=0;
-    for(int i=0;i<this->nseed;i++){
+    for(int i=0;i<this->nbatch;i++){
         if((num_e-i*ebin)<ebin) ebin=num_e-i*ebin;
-        compute(count_e, ebin, i);
+        this->compute(count_bse, count_e, ebin, i);
     }
-    printf("%d\n", count_e);
-    count_bse=0;
+    this->compute_depth_distribution();
     for(int iE=0;iE<this->numEbin;iE++){
         int nmax=0, nmin=1e8, x, y;
         for(int ix=0;ix<this->nump;ix++){
             for(int iy=0;iy<this->nump;iy++){
                 if(nmax<this->accum_E[iE][ix][iy]) nmax=this->accum_E[iE][ix][iy];
                 if(nmin>this->accum_E[iE][ix][iy]) nmin=this->accum_E[iE][ix][iy];
-                count_bse+=this->accum_E[iE][ix][iy];
             }
         }
-        printf("[INFO] Range of back-scattered electron %d distribution at energy %.5f: %d, %d\n", count_bse, this->Ebins[iE], nmin, nmax);
-    }
-}
-
-void DKD_MC::compute(int &count_e, int ne, int id)
-{
-    rng->seed(id);
-    int imp=nump/2, imz=numpz/2;
-    double dir_cos[3];    
-    int counter1, counter2;
-    double c_new[3], r_new[3];
-    double E_new, alpha, de_ds, phi, psi, mfp,sig_eNA,step, dsq, dsqi, absc0z;
-    double sig=sigma;
-    double z=ave_Z, A=ave_M, rho=density;
-    
-    double J;    // refer to Monte Carlo simulation for Electron Microscopy and Microanalysis, David C. Joy
-    J = (9.76*z + 58.5*pow(z,-0.19))*1e-3;
-    
-    // double r0[3] = {0.0, 0.0, 0.0};
-    // double c0[3] = {cos(omega)*sin(sig), sin(omega)*sin(sig), cos(sig)};
-    double escape_depth;
-
-
-// Setting all values to -10. Any value other than -10 will denote a backscattered electron with the x and y component of the Lambert Projection
-
-    int num_el=ne;
-    double *Lamx, *Lamy, *depth, *energy;
-    callocate(&Lamx, num_el, -10.0);
-    callocate(&Lamy, num_el, -10.0);
-    callocate(&depth, num_el, 10.0);
-    callocate(&energy, num_el, 0.0);
-	// for (int i = 0; i < num_el; ++i){
-	// 	Lamx[num_el*id + i] = -10.0f;
-	// 	Lamy[num_el*id + i] = -10.0f;
-    //     	depth[num_el*id + i] = 10.0f;
-    //     	energy[num_el*id + i] = 0.0f;
-	// }
-
-    
-    
-    double E=EkeV;
-    double rand;
-    double rtemp[3];
-    for (int i = 0; i < num_el; ++i){
-        //rand_seed = rando();
-        //seed = rand_seed;
-        // z11 = seeds[4*id];
-        // z22 = seeds[4*id + 1];
-        // z33 = seeds[4*id + 2];
-        // z44 = seeds[4*id + 3];
-        // retrnd = lfsr113_Bits(z11,z22,z33,z44);
-        // seeds[4*id] = retrnd.z1;
-        // seeds[4*id + 1] = retrnd.z2;
-        // seeds[4*id + 2] = retrnd.z3;
-        // seeds[4*id + 3] = retrnd.z4;
-        // rand = fabs(retrnd.rand/RAND_MAX); //some random no. generator in gpu
-        rand=rng->random();
-        double r0[3] = {0.0, 0.0, 0.0};
-        double c0[3] = {cos(omega*DEG_TO_RAD)*sin(sig*DEG_TO_RAD), sin(omega*DEG_TO_RAD)*sin(sig*DEG_TO_RAD), cos(sig*DEG_TO_RAD)};
-        E_new = E;
-        vector_copy(c_new, c0);
-        escape_depth = 0.0;
-
-        // alpha = (3.4E-3)*pow(z,0.66667)/E_new;
-        // sig_eNA = (5.21 * 602.2)*z*z/E_new/E_new*4.0*PI/alpha/(1.0+alpha)*pow(E_new+511.0,2.0)/pow(E+1022.0,2.0);
-        // mfp = A * 1.0e7/(rho*sig_eNA);
-        // step = -mfp * log(rand);
-        update_free_path(step, alpha, E_new, E);
-
-        // vector_constant(rtemp, step, c_new);
-        // vector_plus(r_new, r0, rtemp);
-        // vector_copy(r0, r_new);
-        update_incident_coordinate(r0, c_new, step);
-        // de_ds = -0.00785*(z/(A*E_new)) * log(1.166*E_new/J + 0.9911);
-        // E_new += step*rho*de_ds;
-        update_incident_energy(E_new, step);
-
-        counter1 = 0;   // This is used as a counter for the number of monte carlo steps to carry out for each electron. This is due to the lock step nature of the GPU code. We have arbitly set this to a 1000, though this is material dependent
-        
-        counter2 = 0;   // This counter is used to figure out if the electron has left the sample or not. Again, this is because of the lock step nature. All steps have to be executed on each thread irrespective of the fact that the electron may have actually left the sample
-        int steps=300;
-        while (counter1 < steps){
-// inline code rather than function call
-// Taken from book Monte Carlo simulation for Electron Microscopy and Microanalysis, David C. Joy
-
-            // alpha = (3.4e-3)*pow(z,0.66667)/E_new;
-            // sig_eNA = (5.21f * 602.2)*z*z/E_new/E_new*4.0*PI/alpha/(1.0+alpha)*pow(E_new+511.0,2.0)/pow(E+1022.0,2.0);
-   	        // mfp = A * 1.0e7f/(rho*sig_eNA);
-
-            // // z11 = seeds[4*id];
-            // // z22 = seeds[4*id + 1];
-            // // z33 = seeds[4*id + 2];
-            // // z44 = seeds[4*id + 3];
-            // // retrnd = lfsr113_Bits(z11,z22,z33,z44);
-            // // seeds[4*id] = retrnd.z1;
-            // // seeds[4*id + 1] = retrnd.z2;
-            // // seeds[4*id + 2] = retrnd.z3;
-            // // seeds[4*id + 3] = retrnd.z4;
-            // // rand = fabs(retrnd.rand/RAND_MAX); //some random no. generator in gpu
-            // rand=rng->random();
-            // step = -mfp * log(rand);
-            update_free_path(step, alpha, E_new, E);
-
-// This is the Continuous Slowing Down approximation that we want to get rid of
-
-            //de_ds = -0.00785*(z/(A*E_new)) * log(1.166*E_new/J + 0.9911);
-
-            // z11 = seeds[4*id];
-            // z22 = seeds[4*id + 1];
-            // z33 = seeds[4*id + 2];
-            // z44 = seeds[4*id + 3];
-            // retrnd = lfsr113_Bits(z11,z22,z33,z44);
-            // seeds[4*id] = retrnd.z1;
-            // seeds[4*id + 1] = retrnd.z2;
-            // seeds[4*id + 2] = retrnd.z3;
-            // seeds[4*id + 3] = retrnd.z4;
-            // rand = fabs(retrnd.rand/RAND_MAX);
-            // rand=rng->random();
-            // phi = acos(1.0 - ((2.0*alpha*rand)/(1.0 + alpha - rand)));
-
-            // z11 = seeds[4*id];
-            // z22 = seeds[4*id + 1];
-            // z33 = seeds[4*id + 2];
-            // z44 = seeds[4*id + 3];
-            // retrnd = lfsr113_Bits(z11,z22,z33,z44);
-            // seeds[4*id] = retrnd.z1;
-            // seeds[4*id + 1] = retrnd.z2;
-            // seeds[4*id + 2] = retrnd.z3;
-            // seeds[4*id + 3] = retrnd.z4;
-            // rand = fabs(retrnd.rand/RAND_MAX);
-//             rand=rng->random();
-//             psi = 2.0*PI*rand;
-            
-            
-// // new direction cosines of the electrons after scattering event
-//             if ((c0[2] >= 0.99999) || (c0[2] <= -0.99999) ){
-//                 absc0z = fabs(c0[2]);
-//                 c_new[0]=sin(phi) * cos(psi);
-//                 c_new[1]=sin(phi) * sin(psi);
-//                 c_new[2]=(c0[2]/absc0z)*cos(phi);
-//             }else{
-//                 dsq = sqrt(1.0-c0[2]*c0[2]);
-//                 dsqi = 1.0/dsq;
-//                 c_new[0]=sin(phi)*(c0[0]*c0[2]*cos(psi) - c0[1]*sin(psi))*dsqi + c0[0]*cos(phi);
-//                 c_new[1]=sin(phi) * (c0[1] * c0[2] * cos(psi) + c0[0] * sin(psi)) * dsqi + c0[1] * cos(phi);
-//                 c_new[2]=-sin(phi) * cos(psi) * dsq + c0[2] * cos(phi);
-//             }
-            update_incident_direction(c_new, alpha);
-
-            if (fabs(c_new[2]) > 1.0e-5){
-                escape_depth = r_new[2]/c_new[2];
-            }
-
-            // vector_constant(rtemp, step, c_new);
-            // vector_plus(r_new, r0, rtemp);
-            // vector_copy(r0, r_new);
-            update_incident_coordinate(r0, c_new, step);
-            vector_copy(c0, c_new);
-            //E_new += step*rho*de_ds;
-            update_incident_energy(E_new, step);
-            if (r0[2] <= 0 && counter2 == 0){
-                dir_cos[0] = c0[0];
-                dir_cos[1] = c0[1];
-                dir_cos[2] = c0[2];
-                double ret[2];
-                int ierr;
-                if(dir_cos[0] != 0.0 && dir_cos[1] != 0.0 &&dir_cos[2] != 0.0){
-                    LambertSphereToPlane(ret, dir_cos);
-                }
-                count_e++;
-                Lamx[i]=ret[0]; Lamy[i]=ret[1];
-                depth[i]=escape_depth;
-                // Lamx[num_el*id + i] = ret.x;
-                // Lamy[num_el*id + i] = ret.y;
-                depth[i] = escape_depth;
-                energy[i] = E_new;
-                counter2 = 1;
-                int ipx=int(round(ret[1]*imp)), ipy=int(round(-ret[0]*imp));
-                if(abs(ipx)>imp||abs(ipy)>imp) printf("%d %d\n", ipx, ipy);
-                if(abs(ipx)<=imp&&abs(ipy)<=imp){
-                    if(E_new>Ehistmin){
-                        int iE=round((E_new-Ehistmin)/Ebin);
-                        int iz=round(fabs(escape_depth)/depthstep);
-                        accum_E[iE][ipx+imp][ipy+imp]++;
-                        //if(ipx+imp==54&&ipy+imp==1) printf("%.5f %.5f %.5f %.5f %.5f\n", dxy[0], dxy[1], dir[0], dir[1], dir[2]);
-                        if((iz>=0)&&(iz<numzbin)){
-                            ipx=int(round(ipx/10.0));
-                            ipy=int(round(ipy/10.0));
-                            accum_z[iE][iz][ipx+imz][ipy+imz]++;
-                        }
-                    }
-                }
-            }
-			
-            counter1++ ;
-            
-        }
-        
+        printf("[INFO] Range of back-scattered electron distribution at energy %.5f: %d, %d\n", this->Ebins[iE], nmin, nmax);
     }
 }
 
 void DKD_MC::compute(int &count_bse, int &count_e, int ne, int id)
 {
-    //printf("[INFO] Starting computation %d of spatial and energy distributions of back-scattered electrons...\n", id+1);
+    printf("[INFO] Starting computation %d of spatial and energy distributions of back-scattered electrons...\n", id+1);
     double dirx=cos(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD);
     double diry=sin(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD);
     double dirz=cos(sigma*DEG_TO_RAD);
@@ -318,18 +143,16 @@ void DKD_MC::compute(int &count_bse, int &count_e, int ne, int id)
             update_incident_direction(dir, alpha);
             update_incident_coordinate(xyz, dir, step);
             update_incident_energy(E, step);
-
             if(xyz[2]<=0.0){//Determine whether the electron exit the crystal
                 double dxy[2]; int ierr;
-                compute_sphere_Lambert(dxy, ierr, dir);  //Coordinate in the Lambert projection
+                compute_Lambert_Projection(dxy, ierr, dir);  //Coordinate in the Lambert projection
                 if(ierr==1){
-                    printf("[ERROR] Zero direction");
+                    printf("[ERROR] Zero electron direction in the Monte Carlo simulation");
                     exit(EXIT_FAILURE);
                 }
                 dxy[0]*=(double)imp; dxy[1]*=(double)imp;
                 int ipx=int(round(dxy[1])), ipy=int(round(-dxy[0]));
                 if(abs(ipx)<=imp&&abs(ipy)<=imp){
-                    count_e++;
                     if(E>Ehistmin){
                         int iE=round((E-Ehistmin)/Ebin);
                         int iz=round(fabs(xyz[2]/dir[2])/depthstep);
@@ -347,9 +170,10 @@ void DKD_MC::compute(int &count_bse, int &count_e, int ne, int id)
             jt++;
         }
     }
-    // printf("[INFO] Completed incident electrons %d of %d\n", count_e, num_e);
-    // printf("[INFO] Back-scattered electrons hits = %d\n", count_bse);
-    // printf("[INFO] Ending computation %d of spatial and energy distributions of back-scattered electrons\n", id+1);
+    count_e+=ne;
+    printf("[INFO] Completed incident electrons %d of %d\n", count_e, num_e);
+    printf("[INFO] Back-scattered electrons hits = %d\n", count_bse);
+    printf("[INFO] Ending computation %d of spatial and energy distributions of back-scattered electrons\n", id+1);
 }
 
 void DKD_MC::compute_depth_distribution()
@@ -375,7 +199,6 @@ void DKD_MC::compute_depth_distribution()
     }
 }
 
-//Set the free path for the energy and scale it by a random number
 void DKD_MC::update_free_path(double &step, double &alpha, double E, double E0)
 {
     alpha=3.4e-3*pow(ave_Z, 0.66666667)/E;
@@ -439,6 +262,9 @@ DKD_MC::DKD_MC(const char *hdf5_path)
     hdf.read("/MonteCarlo/EnergyBinNumber", numEbin);
     hdf.read("/MonteCarlo/DepthStepNumber", numzbin);
     hdf.read("/MonteCarlo/DepthPixelNumber", numpz);
+    hdf.read("/MonteCarlo/MaximumDepthIndex", izmax);
+    hdf.read_array("/MonteCarlo/EnergyDistribution", &Ebins, size1);
+    hdf.read_array("/MonteCarlo/DepthDistribution", &depths, size1);
     hdf.read_array_3d("/MonteCarlo/EnergyProjectionArray", &aaccum_E, size1, size2, size3);
     hdf.read_array_4d("/MonteCarlo/DepthProjectionArray", &aacum_z, size1, size2, size3, size4);
     // hdf.read("/NMLparameters/MCCLNameList/omega", omega);
@@ -519,6 +345,9 @@ void DKD_MC::hdf5(const char *hdf5_path)
     hdf.write("/MonteCarlo/EnergyBinNumber", numEbin);
     hdf.write("/MonteCarlo/DepthStepNumber", numzbin);
     hdf.write("/MonteCarlo/DepthPixelNumber", numpz);
+    hdf.write("/MonteCarlo/MaximumDepthIndex", izmax);
+    hdf.write_array("/MonteCarlo/EnergyDistribution", Ebins, numEbin);
+    hdf.write_array("/MonteCarlo/DepthDistribution", depths, numEbin);
     hdf.write_array_3d("/MonteCarlo/EnergyProjectionArray", aaccum_E, nump, nump, numEbin);
     hdf.write_array_4d("/MonteCarlo/DepthProjectionArray", aacum_z, numpz, numpz, numzbin, numEbin);
     hdf.close();
@@ -551,12 +380,6 @@ void DKD_MC::img(const char *img_path, double dimension, int resolution)
         image_array(png_path, accum_E[i], nump, nump, dimension, dimension, resolution);
         printf("Image data for energy %.5f stored in %s.\n", E, png_path);
     }
-}
-
-
-void DKD_MC::set_energies_and_depths()
-{
-
 }
 
 // void DKD_MC::compute(int &count, int seed)

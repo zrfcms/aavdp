@@ -1,34 +1,223 @@
 #include "DKD.h"
 
-DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int nump)
+bool is_in_hexagonal_grid(double xy[2])
 {
-    double delta=1.0/double(nump);
+    double x=fabs(xy[0]-0.5*xy[1]);
+    double y=fabs(SQRT_HALF_3*xy[1]);
+    if(x>1.0||y>SQRT_HALF_3) return false;
+    if(x+y*SQRT_3_INVERSE>1.0) return false;
+    return true;
+}
+
+DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
+{
+    double delta=1.0/double(npx);
     double kn=1.0/cell->fouri0.lambda;
     double xy[2];
     add_k_vector(cell, xy, kn);
     switch(cell->sampling_type)
     {
-    case 7:
-        for(int i=0;i<=nump;i++){
+    case 1://triclinic 1
+        for(int j=-npy;j<=npy;j++){
+            for(int i=-npx;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j, true);
+            }
+        }
+        break;
+    case 2://triclinic -1
+        for(int j=-npy;j<=npy;j++){
+            for(int i=-npx;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j);
+            }
+        }
+        break;
+    case 3://monoclinic 2
+        for(int j=-npy;j<=npy;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j, true);
+            }
+        }
+        break;
+    case 4://monoclinic m
+        for(int j=0;j<=npy;j++){
+            for(int i=-npx;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j, true);
+            }
+        }
+        break;
+    case 5://monoclinic 2/m, orthorhombic 222, mm2, tetragonal 4, -4
+        for(int j=0;j<=npy;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j, true);
+            }
+        }
+        break;
+    case 6://orthorhombic mmm, tetragonal 4/m, 422, -4m2, cubic m-3, 432
+        for(int j=0;j<=npy;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                add_k_vector(cell, xy, kn, i, j);
+            }
+        }
+        break;
+    case 7://tetragonal 4mm
+        for(int i=0;i<=npx;i++){
             for(int j=0;j<=i;j++){
                 xy[0]=i*delta; xy[1]=j*delta;
                 add_k_vector(cell, xy, kn, i, j, true);
             }
         }
         break;
-    case 8:
-        for(int i=0;i<=nump;i++){
+    case 8://tetragonal -42m, cubic -43m
+        for(int i=0;i<=npx;i++){
             for(int j=-i;j<=i;j++){
                 xy[0]=i*delta; xy[1]=j*delta;
                 add_k_vector(cell, xy, kn, i, j);
             }
         }
         break;
-    case 9:
-        for(int i=0;i<=nump;i++){
+    case 9://tetragonal 4/mmm, cubic m-3m
+        for(int i=0;i<=npx;i++){
             for(int j=0;j<=i;j++){
                 xy[0]=i*delta; xy[1]=j*delta;
                 add_k_vector(cell, xy, kn, i, j);
+            }
+        }
+        break;
+    case 10://hexagonal 3
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j, true);
+                }
+            }
+        }
+        break;
+    case 11://rhombohedral 3
+        printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+        exit(EXIT_FAILURE);
+    case 12://hexagonal -3, 321, -6 [not implemented: rhombohedral 32]
+        if(cell->is_trigonal&&cell->is_second_setting){
+            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+            exit(EXIT_FAILURE);
+        }
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
+            }
+        }
+    case 13://hexagonal 312 [not implemented: rhombohedral -3]
+        if(cell->is_trigonal&&cell->is_second_setting){
+            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+            exit(EXIT_FAILURE);
+        }
+        for(int j=0;j>=-npx;j--){
+            for(int i=j/2;i<npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
+            }
+        }
+        for(int i=0;i<=npx;i++){
+            for(int j=0;j<i/2;j++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
+            }
+        }
+        break;
+    case 14://hexagonal 3m1 [not implemented: rhombohedral 3m]
+        if(cell->is_trigonal&&cell->is_second_setting){
+            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+            exit(EXIT_FAILURE);
+        }
+        for(int j=1;j<=npx;j++){
+            for(int i=j;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j, true);
+                }
+            }
+        }
+        break;
+    case 15://hexagonal 31m, 6
+        for(int j=1;j<=npx;j++){
+            for(int i=j;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j, true);
+                }
+            }
+        }
+        break;
+    case 16://hexagonal -3m1, 622, -6m2 [not implemented: rhombohedral -3m]
+        if(cell->is_trigonal&&cell->is_second_setting){
+            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+            exit(EXIT_FAILURE);
+        }
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                double x=double(i)-double(j)/2.0;
+                double y=double(j)*SQRT_HALF_3;
+                if((x<0.0)||((x>=0.0)&&(atan2(y, x)<(PI/6.0-1.0e-4)))){
+                    continue;
+                }else if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
+            }
+        }
+        break;
+    case 17://hexagonal -31m, 6/m, -62m
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                double x=double(i)-double(j)/2.0;
+                double y=double(j)*SQRT_HALF_3;
+                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/3.0+1.0e-4)))){
+                    continue;
+                }else if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
+            }
+        }
+        break;
+    case 18://hexagonal 6mm
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                double x=double(i)-double(j)/2.0;
+                double y=double(j)*SQRT_HALF_3;
+                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
+                    continue;
+                }else if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j, true);
+                }
+            }
+        }
+        break;
+    case 19:
+        for(int j=0;j<=npx;j++){
+            for(int i=0;i<=npx;i++){
+                xy[0]=i*delta; xy[1]=j*delta;
+                double x=double(i)-double(j)/2.0;
+                double y=double(j)*SQRT_HALF_3;
+                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
+                    continue;
+                }else if(is_in_hexagonal_grid(xy)){
+                    add_k_vector(cell, xy, kn, i, j);
+                }
             }
         }
         break;
@@ -246,7 +435,6 @@ lapack_complex_double to_lapack_complex(complex<double> c){
 DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, double c_sg)
 {
     DKD_MC mc(hdf5_path);
-    mc.set_energies_and_depths();
     nump=mc.nump; numEbin=mc.numEbin;
 
     CELL cell(hdf5_path);
@@ -278,8 +466,8 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
         double *lambdaE; mallocate(&lambdaE, mc.izmax);
         for(int iz=0;iz<mc.izmax;iz++){
             int sum_z=0;
-            for(int ix=0;ix<mc.numz;ix++){
-                for(int iy=0;iy<mc.numz;iy++){
+            for(int ix=0;ix<mc.numpz;ix++){
+                for(int iy=0;iy<mc.numpz;iy++){
                     sum_z+=mc.accum_z[iE][iz][ix][iy];
                 }
             }
@@ -287,7 +475,7 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
         }
 
         //create the incident beam direction list
-        DKD_KVECTOR kvec(&cell, imp);
+        DKD_KVECTOR kvec(&cell, imp, imp);
         printf("Independent beam directions to be considered = %d\n", kvec.numk);
 
         //create the master reflection list
@@ -375,6 +563,7 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
                         printf("[ERROR] Unable to compute hexagonal Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
                         exit(EXIT_FAILURE);
                     }
+                    xy[0]*=double(imp); xy[1]*=double(imp);
                     int ix=int(xy[0]), iy=int(xy[1]);
                     int ixp=ix+1, iyp=iy+1;
                     if(ixp>imp) ixp=ix;
@@ -382,10 +571,11 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
                     double dx=xy[0]-ix, dy=xy[1]-iy;
                     double dxm=1.0-dx, dym=1.0-dy;
                     ixp+=imp; iyp+=imp; ix+=imp; iy+=imp;
+                    int idx=i+imp, idy=j+imp;
                     for(int k=0;k<napos;k++){
-                        mLPNH[k][0][i][j]=auxNH[k][0][ix][iy]*dxm*dym+auxNH[k][0][ixp][iy]*dx*dym+
+                        mLPNH[k][0][idx][idy]=auxNH[k][0][ix][iy]*dxm*dym+auxNH[k][0][ixp][iy]*dx*dym+
                                           auxNH[k][0][ix][iyp]*dxm*dy+auxNH[k][0][ixp][iyp]*dx*dy;
-                        mLPSH[k][0][i][j]=auxSH[k][0][ix][iy]*dxm*dym+auxSH[k][0][ixp][iy]*dx*dym+
+                        mLPSH[k][0][idx][idy]=auxSH[k][0][ix][iy]*dxm*dym+auxSH[k][0][ixp][iy]*dx*dym+
                                           auxSH[k][0][ix][iyp]*dxm*dy+auxSH[k][0][ixp][iyp]*dx*dy;
                     }
                 }

@@ -553,7 +553,7 @@ void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequi
             }
         }
         bool is_new=true;
-        for(int j=0;j<nequiv;i++){
+        for(int j=0;j<nequiv;j++){
             double diff=0.0;
             for(int k=0;k<3;k++){
                 diff+=fabs(equiv[j][k]-s[k]);

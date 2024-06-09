@@ -102,71 +102,14 @@ void compute_square_Lambert(double xy[2], int &ierr, double xyz[3])
     xy[0]=xy[0]/PI_HALF_SQRT; xy[1]=xy[1]/PI_HALF_SQRT;
 }
 
-void compute_sphere_Lambert(double xy[2], int &ierr, double xyz[3]) 
-{
-    ierr=0;
-    xy[0]=0.0; xy[1]=0.0;
-    if(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]<1.0e-8){
-        ierr=1;
-    }else{
-        double mag=sqrt(xyz[0]*xyz[0] + xyz[1]*xyz[1] + xyz[2]*xyz[2]);
-        xyz[0]=xyz[0]/mag; xyz[1]=xyz[1]/mag; xyz[2]=xyz[2]/mag;
-        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
-            double q;
-            if((fabs(xyz[1])<=fabs(xyz[0]))&&(fabs(xyz[0])>1.0e-8)){
-                q=fabs(xyz[0])/xyz[0]*sqrt(2.0*(1.0+xyz[2]));
-                xy[0]=q*PI_SQRT_HALF; 
-                xy[1]=q*atan(xyz[1]/xyz[0])/PI_SQRT_HALF;
-            }else if(fabs(xyz[1])>1.0e-8){
-                q=fabs(xyz[1])/xyz[1]*sqrt(2.0*(1.0+xyz[2]));
-                xy[0]=q*atan(xyz[0]/xyz[1])/PI_SQRT_HALF; 
-                xy[1]=q*PI_SQRT_HALF;
-            }
-        }
-    }
-    xy[0]=xy[0]/PI_HALF_SQRT; xy[1]=xy[1]/PI_HALF_SQRT;
-}
-
-void LambertSphereToPlane(double xy[2], double normxyz[3]){
-    double q, LPssPi2, LPssPio2;
-    LPssPi2 = 0.886226925452758;
-    LPssPio2 = 1.253314137315500;
-    double xyz[3];
-    double mag = sqrt(normxyz[0]*normxyz[0] + normxyz[1]*normxyz[1] + normxyz[2]*normxyz[2]);
-    xyz[0] = normxyz[0]/mag;
-    xyz[1] = normxyz[1]/mag;
-    xyz[2] = normxyz[2]/mag;
-    if(fabs(xyz[2]) == 1.0){
-        xy[0] = 0.0;
-        xy[1] = 0.0;
-    }
-    else {
-        if (fabs(xyz[1]) <= fabs(xyz[0]) && (xyz[0] != 0.0)){
-            q = (fabs(xyz[0])/xyz[0]) * sqrt(2.0*(1.0 + xyz[2]));
-            xy[0] = q * LPssPi2;
-            xy[1] = q * atan(xyz[1]/xyz[0])/LPssPi2;
-        }
-        else{
-            if (xyz[1] != 0.0){
-                q = (fabs(xyz[1])/xyz[1]) * sqrt(2.0*(1.0 + xyz[2]));
-                xy[0] = q * atan(xyz[0]/xyz[1])/LPssPi2;
-                xy[1] = q * LPssPi2;
-            }
-        }
-        
-    }
-    xy[0] = xy[0]/LPssPio2;
-    xy[1] = xy[1]/LPssPio2; 
-}
-
 void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
 {
     ierr=0;
     double cxy[2]={0.0, 0.0};
-    if(fabs(1.0-(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]))>1e-12){
+    if(fabs(1.0-(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]))>1.0e-8){
         ierr=1;
     }else{
-        if(1.0!=fabs(xyz[2])){
+        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
             double q0=sqrt(2.0/(1.0+fabs(xyz[2]))), q;
             double x0=q0*xyz[1]+1.0e-4, y0=q0*xyz[0]+1.0e-4;
             double len=sqrt(x0*x0+y0*y0);
@@ -181,7 +124,7 @@ void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
             case 3:
                 q0=PI_PREE*len;
                 x=PI_HALF_SQRT*q0;
-                if(0.0==x0){
+                if(fabs(x0)<1.0e-8){
                     y=PI_PREF*PI*0.5;
                 }else{
                     y=PI_PREF*q0*atan(y0/x0);

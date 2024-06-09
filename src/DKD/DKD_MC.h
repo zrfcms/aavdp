@@ -12,16 +12,17 @@
 #define CEN_TO_ANG 1.0e8
 
 using namespace std;
+extern void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]);
 
 class RNG 
 {
 public:
-    RNG(const char *rand_path, int seed_num);
+    RNG(int nseed=100);
     ~RNG();
     void   seed(int id);
     double random();
-    int count[10]={0};
 private:
+    const char *rand_path="RandomSeeds.data";
     int nseed=0;
     int **default_seeds=nullptr;
     int ns=4;
@@ -53,16 +54,12 @@ public:
     DKD_MC(const char* hdf5_path);
     ~DKD_MC();
     void   hdf5(const char *hdf5_path);
-    void   img(const char *img_path, double dimension=6.0, int resolution=256);
-
-    void   set_energies_and_depths();
+    void   img(const char *img_path, double dimension=6.0, int resolution=512);
 private:
-    const int  nseed=100;
-    const char *rand_path="RandomSeeds.data";
     RNG   *rng;
+    const int nbatch=100;
     double ave_Z, ave_M, density;
     void   compute(int &count_bse, int &count_e, int ne, int id);
-    void   compute(int &count_e, int ne, int id);
     void   update_free_path(double &step, double &alpha, double E, double E0);
     void   update_incident_energy(double &E, double step);
     void   update_incident_direction(double dir[3], double alpha);
