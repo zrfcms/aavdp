@@ -353,7 +353,7 @@ void DKD_MC::hdf5(const char *hdf5_path)
     hdf.close();
     deallocate_3d(aaccum_E, nump, nump);
     deallocate_4d(aacum_z, numpz, numpz, numzbin);
-    printf("Monte-carlo data stored in %s.\n", hdf5_path);
+    printf("[INFO] Monte-carlo data stored in %s.\n", hdf5_path);
 }
 
 void DKD_MC::img(const char *img_path, double dimension, int resolution)
@@ -378,7 +378,7 @@ void DKD_MC::img(const char *img_path, double dimension, int resolution)
             }
         }
         image_array(png_path, accum_E[i], nump, nump, dimension, dimension, resolution);
-        printf("Image data for energy %.5f stored in %s.\n", E, png_path);
+        printf("[INFO] Image data for energy %.5f stored in %s.\n", E, png_path);
     }
 }
 

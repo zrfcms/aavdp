@@ -1,6 +1,7 @@
 /doc
 /EBSD/*.d
 /EBSD/*.o
+/examples/test
 *.o
 *.d
 *.exe

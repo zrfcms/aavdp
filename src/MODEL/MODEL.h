@@ -60,18 +60,19 @@ struct FOURIER0
 class CELL
 {
 public:
-    int    point_group;
-    char   point_group_symbol[6];
+    char   crystal_system[20];
+    char   centering;//P, F, I, A, B, C, R, forming Bravais lattice combined with crystal system
+    int    hall_number;
     int    space_group;//number between 1 and 230 using the International Tables for Crystallography, Volume A
     char   space_group_symbol[11];
-    int    hall_number;
-    char   centering;//P, F, I, A, B, C, R, forming Bravais lattice combined with crystal system
+    int    point_group;
+    char   point_group_symbol[6];
     int    sampling_type;
-    bool   is_second_setting=false;
     bool   is_trigonal=false;
     bool   is_hexagonal=false;//determine whether to use hexagonal indices
+    bool   use_hexagonal=false;
 
-    double lattice[3][3];
+    double a0, b0, c0, alpha, beta, gamma;
     double vol;
     double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
     double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
@@ -102,8 +103,8 @@ public:
     double length(double v[3], char space='r');
     double angle(double v1[3], double v2[3], char space='r');
     void   normalize(double n_v[3], double v[3], char space='r');
-    void   cartesian(double c_v[3], double v[3]);//from reciprocal
-    void   reciprocal(double r_v[3], double v[3]);//from cartesian
+    void   reciprocal_to_cartesian(double c_v[3], double v[3]);//from reciprocal
+    void   cartesian_to_reciprocal(double r_v[3], double v[3]);//from cartesian
     void   compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space='r');
     void   apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int nump);
 
@@ -122,11 +123,11 @@ public:
     void   update_Fourier_coefficient(double voltage, double g[3], bool is_shift=false);
     void   update_Fourier_coefficient0(double voltage);
 private:
+    void   set_sampling_type(int sgnum, int pgnum);
+    void   compute_lattice_matrices(double lat[3][3]);
+    void   compute_symmetry_matrices(int sgnum, int (*rots)[3][3], double (*trans)[3], int noperation);
     void   compute_asymmetric_atomic_positions(double (*atom_pos)[3], int *atom_type, int natom);
     void   compute_atomic_density();
-    void   set_sampling_type();
-    void   compute_lattice_matrices();
-    void   compute_point_symmetry_matrices();
 
     complex<double> get_scattering_amplitude(double G, double U, int Z, double V);
     double get_Debye_Waller_factor(double G, double U);

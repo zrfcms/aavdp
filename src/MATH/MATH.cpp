@@ -24,7 +24,7 @@ void int_to_str(char str[], int num)
     } 
 }
 
-void merge_path(char file_path[], char exts[][10], int num)
+void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num)
 {
     for(int i=0;i<num;i++){
         strcat(file_path, exts[i]);
@@ -42,51 +42,14 @@ void split_path(char name[], char ext[], const char file_path[])
     }
 }
 
-// QUATERNION quate_conjg(QUATERNION q)
-// {
-//     QUATERNION qc={q.c1, -q.c2, -q.c3, -q.c4};
-//     return qc;
-// }
-
-// QUATERNION quate_multi(QUATERNION q1, QUATERNION q2)
-// {
-//     QUATERNION qm;
-//     double eps=1.0;
-//     qm.c1=q1.c1*q2.c1-q1.c2*q2.c2-q1.c3*q2.c3-q1.c4*q2.c4;
-//     qm.c2=q1.c1*q2.c2+q1.c2*q2.c1+eps*(q1.c3*q2.c4-q1.c4*q2.c3);
-//     qm.c3=q1.c1*q2.c3+q1.c3*q2.c1+eps*(q1.c4*q2.c2-q1.c2*q2.c4);
-//     qm.c4=q1.c1*q2.c4+q1.c4*q2.c1+eps*(q1.c2*q2.c3-q1.c3*q2.c2); 
-//     return qm;
-// }
-
-// void quate_rotate(double r_v[3], double v[3], QUATERNION q)
-// {
-//     QUATERNION qv={0.0, v[0], v[1], v[2]};
-//     QUATERNION r_qv=quate_multi(q, quate_multi(qv, quate_conjg(q)));
-//     r_v[0]=r_qv.c2; r_v[1]=r_qv.c3; r_v[2]=r_qv.c4; 
-// }
-
-// QUATERNION quate_convert(double v[3], double angle)
-// {
-//     QUATERNION q;
-//     if(fabs(angle)<1e-12){
-//         q.c1=1.0; q.c2=q.c3=q.c4=0.0;
-//     }else{
-//         double c=cos(0.5*angle);
-//         double s=sin(0.5*angle);
-//         q.c1=c; q.c2=s*v[0]; q.c3=s*v[1]; q.c4=s*v[2];
-//     }
-//     return q;
-// }
-
 void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]) 
 {
     ierr=0;
     xy[0]=0.0; xy[1]=0.0;
-    if(fabs(1.0-(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]))>1e-12){ //Check whether the xyz lies on the unit sphere
+    if(fabs(1.0-vector_dot(xyz, xyz))>1.0e-8){ //Check whether the xyz lies on the unit sphere
         ierr=1;
     }else{
-        if(1.0!=fabs(xyz[2])){
+        if(fabs(1.0-fabs(xyz[2]))>1.0e-8){
             double q;
             if(fabs(xyz[1])<=fabs(xyz[0])){
                 q=fabs(xyz[0])/xyz[0]*sqrt(2.0*(1.0-fabs(xyz[2])));
@@ -102,87 +65,30 @@ void compute_square_Lambert(double xy[2], int &ierr, double xyz[3])
     xy[0]=xy[0]/PI_HALF_SQRT; xy[1]=xy[1]/PI_HALF_SQRT;
 }
 
-void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
+void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2])
 {
     ierr=0;
-    double cxy[2]={0.0, 0.0};
-    if(fabs(1.0-(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]))>1.0e-8){
+    xyz[0]=xyz[1]=xyz[2]=0.0;
+    double cxy[2]={xy[0]*PI_HALF_SQRT, xy[1]*PI_HALF_SQRT};
+    if(fmax(fabs(cxy[0]), fabs(cxy[1]))>PI_HALF_SQRT){//make sure that the input point lies inside the square with half length PI_HALF_SQRT
         ierr=1;
     }else{
-        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
-            double q0=sqrt(2.0/(1.0+fabs(xyz[2]))), q;
-            double x0=q0*xyz[1]+1.0e-4, y0=q0*xyz[0]+1.0e-4;
-            double len=sqrt(x0*x0+y0*y0);
-            if(x0<0.0){
-                len=-len;
-            }
-            int sextant=get_sextant(x0, y0);
+        if(fmax(fabs(cxy[0]), fabs(cxy[1]))<1.0e-8){
+            xyz[2]=1.0;
+        }else{
             double x, y;
-            switch(sextant)
-            {
-            case 0:
-            case 3:
-                q0=PI_PREE*len;
-                x=PI_HALF_SQRT*q0;
-                if(fabs(x0)<1.0e-8){
-                    y=PI_PREF*PI*0.5;
-                }else{
-                    y=PI_PREF*q0*atan(y0/x0);
-                }
-                break;
-            case 1:
-            case 4:
-                q0=PI_PREA*len;
-                q=atan((y0-SQRT_3*x0)/(x0+SQRT_3*y0));
-                x=SQRT_3*q0*(PI/6.0-q); 
-                y=q0*(0.5*PI+q);
-                break;
-            case 2:
-            case 5:
-                q0=PI_PREA*len;
-                q=atan((y0+SQRT_3*x0)/(x0-SQRT_3*y0));
-                x=SQRT_3*q0*(PI/6.0+q); 
-                y=q0*(-0.5*PI+q);
-                break;
-            default:
-                printf("[ERROR] Unrecognized sextant %d (not between 0 and 5).", sextant);
-                exit(EXIT_FAILURE);
+            if(fabs(cxy[0])<=fabs(cxy[1])){
+                x=2.0*PI_INVERSE*cxy[1]*sqrt(PI-cxy[1]*cxy[1]);
+                y=0.25*PI*xy[0]/xy[1];
+                xyz[0]=x*sin(y); xyz[1]=x*cos(y); xyz[2]=1.0-2.0*PI_INVERSE*cxy[1]*cxy[1];
+            }else{
+                x=2.0*PI_INVERSE*cxy[0]*sqrt(PI-cxy[0]*cxy[0]);
+                y=0.25*PI*xy[1]/xy[0];
+                xyz[0]=x*cos(y); xyz[1]=x*sin(y); xyz[2]=1.0-2.0*PI_INVERSE*cxy[0]*cxy[0];
             }
-            cxy[0]=y; 
-            cxy[1]=x;
+            vector_normalize(xyz, xyz);
         }
     }
-    xy[0]=(cxy[0]+cxy[1]*SQRT_3_INVERSE)/PI_PREG;
-    xy[1]=cxy[1]*2.0*SQRT_3_INVERSE/PI_PREG;
-}
-
-void compute_Lambert_interpolation(double xyz[3], int nump, bool hexagonal_flag, int &ix, int &iy, int &ixp, int &iyp, double &dx, double &dy, double &dxm, double &dym)
-{
-    double cxyz[3]={xyz[0], xyz[1], xyz[2]};
-    if(cxyz[2]<0.0){
-        cxyz[0]=-cxyz[0]; cxyz[1]=-cxyz[1]; cxyz[2]=-cxyz[2];
-    }
-    vector_normalize(cxyz, cxyz);
-    double xy[2]; int ierr;
-    if(hexagonal_flag){
-        compute_hexagonal_Lambert(xy, ierr, cxyz);
-    }else{
-        compute_square_Lambert(xy, ierr, cxyz);
-    }
-    if(0!=ierr){
-        printf("[ERROR] Unable to compute square Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
-        exit(EXIT_FAILURE);
-    }
-    xy[0]*=nump; xy[1]*=nump; 
-    ix=int(nump+xy[0])-nump; iy=int(nump+xy[1])-nump;
-    ixp=ix+1; iyp=iy+1;
-    if(ixp>nump) ixp=ix;
-    if(iyp>nump) iyp=iy;
-    if(ix<-nump) ix=ixp;
-    if(iy<-nump) iy=iyp;
-    dx=xy[0]-ix; dy=xy[1]-iy; 
-    dxm=1.0-dx; dym=1.0-dy;
-    ixp+=nump; iyp+=nump; ix+=nump; iy+=nump;
 }
 
 int get_sextant(double x, double y)
@@ -212,74 +118,95 @@ int get_sextant(double x, double y)
     return -1;
 }
 
-void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2])
+void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
 {
     ierr=0;
-    xyz[0]=xyz[1]=xyz[2]=0.0;
-    double cxy[2]={xy[0]*PI_HALF_SQRT, xy[1]*PI_HALF_SQRT};
-    //make sure that the input point lies inside the square with certain length
-    if(fmax(fabs(cxy[0]), fabs(cxy[1]))>PI_HALF_SQRT){
+    double x=0.0, y=0.0;
+    if(fabs(1.0-vector_dot(xyz, xyz))>1.0e-8){
         ierr=1;
     }else{
-        if(0.0==fmax(fabs(cxy[0]), fabs(cxy[1]))){
-            xyz[2]=1.0;
-        }else{
-            double x, y;
-            if(fabs(cxy[0])<=fabs(cxy[1])){
-                x=2.0*PI_INVERSE*cxy[1]*sqrt(PI-cxy[1]*cxy[1]);
-                y=0.25*PI*xy[0]/xy[1];
-                xyz[0]=x*sin(y); xyz[1]=x*cos(y); xyz[2]=1.0-2.0*PI_INVERSE*cxy[1]*cxy[1];
-            }else{
-                x=2.0*PI_INVERSE*cxy[0]*sqrt(PI-cxy[0]*cxy[0]);
-                y=0.25*PI*xy[1]/xy[0];
-                xyz[0]=x*cos(y); xyz[1]=x*sin(y); xyz[2]=1.0-2.0*PI_INVERSE*cxy[0]*cxy[0];
+        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
+            double q0=sqrt(2.0/(1.0+fabs(xyz[2])));
+            double x0=q0*xyz[1]+1.0e-4, y0=q0*xyz[0]+1.0e-4;
+            int sextant=get_sextant(x0, y0);
+            double q=sqrt(x0*x0+y0*y0);
+            if(x0<0.0) q=-q;
+            switch(sextant)
+            {
+            case 0:
+            case 3:
+                q=PI_PREE*q;
+                x=PI_HALF_SQRT*q;
+                if(fabs(x0)<1.0e-8){
+                    y=PI_PREF*PI*0.5;
+                }else{
+                    y=PI_PREF*q*atan(y0/x0);
+                }
+                break;
+            case 1:
+            case 4:
+                q=PI_PREA*q;
+                q0=atan((y0-SQRT_3*x0)/(x0+SQRT_3*y0));
+                x=SQRT_3*q*(PI/6.0-q0); 
+                y=q*(0.5*PI+q0);
+                break;
+            case 2:
+            case 5:
+                q=PI_PREA*q;
+                q0=atan((y0+SQRT_3*x0)/(x0-SQRT_3*y0));
+                x=SQRT_3*q*(PI/6.0+q0); 
+                y=q*(-0.5*PI+q0);
+                break;
+            default:
+                printf("[ERROR] Unrecognized hexagonal sextant %d (not between 0 and 5).", sextant);
+                exit(EXIT_FAILURE);
             }
-            vector_normalize(xyz, xyz);
         }
     }
+    xy[0]=(y+x*SQRT_3_INVERSE)/PI_PREG;
+    xy[1]=x*2.0*SQRT_3_INVERSE/PI_PREG;
 }
 
 void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2])
 {
     ierr=0;
-    double cxy[2]={PI_PREG*(xy[0]-0.5*xy[1]), SQRT_HALF_3*PI_PREG*xy[1]};
-    if(0.0==fmax(fabs(cxy[0]), fabs(cxy[1]))){
-        xyz[0]=xyz[1]=0.0; 
-        xyz[2]=1.0;
+    //double x0=PI_PREG*SQRT_HALF_3*xy[0], y0=PI_PREG*(xy[1]-0.5*xy[0]);
+    double x0=PI_PREG*SQRT_HALF_3*xy[1], y0=PI_PREG*(xy[0]-0.5*xy[1]);
+    if(fmax(fabs(x0), fabs(y0))<1.0e-8){
+        xyz[0]=xyz[1]=0.0; xyz[2]=1.0;
     }else{
-        double cyx[2]={cxy[1], cxy[0]};
-        int sextant=get_sextant(cyx[0], cyx[1]);
-        double q1, q2;
+        int sextant=get_sextant(x0, y0);
+        double q, q0;
         double x, y;
         switch(sextant)
         {
         case 0:
         case 3:
-            q1=PI_PREC*cyx[1]/cyx[0];
-            x=PI_PREB*cyx[0]*cos(q1); 
-            y=PI_PREB*cyx[0]*sin(q1);
+            q=x0;
+            q0=PI_PREC*y0/q;
+            x=PI_PREB*q*cos(q0);
+            y=PI_PREB*q*sin(q0);
             break;
         case 1:
         case 4:
-            q1=cyx[0]+SQRT_3*cyx[1];
-            q2=PI_PRED*cyx[0]/q1;
-            x=PI_PREA*q1*sin(q2); 
-            y=PI_PREA*q1*cos(q2);
+            q=x0+SQRT_3*y0;
+            q0=PI_PRED*x0/q;
+            x=PI_PREA*q*sin(q0); 
+            y=PI_PREA*q*cos(q0);
             break;
         case 2:
         case 5:
-            q1=cyx[0]-SQRT_3*cyx[1];
-            q2=PI_PRED*cyx[0]/q1;
-            x=PI_PREA*q1*sin(q2); 
-            y=-PI_PREA*q1*cos(q2);
+            q=x0-SQRT_3*y0;
+            q0=PI_PRED*x0/q;
+            x=PI_PREA*q*sin(q0); 
+            y=-PI_PREA*q*cos(q0);
             break;
         default:
-            printf("[ERROR] Unrecognized sextant %d (not between 0 and 5).", sextant);
+            printf("[ERROR] Unrecognized hexagonal sextant %d (not between 0 and 5).", sextant);
             exit(EXIT_FAILURE);
         }
-        double q=x*x+y*y;
-        //make sure that the input point lies inside the hexagon
-        if(q>4.0){
+        q=x*x+y*y;
+        if(q>4.0){//make sure that the input point lies inside the hexagon
             xyz[0]=xyz[1]=xyz[2]=0.0;
             ierr=1;
         }else{
@@ -297,7 +224,7 @@ void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, doub
 {
     ierr=0;
     xyz[0]=0.0; xyz[1]=0.0; xyz[2]=0.0;
-    if(0.0==fmax(fabs(xy[0]), fabs(xy[1]))){
+    if(fmax(fabs(xy[0]), fabs(xy[1]))<1.0e-8){
         xyz[2]=1.0; 
     }else{
         double sum_q2=xy[0]*xy[0]+xy[1]*xy[1];
@@ -305,9 +232,7 @@ void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, doub
             ierr=1;
         }else{
             xyz[0]=2.0*xy[0]; xyz[1]=2.0*xy[1]; xyz[2]=1.0-sum_q2;
-            for(int i=0;i<3;i++){
-                xyz[i]=xyz[i]/(radius*radius+sum_q2);
-            }
+            vector_constant(xyz, 1.0/(radius*radius+sum_q2), xyz);
         }
     }
 }

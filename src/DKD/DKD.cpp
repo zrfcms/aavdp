@@ -13,7 +13,7 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
 {
     double delta=1.0/double(npx);
     double kn=1.0/cell->fouri0.lambda;
-    double xy[2];
+    double xy[2]={0.0, 0.0};
     add_k_vector(cell, xy, kn);
     switch(cell->sampling_type)
     {
@@ -103,10 +103,6 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
         printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
         exit(EXIT_FAILURE);
     case 12://hexagonal -3, 321, -6 [not implemented: rhombohedral 32]
-        if(cell->is_trigonal&&cell->is_second_setting){
-            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-            exit(EXIT_FAILURE);
-        }
         for(int j=0;j<=npx;j++){
             for(int i=0;i<=npx;i++){
                 xy[0]=i*delta; xy[1]=j*delta;
@@ -116,10 +112,6 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
             }
         }
     case 13://hexagonal 312 [not implemented: rhombohedral -3]
-        if(cell->is_trigonal&&cell->is_second_setting){
-            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-            exit(EXIT_FAILURE);
-        }
         for(int j=0;j>=-npx;j--){
             for(int i=j/2;i<npx;i++){
                 xy[0]=i*delta; xy[1]=j*delta;
@@ -138,10 +130,6 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
         }
         break;
     case 14://hexagonal 3m1 [not implemented: rhombohedral 3m]
-        if(cell->is_trigonal&&cell->is_second_setting){
-            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-            exit(EXIT_FAILURE);
-        }
         for(int j=1;j<=npx;j++){
             for(int i=j;i<=npx;i++){
                 xy[0]=i*delta; xy[1]=j*delta;
@@ -162,10 +150,6 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
         }
         break;
     case 16://hexagonal -3m1, 622, -6m2 [not implemented: rhombohedral -3m]
-        if(cell->is_trigonal&&cell->is_second_setting){
-            printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-            exit(EXIT_FAILURE);
-        }
         for(int j=0;j<=npx;j++){
             for(int i=0;i<=npx;i++){
                 xy[0]=i*delta; xy[1]=j*delta;
@@ -248,9 +232,9 @@ void DKD_KVECTOR::add_k_vector(CELL *cell, double xy[2], double kn, int i, int j
 {
     if(ktail==nullptr){
         khead=ktail=new DKD_KNODE;
-        double kstar[3]={0.0, 0.0, kn};//c* as the center of the Rosca-Lambert projection
-        cell->reciprocal(kstar, kstar);
-        khead->k[0]=kstar[0]; khead->k[1]=kstar[1]; khead->k[2]=kstar[2];
+        double kstar[3]={0.0, 0.0, kn}, r_kstar[3];//c* as the center of the Rosca-Lambert projection
+        cell->cartesian_to_reciprocal(r_kstar, kstar);
+        khead->k[0]=r_kstar[0]; khead->k[1]=r_kstar[1]; khead->k[2]=r_kstar[2];
         khead->kn=kn;
         khead->i=i; khead->j=j;
         khead->hemisphere=1;//Northern hemisphere
@@ -260,14 +244,14 @@ void DKD_KVECTOR::add_k_vector(CELL *cell, double xy[2], double kn, int i, int j
         int ierr;
         ktail->next=new DKD_KNODE;
         ktail=ktail->next;
-        if(cell->is_hexagonal){
+        if(cell->use_hexagonal){
             compute_sphere_from_hexagonal_Lambert(kstar, ierr, xy);
         }else{
             compute_sphere_from_square_Lambert(kstar, ierr, xy);
         }
         vector_normalize(kstar, kstar);
         kstar[0]*=kn; kstar[1]*=kn; kstar[2]*=kn;
-        cell->reciprocal(r_kstar, kstar);
+        cell->cartesian_to_reciprocal(r_kstar, kstar);
         ktail->k[0]=r_kstar[0]; ktail->k[1]=r_kstar[1]; ktail->k[2]=r_kstar[2];
         ktail->kn=kn;
         ktail->i=i; ktail->j=j;
@@ -275,7 +259,7 @@ void DKD_KVECTOR::add_k_vector(CELL *cell, double xy[2], double kn, int i, int j
         numk++;
         if(southern_flag){
             kstar[0]=-kstar[0]; kstar[1]=-kstar[1]; kstar[2]=-kstar[2];
-            cell->reciprocal(r_kstar, kstar);
+            cell->cartesian_to_reciprocal(r_kstar, kstar);
             ktail->next=new DKD_KNODE;
             ktail=ktail->next;
             ktail->k[0]=r_kstar[0]; ktail->k[1]=r_kstar[1]; ktail->k[2]=r_kstar[2];
@@ -438,80 +422,60 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
     nump=mc.nump; numEbin=mc.numEbin;
 
     CELL cell(hdf5_path);
-    int npos=cell.npos; napos=cell.napos;
     cell.compute_reflection_range(dmin);
     cell.compute_Bloch_wave_coefficients();
-    printf("Range of reflections along a*, b*, and c* = %d, %d, and %d.\n", cell.HKL[0], cell.HKL[1], cell.HKL[2]);
+    printf("[INFO] Range of reflections along a*, b*, and c* = %d, %d, and %d.\n", cell.HKL[0], cell.HKL[1], cell.HKL[2]);
 
-    clock_t start, finish;
-    start=clock();
+    clock_t start, finish; start=clock();
     int iEstart=numEbin-1, imp=nump/2;
-    callocate_4d(&mLPNH, cell.napos, 1, nump, nump, 0.0);
-    callocate_4d(&mLPSH, cell.napos, 1, nump, nump, 0.0);
-    callocate_3d(&mSPNH, 1, nump, nump, 0.0);
-    callocate_3d(&mSPSH, 1, nump, nump, 0.0);
+    compute_scattering_probability(&cell, &mc);
+    callocate_3d(&mLPNH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mLPSH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mSPNH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mSPSH, numEbin, nump, nump, 0.0);
     for(int iE=iEstart;iE>=0;iE--){
-        clock_t istart, ifinish;
-        istart=clock();
-        printf("Starting computation for energy bin (in reverse order) %d of %d; ", iE+1, numEbin);
-        //set the accelerating voltage and compute the Fourier coefficients
+        clock_t istart, ifinish; istart=clock();
         double voltage=mc.Ebins[iE];
-        printf("energy [keV] = %.2f.\n", voltage);
+        printf("[INFO] Starting computation for energy bin (in reverse order) %d of %d; energy [keV] = %.2f.\n", iE+1, numEbin, voltage);
         if(iE==iEstart){
             cell.compute_Fourier_coefficients(voltage);
         }else{
             cell.compute_Fourier_coefficients(voltage, false);
         }
 
-        double *lambdaE; mallocate(&lambdaE, mc.izmax);
-        for(int iz=0;iz<mc.izmax;iz++){
-            int sum_z=0;
-            for(int ix=0;ix<mc.numpz;ix++){
-                for(int iy=0;iy<mc.numpz;iy++){
-                    sum_z+=mc.accum_z[iE][iz][ix][iy];
-                }
-            }
-            lambdaE[iz]=double(sum_z)/double(mc.num_e)*exp(TWO_PI*double(iz)*mc.depthstep/cell.fouri0.sigp);
-        }
-
-        //create the incident beam direction list
         DKD_KVECTOR kvec(&cell, imp, imp);
-        printf("Independent beam directions to be considered = %d\n", kvec.numk);
+        printf("[INFO] Independent beam directions to be considered = %d\n", kvec.numk);
 
-        //create the master reflection list
         int sum_strong=0, sum_weak=0;
+        char path[PATH_CHAR_NUMBER]="test.";
+        char exts[2][EXT_CHAR_NUMBER];
+        int_to_str(exts[0], iE); strcpy(exts[1], ".txt");
+        merge_path(path, exts, 2);
         for(int ik=0;ik<kvec.numk;ik++){
             double *kk=kvec.karray[ik];
             double *fn=kk;
             DKD_GVECTOR gvec(&cell, bethe, kk, fn, dmin);
             sum_strong+=gvec.nstrong; sum_weak+=gvec.nweak;
 
-            complex<double> **dynmat;
-            complex<double> **Lgh, ***Sgh;
-            callocate_2d(&dynmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
-            callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            complex<double> ***Sgh;
             callocate_3d(&Sgh, cell.napos, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
-            //generate the dynamical matrix and solve the dynamical eigenvalue equation
-            compute_dynamic_matrix(dynmat, &cell, &gvec);
             compute_Sgh_matrices(Sgh, &cell, &gvec);
-            compute_Lgh_matrix(Lgh, dynmat, lambdaE, mc.izmax, mc.depths[iE], mc.depthstep, kvec.knarray[ik], gvec.nstrong);
-            double *sval;
-            callocate(&sval, cell.napos, 0.0);
+
+            complex<double> **dmat, **Lgh;
+            callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_dynamic_matrix(dmat, &cell, &gvec);
+            compute_Lgh_matrix(Lgh, dmat, lambdaE[iE], mc.izmax, mc.depths[iE], mc.depthstep, kvec.knarray[ik], gvec.nstrong);
+            double kintensity=0.0;
             for(int i=0;i<cell.napos;i++){
-                complex<double> iSgh[gvec.nstrong][gvec.nstrong];
                 for(int j=0;j<gvec.nstrong;j++){
                     for(int k=0;k<gvec.nstrong;k++){
-                        iSgh[j][k]=Sgh[i][j][k];
+                        complex<double> temp=Lgh[j][k]*Sgh[i][j][k];
+                        kintensity+=temp.real();
                     }
                 }
-                for(int j=0;j<gvec.nstrong;j++){
-                    for(int k=0;k<gvec.nstrong;k++){
-                        complex<double> mtmp=Lgh[j][k]*iSgh[j][k];
-                        sval[i]+=mtmp.real();
-                    }
-                }
-                sval[i]/=double(npos);
             }
+            kintensity/=double(cell.npos);
 
             int ipx=kvec.kijarray[ik][0], ipy=kvec.kijarray[ik][1], ipz=kvec.kijarray[ik][2];
             int iequiv[48][3], nequiv;
@@ -519,120 +483,63 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
             for(int i=0;i<nequiv;i++){
                 int ix=iequiv[i][0]+imp, iy=iequiv[i][1]+imp;
                 if(-1==iequiv[i][2]){
-                    for(int j=0;j<cell.napos;j++){
-                        mLPSH[j][0][ix][iy]=sval[j];
-                    }
+                    mLPSH[iE][ix][iy]=kintensity;
                 }else if(1==iequiv[i][2]){
-                    for(int j=0;j<cell.napos;j++){
-                        mLPNH[j][0][ix][iy]=sval[j];
-                    }
+                    mLPNH[iE][ix][iy]=kintensity;
                 }
             }
         
-            if(0==ik%1000){
-                printf("Completed beam direction %d of %d.\n", ik+1, kvec.numk);
+            if(0==(ik+1)%1000){
+                printf("[INFO] Completed beam direction %d of %d.\n", ik+1, kvec.numk);
             }
-            deallocate_2d(dynmat, gvec.nstrong);
             deallocate_2d(Lgh, gvec.nstrong);
+            deallocate_2d(dmat, gvec.nstrong);
             deallocate_3d(Sgh, cell.napos, gvec.nstrong);
-            deallocate(sval);
         }
-
-        //convert the hexagonally sampled array to a square Lambert projection
-        if(cell.is_hexagonal){
-            double ****auxNH, ****auxSH;
-            mallocate_4d(&auxNH, cell.napos, 1, nump, nump);
-            mallocate_4d(&auxSH, cell.napos, 1, nump, nump);
-            for(int i=0;i<cell.napos;i++){
-                for(int j=0;j<1;j++){
-                    for(int k=0;k<nump;k++){
-                        for(int n=0;n<nump;n++){
-                            auxNH[i][j][k][n]=mLPNH[i][j][k][n];
-                            auxSH[i][j][k][n]=mLPSH[i][j][k][n];
-                        }
-                    }
-                }
-            }
-            for(int i=-imp;i<=imp;i++){
-                for(int j=-imp;j<=imp;j++){
-                    double xy[2]={double(i)/double(imp), double(j)/double(imp)}; 
-                    double xyz[3]; int ierr;
-                    compute_sphere_from_square_Lambert(xyz, ierr, xy);
-                    compute_hexagonal_Lambert(xy, ierr, xyz);
-                    if(0!=ierr){
-                        printf("[ERROR] Unable to compute hexagonal Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
-                        exit(EXIT_FAILURE);
-                    }
-                    xy[0]*=double(imp); xy[1]*=double(imp);
-                    int ix=int(xy[0]), iy=int(xy[1]);
-                    int ixp=ix+1, iyp=iy+1;
-                    if(ixp>imp) ixp=ix;
-                    if(iyp>imp) iyp=iy;
-                    double dx=xy[0]-ix, dy=xy[1]-iy;
-                    double dxm=1.0-dx, dym=1.0-dy;
-                    ixp+=imp; iyp+=imp; ix+=imp; iy+=imp;
-                    int idx=i+imp, idy=j+imp;
-                    for(int k=0;k<napos;k++){
-                        mLPNH[k][0][idx][idy]=auxNH[k][0][ix][iy]*dxm*dym+auxNH[k][0][ixp][iy]*dx*dym+
-                                          auxNH[k][0][ix][iyp]*dxm*dy+auxNH[k][0][ixp][iyp]*dx*dy;
-                        mLPSH[k][0][idx][idy]=auxSH[k][0][ix][iy]*dxm*dym+auxSH[k][0][ixp][iy]*dx*dym+
-                                          auxSH[k][0][ix][iyp]*dxm*dy+auxSH[k][0][ixp][iyp]*dx*dy;
-                    }
-                }
-            }
-            deallocate_4d(auxNH, cell.napos, 1, nump);
-            deallocate_4d(auxSH, cell.napos, 1, nump);
+        if(cell.use_hexagonal) compute_Lambert_projection(iE, cell.use_hexagonal);
+        int num=nump-1;
+        for(int i=0;i<nump;i++){
+            mLPSH[iE][i][0]=mLPNH[iE][i][0];
+            mLPSH[iE][i][num]=mLPNH[iE][i][num];
+            mLPSH[iE][0][i]=mLPNH[iE][0][i];
+            mLPSH[iE][num][i]=mLPNH[iE][num][i];
         }
-        //make sure that the outer pixel rim of the mLPSH patterns is identical to that of the mLPNH array
-        int num=imp*2;
-        for(int i=0;i<=num;i++){
-            for(int j=0;j<cell.napos;j++){
-                mLPSH[j][0][i][0]=mLPNH[j][0][i][0];
-                mLPSH[j][0][i][num]=mLPNH[j][0][i][num];
-                mLPSH[j][0][0][i]=mLPNH[j][0][0][i];
-                mLPSH[j][0][num][i]=mLPNH[j][0][num][i];
+        compute_stereographic_projection(iE, cell.use_hexagonal);
+        double LPNH_max=0.0, LPNH_min=1.0e5;
+        for(int i=0;i<nump;i++){
+            for(int j=0;j<nump;j++){
+                if(LPNH_max<mLPNH[iE][i][j]) LPNH_max=mLPNH[iE][i][j];
+                if(LPNH_min>mLPNH[iE][i][j]) LPNH_min=mLPNH[iE][i][j];
             }
         }
-        for(int i=-imp;i<=imp;i++){
-            for(int j=-imp;j<=imp;j++){
-                double xy[2]={double(i)/double(imp), double(i)/double(imp)};
-                double xyz[3]; int ierr;
-                compute_sphere_from_stereographic_projection(xyz, ierr, xy);
-                vector_normalize(xyz, xyz);
-                int ix=i+imp, iy=j+imp;
-                if(0!=ierr){
-                    mSPNH[0][ix][iy]=0.0; mSPSH[0][ix][iy]=0.0;
-                }else{
-                    mSPNH[0][ix][iy]=get_Lambert_interpolation(xyz, mLPNH); 
-                    mSPSH[0][ix][iy]=get_Lambert_interpolation(xyz, mLPSH);
-                }
-            }
-        }
-        double max_LPNH=0.0, max_LPSH=0.0, min_LPNH=1.0e5, min_LPSH=1.0e5;
-        double max_SPNH=0.0, max_SPSH=0.0, min_SPNH=1.0e5, min_SPSH=1.0e5;
-        for(int i=-imp;i<imp;i++){
-            for(int j=-imp;j<imp;j++){
-                int ix=i+imp, iy=j+imp;
-                if(max_LPNH<mLPNH[0][0][ix][iy]) max_LPNH=mLPNH[0][0][ix][iy];
-                if(min_LPNH>mLPNH[0][0][ix][iy]) min_LPNH=mLPNH[0][0][ix][iy];
-                if(max_LPSH<mLPSH[0][0][ix][iy]) max_LPSH=mLPSH[0][0][ix][iy];
-                if(min_LPSH>mLPSH[0][0][ix][iy]) min_LPSH=mLPSH[0][0][ix][iy];
-            }
-        }
-        printf("mLPNH max: %.5f min: %.5f, mLPSH max: %.5f min: %.5f\n", max_LPNH, min_LPNH, max_LPSH, min_LPSH);
-        printf("-> Average number of strong reflections = %d.\n", int(round(double(sum_strong)/double(kvec.numk))));
-        printf("-> Average number of weak reflections = %d.\n", int(round(double(sum_weak)/double(kvec.numk))));
         ifinish=clock();
-        printf("Execution time [s]: %.2f.\n", double(ifinish-istart)/CLOCKS_PER_SEC);
-        hdf5(hdf5_path, iE);
-        printf("Intermediate data stored in file %s.\n", hdf5_path);
+        printf("[INFO] Range of intensity on the modified Lambert projection northern hemisphere: %.8f, %.8f\n", LPNH_min, LPNH_max);
+        printf("[INFO] Average number of strong reflections = %d.\n", int(round(double(sum_strong)/double(kvec.numk))));
+        printf("[INFO] Average number of weak reflections = %d.\n", int(round(double(sum_weak)/double(kvec.numk))));
+        printf("[INFO] Execution time [s]: %.2f.\n", double(ifinish-istart)/CLOCKS_PER_SEC);
     }
     finish=clock();
-    printf("Execution time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("Intermediate data stored in file %s.\n", hdf5_path);
+    printf("[INFO] Execution time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
 }
 
-void DKD::compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECTOR *gvec)
+void DKD::compute_scattering_probability(CELL *cell, DKD_MC *mc)
+{
+    callocate_2d(&lambdaE, mc->numEbin, mc->izmax, 0.0);
+    for(int iE=0;iE<mc->numEbin;iE++){
+        cell->update_Fourier_coefficient0(mc->Ebins[iE]);
+        for(int iz=0;iz<mc->izmax;iz++){
+            int sum_z=0;
+            for(int ix=0;ix<mc->numpz;ix++){
+                for(int iy=0;iy<mc->numpz;iy++){
+                    sum_z+=mc->accum_z[iE][iz][ix][iy];
+                }
+            }
+            lambdaE[iE][iz]=double(sum_z)/double(mc->num_e)*exp(TWO_PI*double(iz)*mc->depthstep/cell->fouri0.sigp);
+        }
+    }
+}
+
+void DKD::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DKD_GVECTOR *gvec)
 {
     DKD_GNODE *rtemp=gvec->ghead->next;
     int imh=2*cell->HKL[0], imk=2*cell->HKL[1], iml=2*cell->HKL[2];
@@ -661,7 +568,7 @@ void DKD::compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECT
                 ih=rtemp->hkl[0]-ctemp->hkl[0]+imh;
                 ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
                 il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
-                dynmat[ir][ic]=cell->LUTUg[ih][ik][il]-wsum;
+                dmat[ir][ic]=cell->LUTUg[ih][ik][il]-wsum;
             }else{
                 double wsum=0.0;
                 DKD_GNODE *wtemp=gvec->headw;
@@ -675,7 +582,7 @@ void DKD::compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECT
                     wtemp=wtemp->nextw;
                 }
                 wsum*=k0_2i;
-                dynmat[ir][ir]=complex<double>(k0_2*rtemp->sg-wsum, cell->fouri0.Upmod);
+                dmat[ir][ir]=complex<double>(k0_2*rtemp->sg-wsum, cell->fouri0.Upmod);
             }
             ctemp=ctemp->nexts;
         }
@@ -694,7 +601,7 @@ void DKD::compute_Sgh_matrices(complex<double>*** Sgh, CELL *cell, DKD_GVECTOR* 
             ih=ctemp->hkl[0]-rtemp->hkl[0]+imh;
             ik=ctemp->hkl[1]-rtemp->hkl[1]+imk;
             il=ctemp->hkl[2]-rtemp->hkl[2]+iml;
-            for(int i=0;i<napos;i++){
+            for(int i=0;i<cell->napos;i++){
                 Sgh[i][ir][ic]=cell->LUTSgh[i][ih][ik][il];
             }
             ctemp=ctemp->nexts;
@@ -806,23 +713,217 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     deallocate_2d(NCGCONJ, NS); deallocate_2d(NCGT, NS); deallocate_2d(TEMP, NS);
 }
 
-double DKD::get_Lambert_interpolation(double xyz[3], double ****mat, bool is_hexagonal)
+void DKD::compute_Lambert_projection(int iE, bool use_hexagonal)
 {
-    int ix, iy, ixp, iyp;
-    double dx, dy, dxm, dym;
-    compute_Lambert_interpolation(xyz, nump/2, is_hexagonal, ix, iy, ixp, iyp, dx, dy, dxm, dym);
-    double res=0.0;
-    for(int i=0;i<napos;i++){
-        res+=mat[i][0][ix][iy]*dxm*dym+mat[i][0][ixp][iy]*dx*dym+
-             mat[i][0][ix][iyp]*dxm*dy+mat[i][0][ixp][iyp]*dx*dy;
+    int imp=nump/2;
+    double **matN, **matS;
+    callocate_2d(&matN, nump, nump, 0.0);
+    callocate_2d(&matS, nump, nump, 0.0);
+    for(int i=0;i<nump;i++){
+        for(int j=0;j<nump;j++){
+            matN[i][j]=mLPNH[iE][i][j];
+            matS[i][j]=mLPSH[iE][i][j];
+        }
     }
-    return res;
+    char path[PATH_CHAR_NUMBER]="lambert.";
+    char exts[2][EXT_CHAR_NUMBER];
+    int_to_str(exts[0], iE); strcpy(exts[1], ".txt");
+    merge_path(path, exts, 2);
+    FILE *ff;
+    ff=fopen(path, "w");
+    for(int i=-imp;i<=imp;i++){
+        for(int j=-imp;j<=imp;j++){
+            double xy[2]={double(i)/double(imp), double(j)/double(imp)}; 
+            double xyz[3]; int ierr;
+            compute_sphere_from_square_Lambert(xyz, ierr, xy);
+            if(use_hexagonal){
+                compute_hexagonal_Lambert(xy, ierr, xyz);
+            }else{
+                compute_square_Lambert(xy, ierr, xyz);
+            }
+            if(0!=ierr){
+                printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
+                exit(EXIT_FAILURE);
+            }
+            xy[0]*=double(imp); xy[1]*=double(imp);
+            int ix=floor(xy[0]), iy=floor(xy[1]);
+            int ixp=ix+1, iyp=iy+1;
+            if(ixp>imp) ixp=ix;
+            if(iyp>imp) iyp=iy;
+            double dx=xy[0]-ix, dy=xy[1]-iy;
+            double dxm=1.0-dx, dym=1.0-dy;
+            ixp+=imp; iyp+=imp; ix+=imp; iy+=imp;
+            int idx=i+imp, idy=j+imp;
+            mLPNH[iE][idx][idy]=matN[ix][iy]*dxm*dym+matN[ixp][iy]*dx*dym+
+                                matN[ix][iyp]*dxm*dy+matN[ixp][iyp]*dx*dy;
+            mLPSH[iE][idx][idy]=matS[ix][iy]*dxm*dym+matS[ixp][iy]*dx*dym+
+                                matS[ix][iyp]*dxm*dy+matS[ixp][iyp]*dx*dy;
+        }
+    }
+    deallocate_2d(matN, nump);
+    deallocate_2d(matS, nump);
+    fclose(ff);
 }
 
-void DKD::hdf5(const char *hdf5_path, int offset)
+void DKD::compute_stereographic_projection(int iE, bool use_hexagonal)
 {
-    size_t offsets_LP[4]={0, offset, 0, 0}, size_LP[4]={napos, 1, nump, nump};
-    size_t offsets_SP[4]={offset, 0, 0}, size_SP[3]={1, nump, nump};
+    int imp=nump/2;
+    for(int i=-imp;i<=imp;i++){
+        for(int j=-imp;j<=imp;j++){
+            double xy[2]={double(i)/double(imp), double(j)/double(imp)};
+            double xyz[3]; int ierr;
+            compute_sphere_from_stereographic_projection(xyz, ierr, xy);
+            vector_normalize(xyz, xyz);
+            int ii=i+imp, jj=j+imp;
+            if(0!=ierr){
+                mSPNH[iE][ii][jj]=0.0; mSPSH[iE][ii][jj]=0.0;
+            }else{
+                compute_square_Lambert(xy, ierr, xyz);
+                if(0!=ierr){
+                    printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
+                    exit(EXIT_FAILURE);
+                }
+                xy[0]*=imp; xy[1]*=imp;
+                int ix=int(imp+xy[0])-imp, iy=int(imp+xy[1])-imp;
+                int ixp=ix+1, iyp=iy+1;
+                if(ixp>imp) ixp=ix;
+                if(iyp>imp) iyp=iy;
+                if(ix<-imp) ix=ixp;
+                if(iy<-imp) iy=iyp;
+                double dx=xy[0]-ix, dy=xy[1]-iy; 
+                double dxm=1.0-dx, dym=1.0-dy;
+                ixp+=imp; iyp+=imp; ix+=imp; iy+=imp;
+                mSPNH[iE][ii][jj]=mLPNH[iE][ix][iy]*dxm*dym+mLPNH[iE][ixp][iy]*dx*dym+
+                                     mLPNH[iE][ix][iyp]*dxm*dy+mLPNH[iE][ixp][iyp]*dx*dy;
+                mSPSH[iE][ii][jj]=mLPSH[iE][ix][iy]*dxm*dym+mLPSH[iE][ixp][iy]*dx*dym+
+                                     mLPSH[iE][ix][iyp]*dxm*dy+mLPSH[iE][ixp][iyp]*dx*dy;
+            }
+        }
+    }
+}
+
+// void DKD::hdf5(const char *hdf5_path, int offset)
+// {
+//     size_t offsets_LP[4]={0, offset, 0, 0}, size_LP[4]={napos, 1, nump, nump};
+//     size_t offsets_SP[4]={offset, 0, 0}, size_SP[3]={1, nump, nump};
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.write_group("/DynamicKikuchiDiffraction");
+//     hdf.write("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
+//     hdf.write("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
+//     hdf.write_group("/DynamicKikuchiDiffraction/BetheParameters");
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
+//     hdf.write("/DynamicKikuchiDiffraction/AsymmetricNumber", napos);
+//     hdf.write("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
+//     hdf.write_hyper_array_4d("/DynamicKikuchiDiffraction/modifiedLPNH", mLPNH, size_LP, offsets_LP, napos, numEbin, nump, nump);
+//     hdf.write_hyper_array_4d("/DynamicKikuchiDiffraction/modifiedLPSH", mLPSH, size_LP, offsets_LP, napos, numEbin, nump, nump);
+//     hdf.write_hyper_array_3d("/DynamicKikuchiDiffraction/masterSPNH", mSPNH, size_SP, offsets_SP, numEbin, nump, nump);
+//     hdf.write_hyper_array_3d("/DynamicKikuchiDiffraction/masterSPSH", mSPSH, size_SP, offsets_SP, numEbin, nump, nump);
+//     hdf.close();
+// }
+
+// DKD::DKD(const char *hdf5_path)
+// {
+//     size_t size1, size2, size3, size4;
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.read("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
+//     hdf.read("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
+//     hdf.read("/DynamicKikuchiDiffraction/AsymmetricNumber", napos);
+//     hdf.read("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
+//     hdf.read_array_4d("/DynamicKikuchiDiffraction/modifiedLPNH", &mLPNH, size1, size2, size3, size4);
+//     hdf.read_array_4d("/DynamicKikuchiDiffraction/modifiedLPSH", &mLPSH, size1, size2, size3, size4);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPNH", &mSPNH, size1, size2, size3);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPSH", &mSPSH, size1, size2, size3);
+//     hdf.close();
+// }
+
+DKD::DKD(const char *hdf5_path)
+{
+    size_t size1, size2, size3;
+    double ***mmLPNH, ***mmLPSH;
+    double ***mmSPNH, ***mmSPSH;
+    HDF5 hdf;
+    hdf.open(hdf5_path);
+    hdf.read("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
+    hdf.read("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
+    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
+    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
+    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
+    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
+    hdf.read("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
+    hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", &mmLPNH, size1, size2, size3);
+    hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", &mmLPSH, size1, size2, size3);
+    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPNH", &mmSPNH, size1, size2, size3);
+    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPSH", &mmSPSH, size1, size2, size3);
+    hdf.close();
+    callocate_3d(&mLPNH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mLPSH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mSPNH, numEbin, nump, nump, 0.0);
+    callocate_3d(&mSPSH, numEbin, nump, nump, 0.0);
+    for(int i=0;i<numEbin;i++){
+        for(int j=0;j<nump;j++){
+            for(int k=0;k<nump;k++){
+                mSPNH[i][j][k]=mmSPNH[j][k][i];
+                mSPSH[i][j][k]=mmSPSH[j][k][i];
+            }
+        }
+    }
+    for(int i=0;i<numEbin;i++){
+        for(int j=0;j<nump;j++){
+            for(int k=0;k<nump;k++){
+                mLPNH[i][j][k]=mmLPNH[j][k][i];
+                mLPSH[i][j][k]=mmLPSH[j][k][i];
+            }
+        }
+    }
+    deallocate_3d(mmLPNH, nump, nump);
+    deallocate_3d(mmLPSH, nump, nump);
+    deallocate_3d(mmSPNH, nump, nump);
+    deallocate_3d(mmSPSH, nump, nump);
+}
+
+DKD::~DKD()
+{
+    if(numEbin!=0){
+        deallocate_3d(mLPNH, numEbin, nump);
+        deallocate_3d(mLPSH, numEbin, nump);
+        deallocate_3d(mSPNH, numEbin, nump);
+        deallocate_3d(mSPSH, numEbin, nump);
+    }
+}
+
+void DKD::hdf5(const char *hdf5_path)
+{
+    double ***mmLPNH, ***mmLPSH;
+    double ***mmSPNH, ***mmSPSH;
+    callocate_3d(&mmLPNH, nump, nump, numEbin, 0.0);
+    callocate_3d(&mmLPSH, nump, nump, numEbin, 0.0);
+    callocate_3d(&mmSPNH, nump, nump, numEbin, 0.0);
+    callocate_3d(&mmSPSH, nump, nump, numEbin, 0.0);
+    for(int i=0;i<numEbin;i++){
+        for(int j=0;j<nump;j++){
+            for(int k=0;k<nump;k++){
+                mmLPNH[j][k][i]=mLPNH[i][j][k];
+                mmLPSH[j][k][i]=mLPSH[i][j][k];
+            }
+        }
+    }
+    for(int i=0;i<numEbin;i++){
+        for(int j=0;j<nump;j++){
+            for(int k=0;k<nump;k++){
+                mmSPNH[j][k][i]=mSPNH[i][j][k];
+                mmSPSH[j][k][i]=mSPSH[i][j][k];
+            }
+        }
+    }
     HDF5 hdf;
     hdf.open(hdf5_path);
     hdf.write_group("/DynamicKikuchiDiffraction");
@@ -833,38 +934,17 @@ void DKD::hdf5(const char *hdf5_path, int offset)
     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
-    hdf.write("/DynamicKikuchiDiffraction/AsymmetricNumber", napos);
     hdf.write("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
-    hdf.write_hyper_array_4d("/DynamicKikuchiDiffraction/modifiedLPNH", mLPNH, size_LP, offsets_LP, napos, numEbin, nump, nump);
-    hdf.write_hyper_array_4d("/DynamicKikuchiDiffraction/modifiedLPSH", mLPSH, size_LP, offsets_LP, napos, numEbin, nump, nump);
-    hdf.write_hyper_array_3d("/DynamicKikuchiDiffraction/masterSPNH", mSPNH, size_SP, offsets_SP, numEbin, nump, nump);
-    hdf.write_hyper_array_3d("/DynamicKikuchiDiffraction/masterSPSH", mSPSH, size_SP, offsets_SP, numEbin, nump, nump);
+    hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPNH", mmSPNH, nump, nump, numEbin);
+    hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPSH", mmSPSH, nump, nump, numEbin);
+    hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", mmLPNH, nump, nump, numEbin);
+    hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", mmLPSH, nump, nump, numEbin);
     hdf.close();
-}
-
-DKD::DKD(const char *hdf5_path)
-{
-    size_t size1, size2, size3, size4;
-    HDF5 hdf;
-    hdf.open(hdf5_path);
-    hdf.read("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
-    hdf.read("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
-    hdf.read("/DynamicKikuchiDiffraction/AsymmetricNumber", napos);
-    hdf.read("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
-    hdf.read_array_4d("/DynamicKikuchiDiffraction/modifiedLPNH", &mLPNH, size1, size2, size3, size4);
-    hdf.read_array_4d("/DynamicKikuchiDiffraction/modifiedLPSH", &mLPSH, size1, size2, size3, size4);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPNH", &mSPNH, size1, size2, size3);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPSH", &mSPSH, size1, size2, size3);
-    hdf.close();
-}
-
-DKD::~DKD()
-{
-
+    deallocate_3d(mmLPNH, nump, nump);
+    deallocate_3d(mmLPSH, nump, nump);
+    deallocate_3d(mmSPNH, nump, nump);
+    deallocate_3d(mmSPSH, nump, nump);
+    printf("[INFO] Information for dynamic Kikuchi diffraction stored in file %s.\n", hdf5_path);
 }
 
 void DKD::img(const char *img_path, double dimension, int resolution)
@@ -876,29 +956,27 @@ void DKD::img(const char *img_path, double dimension, int resolution)
         exit(EXIT_FAILURE);
     }
     char png_path[PATH_CHAR_NUMBER]; 
-    char exts[4][EXT_CHAR_NUMBER]; strcpy(exts[3], ext);
-    for(int i=0;i<napos;i++){
-        for(int j=0;j<numEbin;j++){
-            int_to_str(exts[1], i); strcat(exts[1], "-"); int_to_str(exts[2], j);
-            strcpy(exts[0], ".DKD_LPNH."); 
-            strcpy(png_path, name); merge_path(png_path, exts, 4);
-            image_array(png_path, mLPNH[i][j], nump, nump, dimension, dimension, resolution);
-            printf("Image data for the modified lambert projection of northern hemisphere at apos %d, energy %d stored in %s.\n", i, j, png_path);
-            strcpy(exts[0], ".DKD_LPSH."); 
-            strcpy(png_path, name); merge_path(png_path, exts, 4);
-            image_array(png_path, mLPSH[i][j], nump, nump, dimension, dimension, resolution);
-            printf("Image data for the modified lambert projection of sorthern hemisphere at apos %d, energy %d stored in %s.\n", i, j, png_path);
-        }
-    }
-    strcpy(exts[2], "");
+    char exts[3][EXT_CHAR_NUMBER]; strcpy(exts[2], ext);
     for(int i=0;i<numEbin;i++){
+        int_to_str(exts[1], i);
+        strcpy(exts[0], ".DKD_LPNH."); 
+        strcpy(png_path, name); merge_path(png_path, exts, 3);
+        image_array(png_path, mLPNH[i], nump, nump, dimension, dimension, resolution);
+        printf("[INFO] Image data for the modified lambert projection of northern hemisphere at energy %d stored in %s.\n", i, png_path);
+        strcpy(exts[0], ".DKD_LPSH."); 
+        strcpy(png_path, name); merge_path(png_path, exts, 3);
+        image_array(png_path, mLPSH[i], nump, nump, dimension, dimension, resolution);
+        printf("[INFO] Image data for the modified lambert projection of sorthern hemisphere at energy %d stored in %s.\n", i, png_path);
+    }
+    for(int i=0;i<numEbin;i++){
+        int_to_str(exts[1], i);
         strcpy(exts[0], ".DKD_SPNH."); 
-        strcpy(png_path, name); merge_path(png_path, exts, 4);
+        strcpy(png_path, name); merge_path(png_path, exts, 3);
         image_array(png_path, mSPNH[i], nump, nump, dimension, dimension, resolution);
-        printf("Image data for the master stereographic projection of northern hemisphere at energy %d stored in %s.\n", i, png_path);
+        printf("[INFO] Image data for the master stereographic projection of northern hemisphere at energy %d stored in %s.\n", i, png_path);
         strcpy(exts[0], ".DKD_SPSH."); 
-        strcpy(png_path, name); merge_path(png_path, exts, 4);
+        strcpy(png_path, name); merge_path(png_path, exts, 3);
         image_array(png_path, mSPSH[i], nump, nump, dimension, dimension, resolution);
-        printf("Image data for the master stereographic projection of northern hemisphere at energy %d stored in %s.\n", i, png_path);
+        printf("[INFO] Image data for the master stereographic projection of northern hemisphere at energy %d stored in %s.\n", i, png_path);
     }
 }

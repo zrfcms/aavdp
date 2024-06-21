@@ -13,24 +13,22 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
     SG=spgdb_get_spacegroup_type(QD->hall_number);
     PG=ptg_get_pointgroup(SG.pointgroup_number);
 
-    point_group=SG.pointgroup_number;
-    strcpy(point_group_symbol, QD->pointgroup_symbol);
-    space_group=QD->spacegroup_number;
-    strcpy(space_group_symbol, QD->international_symbol);
-    hall_number=QD->hall_number;
-    matrix_constant(lattice, 0.1, QD->std_lattice);
+    const char CRYSTAL_SYS[][20]={"None", "Triclinic", "Monoclinic", "Orthorhombic", "Tetragonal", "Trigonal", "Hexagonal", "Cubic"};
+    strcpy(crystal_system, CRYSTAL_SYS[PG.holohedry]);
     const char CENTERING[]={'0', 'P', 'I', 'F', 'A', 'B', 'C', '0', 'R'};
     int centeringi=SG.centering; centering=CENTERING[centeringi];
-    if(QD->choice[0]=='2') is_second_setting=true;
+    hall_number=QD->hall_number;
+    space_group=QD->spacegroup_number;
+    strcpy(space_group_symbol, QD->international_symbol);
+    point_group=SG.pointgroup_number;
+    strcpy(point_group_symbol, QD->pointgroup_symbol);
+    set_sampling_type(space_group, point_group);
     if(PG.holohedry==TRIGO) is_trigonal=true;
     if(PG.holohedry==HEXA) is_hexagonal=true;
-    if(is_second_setting&&PG.holohedry==TRIGO) is_hexagonal=true;//second setting
+    if(is_trigonal||is_hexagonal) use_hexagonal=true;
 
-    nsymmetry=QD->n_operations;
-    for(int i=0;i<nsymmetry;i++){
-        matrix_copy(sym_rotations[i], QD->rotations[i]);
-        vector_copy(sym_translations[i], QD->translations[i]);
-    }
+    compute_lattice_matrices(QD->std_lattice);
+    compute_symmetry_matrices(space_group, QD->rotations, QD->translations, QD->n_operations);
     compute_asymmetric_atomic_positions(QD->std_positions, QD->std_types, QD->n_std_atoms);
     callocate(&apos_Z, napos, -1);
     callocate(&apos_M, napos, 0.0);
@@ -49,12 +47,121 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
         }
     }
     compute_atomic_density();
-    set_sampling_type();
-    compute_lattice_matrices();
-    compute_point_symmetry_matrices();
     QSPGDataset_free_dataset(QD);
     QB_free_atom(&QB);
     logging();
+}
+
+void CELL::set_sampling_type(int sgnum, int pgnum)
+{
+    sampling_type=PG_SAMPLING_TYPE[pgnum-1];
+    if(-1==sampling_type){
+        if(sgnum>=143&&sgnum<=167){
+            if(sgnum>=143&&sgnum<=146) sampling_type=10;
+            else if(sgnum>=147&&sgnum<=155) sampling_type=12;
+            else if(sgnum>=156&&sgnum<=161) sampling_type=14;
+            else if(sgnum>=162&&sgnum<=163) sampling_type=17;
+            else if(sgnum>=164&&sgnum<=167) sampling_type=16;
+        }else{
+            if(14==pgnum){
+                if(sgnum>=115&&sgnum<=120){
+                    sampling_type=6;
+                }else{
+                    sampling_type=8;
+                }
+            }else if(26==pgnum){
+                if(187==sgnum||188==sgnum){
+                    sampling_type=16;
+                }else{
+                    sampling_type=17;
+                }
+            }
+        }
+    } 
+}
+
+void CELL::compute_lattice_matrices(double lat[3][3])
+{
+    double lattice[3][3];
+    matrix_constant(lattice, 0.1, lat);
+    double lx=lattice[0][0], ly=lattice[1][1], lz=lattice[2][2];
+    double xy=lattice[0][1], xz=lattice[0][2], yz=lattice[1][2];
+    a0=lx; b0=sqrt(ly*ly+xy*xy); c0=sqrt(lz*lz+xz*xz+yz*yz);
+    alpha=acos((xy*xz+ly*yz)/(b0*c0))*RAD_TO_DEG; beta=acos(xz/c0)*RAD_TO_DEG; gamma=acos(xy/b0)*RAD_TO_DEG;
+    double a[3], b[3], c[3];
+    double bc[3], ca[3], ab[3];
+    matrix_copy(dsm, lattice);//*point
+    matrix_transpose(dsm, dsm);
+    vector_copy(a, dsm[0]);
+    vector_copy(b, dsm[1]);
+    vector_copy(c, dsm[2]);
+    vector_cross(bc, b, c);
+    vector_cross(ca, c, a);
+    vector_cross(ab, a, b);
+    vol=vector_dot(a, bc);
+    vector_constant(bc, 1.0/vol, bc);
+    vector_constant(ca, 1.0/vol, ca);
+    vector_constant(ab, 1.0/vol, ab);
+    vector_copy(rsm[0], bc);
+    vector_copy(rsm[1], ca);
+    vector_copy(rsm[2], ab);
+    matrix_transpose(rsm, rsm);
+    double t_mat[3][3];
+    matrix_transpose(t_mat, dsm);
+    matrix_multiply(dmt, dsm, t_mat);
+    matrix_transpose(t_mat, rsm);
+    matrix_multiply(rmt, t_mat, rsm);
+}
+
+void CELL::compute_symmetry_matrices(int sgnum, int (*rots)[3][3], double (*trans)[3], int noperation)
+{
+    nsymmetry=noperation;
+    for(int i=0;i<noperation;i++){
+        matrix_copy(sym_rotations[i], rots[i]);
+        vector_copy(sym_translations[i], trans[i]);
+    }
+    int    num=0;
+    int    rotations[192][3][3]; 
+    double translations[192][3];
+    if(sgnum!=SG_SYMMORPHIC_NUMBER[sgnum-1]){
+        sgnum=SG_SYMMORPHIC_NUMBER[space_group-1];
+        Symmetry *sym=spgdb_get_spacegroup_operations(SG_HALL_NUMBER_START[sgnum-1]);
+        for(int i=0;i<sym->size;i++){
+            matrix_copy(rotations[i], sym->rot[i]);
+            vector_copy(translations[i], sym->trans[i]);
+        }
+        num=sym->size;
+    }else{
+        for(int i=0;i<nsymmetry;i++){
+            matrix_copy(rotations[i], sym_rotations[i]);
+            vector_copy(translations[i], sym_translations[i]);
+        }
+        num=nsymmetry;
+    }
+    int count_point=0;
+    for(int i=0;i<num;i++){
+        double temp1=vector_dot(translations[i], translations[i]);
+        if(temp1<0.1){
+            for(int j=0;j<3;j++){
+                for(int k=0;k<3;k++){
+                    point_dmats[count_point][j][k]=rotations[i][j][k];
+                }
+            }
+            for(int j=0;j<3;j++){
+                for(int k=0;k<3;k++){
+                    double temp2=0.0;
+                    for(int m=0;m<3;m++){
+                        for(int n=0;n<3;n++){
+                            temp2+=dmt[j][m]*rotations[i][m][n]*rmt[n][k];
+                        }
+                    }
+                    point_rmats[count_point][j][k]=temp2;
+                }
+            }
+            count_point++;
+        }
+    }
+    npointsym=count_point;
 }
 
 void CELL::compute_asymmetric_atomic_positions(double (*atom_pos)[3], int *atom_type, int natom)
@@ -125,10 +232,6 @@ void CELL::compute_asymmetric_atomic_positions(double (*atom_pos)[3], int *atom_
 
 void CELL::compute_atomic_density()
 {
-    double t_mat[3][3], c_v[3];
-    matrix_transpose(t_mat, lattice);
-    vector_cross(c_v, t_mat[1], t_mat[2]);
-    double vol=vector_dot(t_mat[0], c_v);
     double num_M=0.0, num_Z=0.0;
     ave_M=0.0; ave_Z=0.0;
     for(int i=0;i<napos;i++){
@@ -143,27 +246,28 @@ void CELL::compute_atomic_density()
 
 CELL::CELL(const char *hdf5_path)
 {
-    double **lat;
+    double *lat;
     double **dm, **rm, **ds, **rs;
     int ***rot;
     double **tra, ***dmat, ***rmat, ***pos;
     char center[2];
-    int setting, trigonal, hexagonal;
+    int trigonal, hexagonal, usehex;
     size_t size1, size2, size3;
     HDF5 hdf;
     hdf.open(hdf5_path);
-    hdf.read("/CrystalStructure/PointGroupNumber", point_group);
-    hdf.read("/CrystalStructure/PointGroupSymbol", point_group_symbol);
+    hdf.read("/CrystalStructure/CrystalSystem", crystal_system);
+    hdf.read("/CrystalStructure/CenteringVector", center);
+    hdf.read("/CrystalStructure/HallNumber", hall_number);
     hdf.read("/CrystalStructure/SpaceGroupNumber", space_group);
     hdf.read("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-    hdf.read("/CrystalStructure/HallNumber", hall_number);
-    hdf.read("/CrystalStructure/CenteringVector", center);
+    hdf.read("/CrystalStructure/PointGroupNumber", point_group);
+    hdf.read("/CrystalStructure/PointGroupSymbol", point_group_symbol);
     hdf.read("/CrystalStructure/SamplingType", sampling_type);
-    hdf.read("/CrystalStructure/IsSecondSetting", setting);
     hdf.read("/CrystalStructure/IsTrigonal", trigonal);
     hdf.read("/CrystalStructure/IsHexagonal", hexagonal);
+    hdf.read("/CrystalStructure/UseHexagonal", usehex);
     hdf.read("/CrystalStructure/Volume", vol);
-    hdf.read_array_2d("/CrystalStructure/Lattice", &lat, size1, size2);
+    hdf.read_array("/CrystalStructure/Lattice", &lat, size1);
     hdf.read_array_2d("/CrystalStructure/DirectSpaceMatrix", &ds, size1, size2);
     hdf.read_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", &rs, size1, size2);
     hdf.read_array_2d("/CrystalStructure/DirectMetricTensor", &dm, size1, size2);
@@ -188,9 +292,9 @@ CELL::CELL(const char *hdf5_path)
     hdf.read("/CrystalStructure/Density", density);
     hdf.close();
     callocate_3d(&apos_pos, napos, nsymmetry, 3, 0.0);
+    a0=lat[0]; b0=lat[1]; c0=lat[2]; alpha=lat[3]; beta=lat[4]; gamma=lat[5];
     for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
-            lattice[i][j]=lat[i][j];
             dmt[i][j]=dm[i][j]; rmt[i][j]=rm[i][j];
             dsm[i][j]=ds[i][j]; rsm[i][j]=rs[i][j];
         }
@@ -218,7 +322,7 @@ CELL::CELL(const char *hdf5_path)
             }
         }
     }
-    deallocate_2d(lat, 3);
+    deallocate(lat);
     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
     deallocate_3d(rot, 3, 3);
@@ -226,17 +330,17 @@ CELL::CELL(const char *hdf5_path)
     deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
     deallocate_3d(pos, nsymmetry, 3);
     centering=center[0];
-    is_second_setting=setting==1?true:false;
     is_trigonal=trigonal==1?true:false;
     is_hexagonal=hexagonal==1?true:false;
+    use_hexagonal=usehex==1?true:false;
     logging();
 }
 
 void CELL::hdf5(const char* hdf5_path)
 {
-    double **lat;
+    double *lat;
     double **dm, **rm, **ds, **rs;
-    callocate_2d(&lat, 3, 3, 0.0);
+    callocate(&lat, 6, 0.0);
     callocate_2d(&dm, 3, 3, 0.0); 
     callocate_2d(&rm, 3, 3, 0.0);
     callocate_2d(&ds, 3, 3, 0.0); 
@@ -248,9 +352,9 @@ void CELL::hdf5(const char* hdf5_path)
     callocate_3d(&dmat, 3, 3, 48, 0.0); 
     callocate_3d(&rmat, 3, 3, 48, 0.0);
     callocate_3d(&pos, nsymmetry, 3, napos, 0.0);
+    lat[0]=a0; lat[1]=b0; lat[2]=c0; lat[3]=alpha; lat[4]=beta; lat[5]=gamma;
     for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
-            lat[i][j]=lattice[i][j];
             dm[i][j]=dmt[i][j]; rm[i][j]=rmt[i][j];
             ds[i][j]=dsm[i][j]; rs[i][j]=rsm[i][j];
         }
@@ -282,18 +386,19 @@ void CELL::hdf5(const char* hdf5_path)
     HDF5 hdf;
     hdf.open(hdf5_path);
     hdf.write_group("/CrystalStructure");
-    hdf.write("/CrystalStructure/PointGroupNumber", point_group);
-    hdf.write("/CrystalStructure/PointGroupSymbol", point_group_symbol);
+    hdf.write("/CrystalStructure/CrystalSystem", crystal_system);
+    hdf.write("/CrystalStructure/CenteringVector", center);
+    hdf.write("/CrystalStructure/HallNumber", hall_number);
     hdf.write("/CrystalStructure/SpaceGroupNumber", space_group);
     hdf.write("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-    hdf.write("/CrystalStructure/HallNumber", hall_number);
-    hdf.write("/CrystalStructure/CenteringVector", center);
+    hdf.write("/CrystalStructure/PointGroupNumber", point_group);
+    hdf.write("/CrystalStructure/PointGroupSymbol", point_group_symbol);
     hdf.write("/CrystalStructure/SamplingType", sampling_type);
-    hdf.write("/CrystalStructure/IsSecondSetting", is_second_setting);
     hdf.write("/CrystalStructure/IsTrigonal", is_trigonal);
     hdf.write("/CrystalStructure/IsHexagonal", is_hexagonal);
+    hdf.write("/CrystalStructure/UseHexagonal", use_hexagonal);
     hdf.write("/CrystalStructure/Volume", vol);
-    hdf.write_array_2d("/CrystalStructure/Lattice", lat, 3, 3);
+    hdf.write_array("/CrystalStructure/Lattice", lat, 6);
     hdf.write_array_2d("/CrystalStructure/DirectSpaceMatrix", ds, 3, 3);
     hdf.write_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", rs, 3, 3);
     hdf.write_array_2d("/CrystalStructure/DirectMetricTensor", dm, 3, 3);
@@ -317,7 +422,7 @@ void CELL::hdf5(const char* hdf5_path)
     hdf.write("/CrystalStructure/AveragedAtomicNumber", ave_Z);
     hdf.write("/CrystalStructure/Density", density);
     hdf.close();
-    deallocate_2d(lat, 3);
+    deallocate(lat);
     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
     deallocate_3d(rot, 3, 3);
@@ -328,11 +433,9 @@ void CELL::hdf5(const char* hdf5_path)
 
 void CELL::logging()
 {
-    double lx=lattice[0][0], ly=lattice[1][1], lz=lattice[2][2];
-    double xy=lattice[0][1], xz=lattice[0][2], yz=lattice[1][2];
-    double a0=lx, b0=sqrt(ly*ly+xy*xy), c0=sqrt(lz*lz+xz*xz+yz*yz);
-    double alpha=acos((xy*xz+ly*yz)/(b0*c0))*RAD_TO_DEG, beta=acos(xz/c0)*RAD_TO_DEG, gamma=acos(xy/b0)*RAD_TO_DEG;
     printf("[INFO] LATTICE INFORMATION\n");
+    printf("[INFO] Crystal system     : %s\n", crystal_system);
+    printf("[INFO] Centering vector   : %c\n", centering);
     printf("[INFO] a [nm]             : %.5f\n", a0);
     printf("[INFO] b [nm]             : %.5f\n", b0);
     printf("[INFO] c [nm]             : %.5f\n", c0);
@@ -341,18 +444,14 @@ void CELL::logging()
     printf("[INFO] gamma [deg]        : %.5f\n", gamma);
     printf("[INFO] volume[nm^3]       : %.5f\n", vol);
     printf("[INFO] SYMMETRY INFORMATION\n");
+    printf("[INFO] Hall number        : %d\n", hall_number);
     printf("[INFO] Space group        : %d\n", space_group);
     printf("[INFO] Space group symbol : %s\n", space_group_symbol);
     printf("[INFO] Point group        : %d\n", point_group);
     printf("[INFO] Point group symbol : %s\n", point_group_symbol);
-    printf("[INFO] Hall number        : %d\n", hall_number);
-    printf("[INFO] Centering vector   : %c\n", centering);
     printf("[INFO] Sampling type      : %d\n", sampling_type);
     printf("[INFO] Number of symmetry operations      : %d\n", nsymmetry);
     printf("[INFO] Number of point symmetry operations: %d\n", npointsym);
-    printf("[INFO] Is second setting (1, Yes; 0, No)  : %d\n", is_second_setting);
-    printf("[INFO] Is trigonal       (1, Yes; 0, No)  : %d\n", is_trigonal);
-    printf("[INFO] Is hexagonal      (1, Yes; 0, No)  : %d\n", is_hexagonal);
     printf("[INFO] ATOMIC INFORMATION\n");
     printf("[INFO] Number of asymmetric atomic positions: %d\n", napos);
     for(int i=0;i<napos;i++){
@@ -379,108 +478,18 @@ CELL::~CELL()
     }
 }
 
-void CELL::set_sampling_type()
-{
-    sampling_type=PG_SAMPLING_TYPE[point_group-1];
-    if(-1==sampling_type||14==point_group||26==point_group){
-        if(is_trigonal){
-            if(space_group>=143&&space_group<=146) sampling_type=10;
-            if(147==space_group||148==space_group) sampling_type=12;
-            if(149==space_group||150==space_group||151==space_group) sampling_type=12;
-            if(152==space_group||153==space_group||154==space_group||155==space_group) sampling_type=12;
-            if(156==space_group||157==space_group||158==space_group) sampling_type=14;
-            if(159==space_group||160==space_group||161==space_group) sampling_type=14;
-            if(162==space_group||163==space_group) sampling_type=17;
-            if(164==space_group||165==space_group||166==space_group||167==space_group) sampling_type=12;
-        }else{
-            if(14==point_group){
-                if(space_group>=115&&space_group<=120){
-                    sampling_type=6;
-                }else{
-                    sampling_type=8;
-                }
-            }else if(26==point_group){
-                if(187==space_group||188==space_group){
-                    sampling_type=16;
-                }else{
-                    sampling_type=17;
-                }
-            }
-        }
-    } 
-}
-
-void CELL::compute_lattice_matrices()
-{
-    double a[3], b[3], c[3];
-    double bc[3], ca[3], ab[3];
-    matrix_copy(dsm, lattice);//*point
-    matrix_transpose(dsm, dsm);
-    vector_copy(a, dsm[0]);
-    vector_copy(b, dsm[1]);
-    vector_copy(c, dsm[2]);
-    vector_cross(bc, b, c);
-    vector_cross(ca, c, a);
-    vector_cross(ab, a, b);
-    vol=vector_dot(a, bc);
-    vector_constant(bc, 1.0/vol, bc);
-    vector_constant(ca, 1.0/vol, ca);
-    vector_constant(ab, 1.0/vol, ab);
-    vector_copy(rsm[0], bc);
-    vector_copy(rsm[1], ca);
-    vector_copy(rsm[2], ab);
-    matrix_transpose(rsm, rsm);
-    double t_mat[3][3];
-    matrix_transpose(t_mat, dsm);
-    matrix_multiply(dmt, t_mat, dsm);
-    matrix_transpose(t_mat, rsm);
-    matrix_multiply(rmt, t_mat, rsm);
-}
-
-void CELL::compute_point_symmetry_matrices()
-{
-    int count_point=0;
-    for(int i=0;i<nsymmetry;i++){
-        double temp1=vector_dot(sym_translations[i], sym_translations[i]);
-        if(temp1<0.1){
-            for(int j=0;j<3;j++){
-                for(int k=0;k<3;k++){
-                    point_dmats[count_point][j][k]=sym_rotations[i][j][k];
-                }
-            }
-            for(int j=0;j<3;j++){
-                for(int k=0;k<3;k++){
-                    double temp2=0.0;
-                    for(int m=0;m<3;m++){
-                        for(int n=0;n<3;n++){
-                            temp2+=dmt[j][m]*sym_rotations[i][m][n]*rmt[n][k];
-                        }
-                    }
-                    point_rmats[count_point][j][k]=temp2;
-                }
-            }
-            count_point++;
-        }
-    }
-    npointsym=count_point;
-}
-
 double CELL::dot(double v1[3], double v2[3], char space)
 {
     double temp[3], res;
     switch(space)
     {
     case 'r':
-        temp[0]=rmt[0][0]*v2[0]+rmt[0][1]*v2[1]+rmt[0][2]*v2[2];
-        temp[1]=rmt[1][0]*v2[0]+rmt[1][1]*v2[1]+rmt[1][2]*v2[2];
-        temp[2]=rmt[2][0]*v2[0]+rmt[2][1]*v2[1]+rmt[2][2]*v2[2];
-        res=v1[0]*temp[0]+v1[1]*temp[1]+v1[2]*temp[2];
+        vector_rotate(temp, rmt, v2);
+        res=vector_dot(v1, temp);
         break;
     case 'd':
-        temp[0]=dmt[0][0]*v2[0]+dmt[0][1]*v2[1]+dmt[0][2]*v2[2];
-        temp[1]=dmt[1][0]*v2[0]+dmt[1][1]*v2[1]+dmt[1][2]*v2[2];
-        temp[2]=dmt[2][0]*v2[0]+dmt[2][1]*v2[1]+dmt[2][2]*v2[2];
-        res=v1[0]*temp[0]+v1[1]*temp[1]+v1[2]*temp[2];
+        vector_rotate(temp, dmt, v2);
+        res=vector_dot(v1, temp);
     default:
         printf("[ERROR] Unrecognized space %c in dot computation.", space);
         exit(EXIT_FAILURE);
@@ -511,45 +520,36 @@ void CELL::normalize(double n_v[3], double v[3], char space)
 {
     double len_v=length(v, space);
     if(0.0!=len_v){
-        n_v[0]=v[0]/len_v; n_v[1]=v[1]/len_v; n_v[2]=v[2]/len_v;
+        vector_constant(n_v, 1.0/len_v, v);
     }else{
         n_v[0]=0.0; n_v[1]=0.0; n_v[2]=0.0; 
     }
 }
 
-void CELL::cartesian(double c_v[3], double v[3])
+void CELL::reciprocal_to_cartesian(double c_v[3], double v[3])
 {
-    double vc[3]={v[0], v[1], v[2]};
-    c_v[0]=rsm[0][0]*vc[0]+rsm[0][1]*vc[1]+rsm[0][2]*vc[2];
-    c_v[1]=rsm[1][0]*vc[0]+rsm[1][1]*vc[1]+rsm[1][2]*vc[2];
-    c_v[2]=rsm[2][0]*vc[0]+rsm[2][1]*vc[1]+rsm[2][2]*vc[2];
+    vector_rotate(c_v, rsm, v);
 }
 
-void CELL::reciprocal(double r_v[3], double v[3])
+void CELL::cartesian_to_reciprocal(double r_v[3], double v[3])
 {
-    double vc[3]={v[0], v[1], v[2]};
-    r_v[0]=dsm[0][0]*vc[0]+dsm[1][0]*vc[1]+dsm[2][0]*vc[2];
-    r_v[1]=dsm[0][1]*vc[0]+dsm[1][1]*vc[1]+dsm[2][1]*vc[2];
-    r_v[2]=dsm[0][2]*vc[0]+dsm[1][2]*vc[1]+dsm[2][2]*vc[2];
+    vector_rotate(r_v, dsm, v);
 }
 
 void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space)
 {
-    double s[3];
-    equiv[0][0]=g[0]; equiv[0][1]=g[1]; equiv[0][2]=g[2];
+    double s[3]={0.0};
+    vector_copy(equiv[0], g);
     nequiv=1;
     for(int i=1;i<npointsym;i++){
         for(int j=0;j<3;j++){
-            s[j]=0.0;
-            for(int k=0;k<3;k++){
-                if('r'==space){
-                    s[j]+=point_rmats[i][j][k]*g[k];
-                }else if('d'==space){
-                    s[j]+=point_dmats[i][j][k]*g[k];
-                }else{
-                    printf("[ERROR] Unrecognized space %c in star computation.", space);
-                    exit(EXIT_FAILURE);
-                }
+            if('r'==space){
+                s[j]=vector_dot(point_rmats[i][j], g);
+            }else if('d'==space){
+                s[j]=vector_dot(point_dmats[i][j], g);
+            }else{
+                printf("[ERROR] Unrecognized space %c in star computation.", space);
+                exit(EXIT_FAILURE);
             }
         }
         bool is_new=true;
@@ -563,17 +563,17 @@ void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequi
             }
         }
         if(is_new){
-            equiv[nequiv][0]=s[0]; equiv[nequiv][1]=s[1]; equiv[nequiv][2]=s[2];
+            vector_copy(equiv[nequiv], s);
             nequiv++;
         }
     }
 }
 
-void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int nump)
+void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int imp)
 {
-    double xy[2]={double(px)/double(nump), double(py)/double(nump)};
+    double xy[2]={double(px)/double(imp), double(py)/double(imp)};
     double xyz[3]; int ierr;
-    if(is_hexagonal){
+    if(use_hexagonal){
         compute_sphere_from_hexagonal_Lambert(xyz, ierr, xy);
     }else{
         compute_sphere_from_square_Lambert(xyz, ierr, xy);
@@ -581,7 +581,7 @@ void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int
     if(pz<0) xyz[2]=-xyz[2];
     vector_normalize(xyz, xyz);
     double kstar[3];
-    reciprocal(kstar, xyz);
+    cartesian_to_reciprocal(kstar, xyz);
     int iequiv; double vtmp[48][3];
     switch(sampling_type)
     {
@@ -638,19 +638,19 @@ void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int
     }
     double eps=-1.0e-4;
     for(int i=0;i<iequiv;i++){
-        cartesian(xyz, vtmp[i]);
+        reciprocal_to_cartesian(xyz, vtmp[i]);
         vector_normalize(xyz, xyz);
         if(xyz[2]<eps){
             equiv[i][2]=-1;
         }else{
             equiv[i][2]=1;
         }
-        if(is_hexagonal){
+        if(use_hexagonal){
             compute_hexagonal_Lambert(xy, ierr, xyz);
         }else{
             compute_square_Lambert(xy, ierr, xyz);
         }
-        xy[0]*=nump; xy[1]*=nump;
+        xy[0]*=double(imp); xy[1]*=double(imp);
         equiv[i][0]=int(round(xy[0])); equiv[i][1]=int(round(xy[1]));
     }
     nequiv=iequiv;
@@ -723,6 +723,7 @@ bool CELL::is_centering_allowed(double g[3])
             res=int(-g[0]+g[1]+g[2]+90)%3;
             if(0!=res) is_allowed=false;
         }
+        break;
     default:
         printf("[ERROR] Unrecognized centering symbol %c (not P, F, I, A, B, C, or R).", centering);
         exit(EXIT_FAILURE);
@@ -756,7 +757,7 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
             }
         }
     }
-    printf("[INFO] Done!\n");
+    printf("Done!\n");
 }
 
 void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
@@ -797,7 +798,7 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
             }
         }
     }
-    printf("[INFO] Done!\n");
+    printf("Done!\n");
 }
 
 void CELL::update_Fourier_coefficient0(double voltage)
@@ -1124,7 +1125,7 @@ void MODEL::set_lattice(double mat[3][3])
         matrix_transpose(rsm, rsm);
         double t_mat[3][3];
         matrix_transpose(t_mat, dsm);
-        matrix_multiply(dmt, t_mat, dsm);
+        matrix_multiply(dmt, dsm, t_mat);
         matrix_transpose(t_mat, rsm);
         matrix_multiply(rmt, t_mat, rsm);
         dimension[0]=lx; dimension[1]=sqrt(xy*xy+ly*ly); dimension[2]=sqrt(xz*xz+yz*yz+lz*lz);

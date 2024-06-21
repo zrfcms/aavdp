@@ -72,6 +72,9 @@ int main(int argc, char* argv[])
                 i++;
                 is_lorentz=false;
                 continue;
+            }else if(0==strcmp(argv[i], "-o")){
+                i++;
+                strcpy(xrd_path, argv[i++]);
             }else{
                 i++;
                 continue;
@@ -192,7 +195,7 @@ int main(int argc, char* argv[])
                     continue;
                 }
             }
-            char uvw[4][10]; strcpy(uvw[0], ".");
+            char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
             int_to_str(uvw[1], zaxis[0]); int_to_str(uvw[2], zaxis[1]); int_to_str(uvw[3], zaxis[2]);
             merge_path(sed_path, uvw, 4); strcat(sed_path, ".sed");
             SED sed(input_path);
@@ -264,7 +267,7 @@ int main(int argc, char* argv[])
                     continue;
                 }
             }
-            char uvw[4][10]; strcpy(uvw[0], ".");
+            char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
             int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
             merge_path(hdf5_path, uvw, 4); strcat(hdf5_path, ".h5");
             merge_path(vtk_path, uvw, 4); strcat(vtk_path, ".vtk");
@@ -330,7 +333,7 @@ int main(int argc, char* argv[])
             }
         }
         char   img_path[PATH_CHAR_NUMBER]; strcpy(img_path, name);
-        char   exts[5][10]; strcpy(exts[0], "."); strcpy(exts[4], ".png");
+        char   exts[5][EXT_CHAR_NUMBER]; strcpy(exts[0], "."); strcpy(exts[4], ".png");
         int_to_str(exts[1], zone[0]); int_to_str(exts[2], zone[1]); int_to_str(exts[3], zone[2]);
         merge_path(img_path, exts, 5);
         if(is_zone_existing){
@@ -433,6 +436,7 @@ int main(int argc, char* argv[])
                 }
                 strcat(img_path, ".png");
                 DKD dkd(input_path, dmin, c1, c2, c3, c_sg);
+                dkd.hdf5(input_path);
                 dkd.img(img_path, img_L, img_dpi);
             }else if(0==strcmp(argv[i], "-g")){
                 i++;

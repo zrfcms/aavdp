@@ -39,6 +39,7 @@ public:
 private:
     DKD_KNODE  *khead=nullptr;
     DKD_KNODE  *ktail=nullptr;
+    FILE   *fp=nullptr;
     void   add_k_vector(CELL *cell, double xy[2], double kn, int i=0, int j=0, bool southern_flag=false);
     void   free_k_node(DKD_KNODE *khead);
 };
@@ -74,23 +75,27 @@ extern lapack_complex_double to_lapack_complex(complex<double> c);
 class DKD
 {
 public:
-    double dmin;//smallest interplanar spacing to consider
+    double dmin=0.1;//smallest interplanar spacing to consider
     BETHE  bethe;//Bethe parameters
 
-    int    napos, numEbin;
-    int    nump;//number of master pattern pixels
-    double ****mLPNH, ****mLPSH; //The modified Lambert Projection Northern/Southern Hemisphere
-    double ***mSPNH, ***mSPSH; //The master Stereographic Projection Northern/Southern Hemisphere
+    int    numEbin=0, nump=0;
+    double ***mLPNH=nullptr, ***mLPSH=nullptr; //The modified Lambert Projection Northern/Southern Hemisphere
+    double ***mSPNH=nullptr, ***mSPSH=nullptr; //The master Stereographic Projection Northern/Southern Hemisphere
     DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, double c_sg);
     DKD(const char* hdf5_path);
     ~DKD();
     void   img(const char *img_path, double dimension=6, int resolution=512);
+    void   hdf5(const char *hdf5_path);
 private:
+    FILE   *fp=nullptr;
+    double **lambdaE=nullptr;
+    void   compute_scattering_probability(CELL *cell, DKD_MC *mc);
     void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DKD_GVECTOR *gvec);
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DKD_GVECTOR *gvec);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
-    double get_Lambert_interpolation(double xyz[3], double ****mat, bool is_hexagonal=false);
-    void   hdf5(const char *hdf5_path, int offset=0);
+    void   compute_Lambert_projection(int iE, bool is_hexagonal);
+    void   compute_stereographic_projection(int iE, bool is_hexagonal);
+    // void   hdf5(const char *hdf5_path, int offset);
 };
 
 #endif
