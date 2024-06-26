@@ -2,7 +2,7 @@
 #define __AAVDP_MATH_H__
 #include <cmath>
 #include <cstring>
-#include "../../include/libpng/png.h"
+#include "../include/png.h"
 
 #define PATH_CHAR_NUMBER 100
 #define EXT_CHAR_NUMBER 20

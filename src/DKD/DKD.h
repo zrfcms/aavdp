@@ -7,7 +7,7 @@
 #include <ctime>
 #include <complex>
 #include <complex.h>
-#include "../../include/lapacke/lapacke.h"
+#include "../include/lapacke.h"
 #include "DKD_MC.h"
 #include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"

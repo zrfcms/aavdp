@@ -722,12 +722,6 @@ void DKD::compute_Lambert_projection(int iE, bool use_hexagonal)
             matS[i][j]=mLPSH[iE][i][j];
         }
     }
-    char path[PATH_CHAR_NUMBER]="lambert.";
-    char exts[2][EXT_CHAR_NUMBER];
-    int_to_str(exts[0], iE); strcpy(exts[1], ".txt");
-    merge_path(path, exts, 2);
-    FILE *ff;
-    ff=fopen(path, "w");
     for(int i=-imp;i<=imp;i++){
         for(int j=-imp;j<=imp;j++){
             double xy[2]={double(i)/double(imp), double(j)/double(imp)}; 
@@ -759,7 +753,6 @@ void DKD::compute_Lambert_projection(int iE, bool use_hexagonal)
     }
     deallocate_2d(matN, nump);
     deallocate_2d(matS, nump);
-    fclose(ff);
 }
 
 void DKD::compute_stereographic_projection(int iE, bool use_hexagonal)
