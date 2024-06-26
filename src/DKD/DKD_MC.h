@@ -5,11 +5,10 @@
 #include <cmath>
 #include <cstring>
 #include "../MATH/MATH.h"
-#include "../HDF5/HDF5.h"
+// #include "../HDF5/HDF5.h"
 #include "../MODEL/MODEL.h"
 
 #define SCATTERING_EVENT_NUMBER 300 //Number of scattering events along one trajectory
-#define CEN_TO_ANG 1.0e8
 
 using namespace std;
 extern void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]);
@@ -32,10 +31,10 @@ private:
 class DKD_MC
 {
 public:
-    double omega;//sample rotate angle [in degree]
-    double sigma;//sample tilt angle [in degree]
+    double omega=0.0;//sample rotate angle [in degree]
+    double sigma=75.7;//sample tilt angle [in degree]
     double EkeV;//Energy of incident electron beam, i.e., accelerating voltage [in keV]
-    double Ehistmin;//Minimum energy to consider in energy histogram [in keV]
+    double Emin;//Minimum energy to consider [in keV]
     double Ebin;
     double depthmax;//Maximum depth for which to keep track of exit energy statistics [in nm]
     double depthstep;//stepsize for depth-energy accumulator array [in nm]
@@ -43,17 +42,17 @@ public:
     int    nump;
     int    numpz;
 
-    int    numEbin;//int((EkeV-Ehistmin)/Ebinsize)+1
+    int    numEbin;//int((EkeV-Emin)/Ebinsize), excluding Emin
     double *Ebins=nullptr;
     int    numzbin;//int(depthmax/depthstep)+1
     int    izmax;
     double *depths;
     int    ***accum_E=nullptr;//Energy accumulator array in the modified Lambert projection
     int    ****accum_z=nullptr;//Depth accumulator array in the modified Lambert projection
-    DKD_MC(const char *hdf5_path, double omega, double sigma, double Emax, double Emin, double Ebin, double zmax, double zstep, int num_e, int nump);
-    DKD_MC(const char* hdf5_path);
+    DKD_MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double Ebin, double zmax, double zstep, int num_e, int nump);
+    // DKD_MC(const char* hdf5_path);
     ~DKD_MC();
-    void   hdf5(const char *hdf5_path);
+    // void   hdf5(const char *hdf5_path);
     void   img(const char *img_path, double dimension=6.0, int resolution=512);
 private:
     RNG   *rng;

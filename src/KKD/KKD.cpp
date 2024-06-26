@@ -1,22 +1,44 @@
 #include "KKD.h"
 
-KKD::KKD(const char *hdf5_path, double threshold_ratio, double screenD, int screenW, int screen_dpi)
+KKD::KKD(SED *sed, double threshold, double screenD, int screenW, int screen_dpi)
 {
     printf("[INFO] Starting computation of kinematic Kikuchi diffraction...\n");
-    SED sed(hdf5_path);
-    compute_Kikuchi_sphere_projection(&sed, screenW, screen_dpi);
-    compute_Kikuchi_intensity_projection(&sed, threshold_ratio, screenD, screen_dpi);
+    compute_Kikuchi_sphere_projection(sed, screenW, screen_dpi);
+    compute_Kikuchi_intensity_projection(sed, threshold, screenD, screen_dpi);
     printf("[INFO] Ending computation of kinematic Kikuchi diffraction\n");
 }
 
-KKD::KKD(const char *hdf5_path, int zone[3], double threshold_ratio, double screenD, int screenW, int screenH, int screen_dpi)
+KKD::KKD(SED *sed, int zone[3], double threshold, double screenD, int screenW, int screenH, int screen_dpi)
 {
     printf("[INFO] Starting computation of kinematic Kikuchi diffraction...\n");
-    SED sed(hdf5_path);
-    compute_Kikuchi_sphere_projection(&sed, zone, screenD, screenW, screenH, screen_dpi);
-    compute_Kikuchi_intensity_projection(&sed, threshold_ratio, screenD, screen_dpi);
+    compute_Kikuchi_sphere_projection(sed, zone, screenD, screenW, screenH, screen_dpi);
+    compute_Kikuchi_intensity_projection(sed, threshold, screenD, screen_dpi);
     printf("[INFO] Ending computation of kinematic Kikuchi diffraction\n");
 }
+
+// void KKD::read(const char *sed_path)
+// {
+//     FILE *fp=fopen(sed_path, "r");
+//     if(fp==nullptr){
+//         printf("[ERROR] Unable to open file %s.\n", sed_path);
+//     }
+//     char buff[1024]; double temp;
+//     fseek(fp, 0, SEEK_SET);
+//     fscanf(fp, "%s", &buff);
+//     fscanf(fp, "%lf", &lambda);
+//     fscanf(fp, "%s", &buff);
+//     fscanf(fp, "%d", &numk);
+//     fscanf(fp, "%s", &buff);
+//     callocate_2d(&Kvectors, numk, 3, 0.0);
+//     callocate(&Kintensity, numk, 0.0);
+//     for(int i=0;i<numk;i++){
+//         fscanf(fp, "%lf", &Kvectors[i][0]);
+//         fscanf(fp, "%lf", &Kvectors[i][1]);
+//         fscanf(fp, "%lf", &Kvectors[i][2]);
+//         fscanf(fp, "%lf", &Kintensity[i]);
+//         fscanf(fp, "%lf", &temp);
+//     }
+// }
 
 KKD::~KKD()
 {
@@ -90,10 +112,9 @@ void KKD::compute_Kikuchi_intensity_projection(SED *sed, double threshold, doubl
     clock_t start, finish;
     start=clock();
     int countk=0; int countp=0;
-    double Kmag_threshold=1.0e-6;
     for(int i=0;i<sed->numk;i++){
         double Kmag=vector_length(sed->Kvectors[i]);
-        if(Kmag>Kmag_threshold&&sed->Kintensity[i]>threshold){
+        if(Kmag>1.0e-6&&sed->Kintensity[i]>threshold){
             double upper_bound=sqrt(sed->radiusE*sed->radiusE+Kmag*dK/2.0);
             double lower_bound=sqrt(sed->radiusE*sed->radiusE-Kmag*dK/2.0);
             for(int j=0;j<numpy;j++){
@@ -116,7 +137,7 @@ void KKD::compute_Kikuchi_intensity_projection(SED *sed, double threshold, doubl
     printf("[INFO] Ending projection of diffraction intensity on the Kikuchi pattern\n");
     finish=clock();
     printf("[INFO] Projection time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("[INFO] Number of diffraction vectors contributing to the Kikuchi pattern (|K| > %.8f and I > %.8f): %d\n", Kmag_threshold, threshold, countp);
+    printf("[INFO] Number of diffraction vectors contributing to the Kikuchi pattern (I > %.8f): %d\n", threshold, countp);
     intensity_min=screenI[0][0]; intensity_max=screenI[0][0];
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){

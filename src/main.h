@@ -11,6 +11,7 @@
 #include "./SSF/SSF.h"
 
 #define TYPE_INPUT_NUMBER 10
+#define ZONE_INPUT_NUMBER 10
 
 extern double be_double(char str[]);
 extern bool is_parameter(char str[]);

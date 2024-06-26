@@ -11,19 +11,22 @@
 #include "../QB/QB.h"
 #include "../QSPG/QSPG.h"
 #include "../MATH/MATH.h"
-#include "../HDF5/HDF5.h"
+// #include "../HDF5/HDF5.h"
+
+#define SYMPREC 0.001
+#define SYMPREC2 0.000001
 
 #define G_TO_WK 0.6283185307179586 //0.1*TWO_PI
 #define DW_TO_WK 1.2665147955292222 //100.0/(8.0*pow(PI, 2))
 #define PRE_CONST_V 0.04787801
 #define PRE_CONST_U 0.664840340614319 //2.0*m0*e/h**2*1.0E-18
 #define PRE_CONST_RI1 0.5772157
-#define ELECTRON_CHARGE 1.602176634e-19 //Coulomb
-#define ELECTRON_REST_MASS 9.1093837090e-31 //kg
-#define ELECTRON_REST_ENERGY 0.511e6 //eV
-#define LIGHT_VELOCITY 299792458.0 //m/s
+
 #define AVOGADRO_CONSTANT 6.02214076e23
 #define PLANK_CONSTANT 6.62607015e-34 //J·s
+#define ELECTRON_CHARGE 1.602176634e-19 //Coulomb
+#define ELECTRON_REST_MASS 9.1093837090e-31 //kg
+#define LIGHT_VELOCITY 299792458.0 //m/s
 
 #define XLAMBDA 1.54180
 #define NLAMBDA 1.54180
@@ -95,10 +98,10 @@ public:
 
     double ave_M, ave_Z, density;
     CELL(const char *cell_path, const char types[][10], const double DWs[]);
-    CELL(const char *hdf5_path);
+    // CELL(const char *hdf5_path);
     ~CELL();
     void   logging();
-    void   hdf5(const char* hdf5_path);
+    // void   hdf5(const char* hdf5_path);
     double dot(double v1[3], double v2[3], char space='r');
     double length(double v[3], char space='r');
     double angle(double v1[3], double v2[3], char space='r');

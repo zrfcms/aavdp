@@ -11,7 +11,7 @@
 #include "DKD_MC.h"
 #include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"
-#include "../HDF5/HDF5.h"
+// #include "../HDF5/HDF5.h"
 using namespace std;
 
 struct BETHE{
@@ -81,11 +81,11 @@ public:
     int    numEbin=0, nump=0;
     double ***mLPNH=nullptr, ***mLPSH=nullptr; //The modified Lambert Projection Northern/Southern Hemisphere
     double ***mSPNH=nullptr, ***mSPSH=nullptr; //The master Stereographic Projection Northern/Southern Hemisphere
-    DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, double c_sg);
-    DKD(const char* hdf5_path);
+    DKD(DKD_MC *mc, CELL *cell, double dmin, double c1, double c2, double c3, double c_sg);
+    // DKD(const char* hdf5_path);
     ~DKD();
     void   img(const char *img_path, double dimension=6, int resolution=512);
-    void   hdf5(const char *hdf5_path);
+    // void   hdf5(const char *hdf5_path);
 private:
     FILE   *fp=nullptr;
     double **lambdaE=nullptr;

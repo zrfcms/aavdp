@@ -416,34 +416,31 @@ lapack_complex_double to_lapack_complex(complex<double> c){
     return res;
 }
 
-DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, double c_sg)
+DKD::DKD(DKD_MC *mc, CELL *cell, double dmin, double c1, double c2, double c3, double c_sg)
 {
-    DKD_MC mc(hdf5_path);
-    nump=mc.nump; numEbin=mc.numEbin;
-
-    CELL cell(hdf5_path);
-    cell.compute_reflection_range(dmin);
-    cell.compute_Bloch_wave_coefficients();
-    printf("[INFO] Range of reflections along a*, b*, and c* = %d, %d, and %d.\n", cell.HKL[0], cell.HKL[1], cell.HKL[2]);
+    nump=mc->nump; numEbin=mc->numEbin;
+    cell->compute_reflection_range(dmin);
+    cell->compute_Bloch_wave_coefficients();
+    printf("[INFO] Range of reflections along a*, b*, and c* = %d, %d, and %d.\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
 
     clock_t start, finish; start=clock();
     int iEstart=numEbin-1, imp=nump/2;
-    compute_scattering_probability(&cell, &mc);
+    compute_scattering_probability(cell, mc);
     callocate_3d(&mLPNH, numEbin, nump, nump, 0.0);
     callocate_3d(&mLPSH, numEbin, nump, nump, 0.0);
     callocate_3d(&mSPNH, numEbin, nump, nump, 0.0);
     callocate_3d(&mSPSH, numEbin, nump, nump, 0.0);
     for(int iE=iEstart;iE>=0;iE--){
         clock_t istart, ifinish; istart=clock();
-        double voltage=mc.Ebins[iE];
+        double voltage=mc->Ebins[iE];
         printf("[INFO] Starting computation for energy bin (in reverse order) %d of %d; energy [keV] = %.2f.\n", iE+1, numEbin, voltage);
         if(iE==iEstart){
-            cell.compute_Fourier_coefficients(voltage);
+            cell->compute_Fourier_coefficients(voltage);
         }else{
-            cell.compute_Fourier_coefficients(voltage, false);
+            cell->compute_Fourier_coefficients(voltage, false);
         }
 
-        DKD_KVECTOR kvec(&cell, imp, imp);
+        DKD_KVECTOR kvec(cell, imp, imp);
         printf("[INFO] Independent beam directions to be considered = %d\n", kvec.numk);
 
         int sum_strong=0, sum_weak=0;
@@ -454,20 +451,20 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
         for(int ik=0;ik<kvec.numk;ik++){
             double *kk=kvec.karray[ik];
             double *fn=kk;
-            DKD_GVECTOR gvec(&cell, bethe, kk, fn, dmin);
+            DKD_GVECTOR gvec(cell, bethe, kk, fn, dmin);
             sum_strong+=gvec.nstrong; sum_weak+=gvec.nweak;
 
             complex<double> ***Sgh;
-            callocate_3d(&Sgh, cell.napos, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
-            compute_Sgh_matrices(Sgh, &cell, &gvec);
+            callocate_3d(&Sgh, cell->napos, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_Sgh_matrices(Sgh, cell, &gvec);
 
             complex<double> **dmat, **Lgh;
             callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
             callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
-            compute_dynamic_matrix(dmat, &cell, &gvec);
-            compute_Lgh_matrix(Lgh, dmat, lambdaE[iE], mc.izmax, mc.depths[iE], mc.depthstep, kvec.knarray[ik], gvec.nstrong);
+            compute_dynamic_matrix(dmat, cell, &gvec);
+            compute_Lgh_matrix(Lgh, dmat, lambdaE[iE], mc->izmax, mc->depths[iE], mc->depthstep, kvec.knarray[ik], gvec.nstrong);
             double kintensity=0.0;
-            for(int i=0;i<cell.napos;i++){
+            for(int i=0;i<cell->napos;i++){
                 for(int j=0;j<gvec.nstrong;j++){
                     for(int k=0;k<gvec.nstrong;k++){
                         complex<double> temp=Lgh[j][k]*Sgh[i][j][k];
@@ -475,11 +472,11 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
                     }
                 }
             }
-            kintensity/=double(cell.npos);
+            kintensity/=double(cell->npos);
 
             int ipx=kvec.kijarray[ik][0], ipy=kvec.kijarray[ik][1], ipz=kvec.kijarray[ik][2];
             int iequiv[48][3], nequiv;
-            cell.apply_point_group_symmetry(iequiv, nequiv, ipx, ipy, ipz, imp);
+            cell->apply_point_group_symmetry(iequiv, nequiv, ipx, ipy, ipz, imp);
             for(int i=0;i<nequiv;i++){
                 int ix=iequiv[i][0]+imp, iy=iequiv[i][1]+imp;
                 if(-1==iequiv[i][2]){
@@ -494,9 +491,9 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
             }
             deallocate_2d(Lgh, gvec.nstrong);
             deallocate_2d(dmat, gvec.nstrong);
-            deallocate_3d(Sgh, cell.napos, gvec.nstrong);
+            deallocate_3d(Sgh, cell->napos, gvec.nstrong);
         }
-        if(cell.use_hexagonal) compute_Lambert_projection(iE, cell.use_hexagonal);
+        if(cell->use_hexagonal) compute_Lambert_projection(iE, cell->use_hexagonal);
         int num=nump-1;
         for(int i=0;i<nump;i++){
             mLPSH[iE][i][0]=mLPNH[iE][i][0];
@@ -504,7 +501,7 @@ DKD::DKD(const char *hdf5_path, double dmin, double c1, double c2, double c3, do
             mLPSH[iE][0][i]=mLPNH[iE][0][i];
             mLPSH[iE][num][i]=mLPNH[iE][num][i];
         }
-        compute_stereographic_projection(iE, cell.use_hexagonal);
+        compute_stereographic_projection(iE, cell->use_hexagonal);
         double LPNH_max=0.0, LPNH_min=1.0e5;
         for(int i=0;i<nump;i++){
             for(int j=0;j<nump;j++){
@@ -845,50 +842,50 @@ void DKD::compute_stereographic_projection(int iE, bool use_hexagonal)
 //     hdf.close();
 // }
 
-DKD::DKD(const char *hdf5_path)
-{
-    size_t size1, size2, size3;
-    double ***mmLPNH, ***mmLPSH;
-    double ***mmSPNH, ***mmSPSH;
-    HDF5 hdf;
-    hdf.open(hdf5_path);
-    hdf.read("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
-    hdf.read("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
-    hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
-    hdf.read("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", &mmLPNH, size1, size2, size3);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", &mmLPSH, size1, size2, size3);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPNH", &mmSPNH, size1, size2, size3);
-    hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPSH", &mmSPSH, size1, size2, size3);
-    hdf.close();
-    callocate_3d(&mLPNH, numEbin, nump, nump, 0.0);
-    callocate_3d(&mLPSH, numEbin, nump, nump, 0.0);
-    callocate_3d(&mSPNH, numEbin, nump, nump, 0.0);
-    callocate_3d(&mSPSH, numEbin, nump, nump, 0.0);
-    for(int i=0;i<numEbin;i++){
-        for(int j=0;j<nump;j++){
-            for(int k=0;k<nump;k++){
-                mSPNH[i][j][k]=mmSPNH[j][k][i];
-                mSPSH[i][j][k]=mmSPSH[j][k][i];
-            }
-        }
-    }
-    for(int i=0;i<numEbin;i++){
-        for(int j=0;j<nump;j++){
-            for(int k=0;k<nump;k++){
-                mLPNH[i][j][k]=mmLPNH[j][k][i];
-                mLPSH[i][j][k]=mmLPSH[j][k][i];
-            }
-        }
-    }
-    deallocate_3d(mmLPNH, nump, nump);
-    deallocate_3d(mmLPSH, nump, nump);
-    deallocate_3d(mmSPNH, nump, nump);
-    deallocate_3d(mmSPSH, nump, nump);
-}
+// DKD::DKD(const char *hdf5_path)
+// {
+//     size_t size1, size2, size3;
+//     double ***mmLPNH, ***mmLPSH;
+//     double ***mmSPNH, ***mmSPSH;
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.read("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
+//     hdf.read("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
+//     hdf.read("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
+//     hdf.read("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", &mmLPNH, size1, size2, size3);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", &mmLPSH, size1, size2, size3);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPNH", &mmSPNH, size1, size2, size3);
+//     hdf.read_array_3d("/DynamicKikuchiDiffraction/masterSPSH", &mmSPSH, size1, size2, size3);
+//     hdf.close();
+//     callocate_3d(&mLPNH, numEbin, nump, nump, 0.0);
+//     callocate_3d(&mLPSH, numEbin, nump, nump, 0.0);
+//     callocate_3d(&mSPNH, numEbin, nump, nump, 0.0);
+//     callocate_3d(&mSPSH, numEbin, nump, nump, 0.0);
+//     for(int i=0;i<numEbin;i++){
+//         for(int j=0;j<nump;j++){
+//             for(int k=0;k<nump;k++){
+//                 mSPNH[i][j][k]=mmSPNH[j][k][i];
+//                 mSPSH[i][j][k]=mmSPSH[j][k][i];
+//             }
+//         }
+//     }
+//     for(int i=0;i<numEbin;i++){
+//         for(int j=0;j<nump;j++){
+//             for(int k=0;k<nump;k++){
+//                 mLPNH[i][j][k]=mmLPNH[j][k][i];
+//                 mLPSH[i][j][k]=mmLPSH[j][k][i];
+//             }
+//         }
+//     }
+//     deallocate_3d(mmLPNH, nump, nump);
+//     deallocate_3d(mmLPSH, nump, nump);
+//     deallocate_3d(mmSPNH, nump, nump);
+//     deallocate_3d(mmSPSH, nump, nump);
+// }
 
 DKD::~DKD()
 {
@@ -900,52 +897,52 @@ DKD::~DKD()
     }
 }
 
-void DKD::hdf5(const char *hdf5_path)
-{
-    double ***mmLPNH, ***mmLPSH;
-    double ***mmSPNH, ***mmSPSH;
-    callocate_3d(&mmLPNH, nump, nump, numEbin, 0.0);
-    callocate_3d(&mmLPSH, nump, nump, numEbin, 0.0);
-    callocate_3d(&mmSPNH, nump, nump, numEbin, 0.0);
-    callocate_3d(&mmSPSH, nump, nump, numEbin, 0.0);
-    for(int i=0;i<numEbin;i++){
-        for(int j=0;j<nump;j++){
-            for(int k=0;k<nump;k++){
-                mmLPNH[j][k][i]=mLPNH[i][j][k];
-                mmLPSH[j][k][i]=mLPSH[i][j][k];
-            }
-        }
-    }
-    for(int i=0;i<numEbin;i++){
-        for(int j=0;j<nump;j++){
-            for(int k=0;k<nump;k++){
-                mmSPNH[j][k][i]=mSPNH[i][j][k];
-                mmSPSH[j][k][i]=mSPSH[i][j][k];
-            }
-        }
-    }
-    HDF5 hdf;
-    hdf.open(hdf5_path);
-    hdf.write_group("/DynamicKikuchiDiffraction");
-    hdf.write("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
-    hdf.write("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
-    hdf.write_group("/DynamicKikuchiDiffraction/BetheParameters");
-    hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
-    hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
-    hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
-    hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
-    hdf.write("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
-    hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPNH", mmSPNH, nump, nump, numEbin);
-    hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPSH", mmSPSH, nump, nump, numEbin);
-    hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", mmLPNH, nump, nump, numEbin);
-    hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", mmLPSH, nump, nump, numEbin);
-    hdf.close();
-    deallocate_3d(mmLPNH, nump, nump);
-    deallocate_3d(mmLPSH, nump, nump);
-    deallocate_3d(mmSPNH, nump, nump);
-    deallocate_3d(mmSPSH, nump, nump);
-    printf("[INFO] Information for dynamic Kikuchi diffraction stored in file %s.\n", hdf5_path);
-}
+// void DKD::hdf5(const char *hdf5_path)
+// {
+//     double ***mmLPNH, ***mmLPSH;
+//     double ***mmSPNH, ***mmSPSH;
+//     callocate_3d(&mmLPNH, nump, nump, numEbin, 0.0);
+//     callocate_3d(&mmLPSH, nump, nump, numEbin, 0.0);
+//     callocate_3d(&mmSPNH, nump, nump, numEbin, 0.0);
+//     callocate_3d(&mmSPSH, nump, nump, numEbin, 0.0);
+//     for(int i=0;i<numEbin;i++){
+//         for(int j=0;j<nump;j++){
+//             for(int k=0;k<nump;k++){
+//                 mmLPNH[j][k][i]=mLPNH[i][j][k];
+//                 mmLPSH[j][k][i]=mLPSH[i][j][k];
+//             }
+//         }
+//     }
+//     for(int i=0;i<numEbin;i++){
+//         for(int j=0;j<nump;j++){
+//             for(int k=0;k<nump;k++){
+//                 mmSPNH[j][k][i]=mSPNH[i][j][k];
+//                 mmSPSH[j][k][i]=mSPSH[i][j][k];
+//             }
+//         }
+//     }
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.write_group("/DynamicKikuchiDiffraction");
+//     hdf.write("/DynamicKikuchiDiffraction/SmallestInterplanarSpacing", dmin);
+//     hdf.write("/DynamicKikuchiDiffraction/PatternPixelNumber", nump);
+//     hdf.write_group("/DynamicKikuchiDiffraction/BetheParameters");
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c1", bethe.c1);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c2", bethe.c2);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c3", bethe.c3);
+//     hdf.write("/DynamicKikuchiDiffraction/BetheParameters/c_sg", bethe.c_sg);
+//     hdf.write("/DynamicKikuchiDiffraction/EnergyBinNumber", numEbin);
+//     hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPNH", mmSPNH, nump, nump, numEbin);
+//     hdf.write_array_3d("/DynamicKikuchiDiffraction/masterSPSH", mmSPSH, nump, nump, numEbin);
+//     hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPNH", mmLPNH, nump, nump, numEbin);
+//     hdf.write_array_3d("/DynamicKikuchiDiffraction/modifiedLPSH", mmLPSH, nump, nump, numEbin);
+//     hdf.close();
+//     deallocate_3d(mmLPNH, nump, nump);
+//     deallocate_3d(mmLPSH, nump, nump);
+//     deallocate_3d(mmSPNH, nump, nump);
+//     deallocate_3d(mmSPSH, nump, nump);
+//     printf("[INFO] Information for dynamic Kikuchi diffraction stored in file %s.\n", hdf5_path);
+// }
 
 void DKD::img(const char *img_path, double dimension, int resolution)
 {

@@ -244,192 +244,192 @@ void CELL::compute_atomic_density()
     ave_M/=num_M; ave_Z/=num_Z;
 }
 
-CELL::CELL(const char *hdf5_path)
-{
-    double *lat;
-    double **dm, **rm, **ds, **rs;
-    int ***rot;
-    double **tra, ***dmat, ***rmat, ***pos;
-    char center[2];
-    int trigonal, hexagonal, usehex;
-    size_t size1, size2, size3;
-    HDF5 hdf;
-    hdf.open(hdf5_path);
-    hdf.read("/CrystalStructure/CrystalSystem", crystal_system);
-    hdf.read("/CrystalStructure/CenteringVector", center);
-    hdf.read("/CrystalStructure/HallNumber", hall_number);
-    hdf.read("/CrystalStructure/SpaceGroupNumber", space_group);
-    hdf.read("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-    hdf.read("/CrystalStructure/PointGroupNumber", point_group);
-    hdf.read("/CrystalStructure/PointGroupSymbol", point_group_symbol);
-    hdf.read("/CrystalStructure/SamplingType", sampling_type);
-    hdf.read("/CrystalStructure/IsTrigonal", trigonal);
-    hdf.read("/CrystalStructure/IsHexagonal", hexagonal);
-    hdf.read("/CrystalStructure/UseHexagonal", usehex);
-    hdf.read("/CrystalStructure/Volume", vol);
-    hdf.read_array("/CrystalStructure/Lattice", &lat, size1);
-    hdf.read_array_2d("/CrystalStructure/DirectSpaceMatrix", &ds, size1, size2);
-    hdf.read_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", &rs, size1, size2);
-    hdf.read_array_2d("/CrystalStructure/DirectMetricTensor", &dm, size1, size2);
-    hdf.read_array_2d("/CrystalStructure/ReciprocalMetricTensor", &rm, size1, size2);
-    hdf.read("/CrystalStructure/PointSymmetryNumber", npointsym);
-    hdf.read("/CrystalStructure/SymmetryNumber", nsymmetry);
-    hdf.read_array_3d("/CrystalStructure/SymmetryRotations", &rot, size1, size2, size3);
-    hdf.read_array_2d("/CrystalStructure/SymmetryTranslations", &tra, size1, size2);
-    hdf.read_array_3d("/CrystalStructure/PointSymmetryDmatrices", &dmat, size1, size2, size3);
-    hdf.read_array_3d("/CrystalStructure/PointSymmetryRmatrices", &rmat, size1, size2, size3);
-    hdf.read("/CrystalStructure/AsymmetricNumber", napos);
-    hdf.read("/CrystalStructure/PositionNumber", npos);
-    hdf.read_array("/CrystalStructure/AsymmetricType", &apos_type, size1);
-    hdf.read_array("/CrystalStructure/AsymmetricMultiplicity", &apos_multi, size1);
-    hdf.read_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", &pos, size1, size2, size3);
-    hdf.read_array("/CrystalStructure/AsymmetricAtomicNumber", &apos_Z, size1);
-    hdf.read_array("/CrystalStructure/AsymmetricAtomicMass", &apos_M, size1);
-    hdf.read_array("/CrystalStructure/AsymmetricDebyeWallerFactor", &apos_DW, size1);
-    hdf.read_array("/CrystalStructure/AsymmetricSiteOccupation", &apos_occupation, size1);
-    hdf.read("/CrystalStructure/AveragedAtomicMass", ave_M);
-    hdf.read("/CrystalStructure/AveragedAtomicNumber", ave_Z);
-    hdf.read("/CrystalStructure/Density", density);
-    hdf.close();
-    callocate_3d(&apos_pos, napos, nsymmetry, 3, 0.0);
-    a0=lat[0]; b0=lat[1]; c0=lat[2]; alpha=lat[3]; beta=lat[4]; gamma=lat[5];
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            dmt[i][j]=dm[i][j]; rmt[i][j]=rm[i][j];
-            dsm[i][j]=ds[i][j]; rsm[i][j]=rs[i][j];
-        }
-    }
-    for(int i=0;i<192;i++){
-        for(int j=0;j<3;j++){
-            sym_translations[i][j]=tra[i][j];
-            for(int k=0;k<3;k++){
-                sym_rotations[i][j][k]=rot[j][k][i];
-            }
-        }
-    }
-    for(int i=0;i<48;i++){
-        for(int j=0;j<3;j++){
-            for(int k=0;k<3;k++){
-                point_dmats[i][j][k]=dmat[j][k][i];
-                point_rmats[i][j][k]=rmat[j][k][i];
-            }
-        }
-    }
-    for(int i=0;i<napos;i++){
-        for(int j=0;j<nsymmetry;j++){
-            for(int k=0;k<3;k++){
-                apos_pos[i][j][k]=pos[j][k][i];
-            }
-        }
-    }
-    deallocate(lat);
-    deallocate_2d(dm, 3); deallocate_2d(rm, 3);
-    deallocate_2d(ds, 3); deallocate_2d(rs, 3);
-    deallocate_3d(rot, 3, 3);
-    deallocate_2d(tra, 192);
-    deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
-    deallocate_3d(pos, nsymmetry, 3);
-    centering=center[0];
-    is_trigonal=trigonal==1?true:false;
-    is_hexagonal=hexagonal==1?true:false;
-    use_hexagonal=usehex==1?true:false;
-    logging();
-}
+// CELL::CELL(const char *hdf5_path)
+// {
+//     double *lat;
+//     double **dm, **rm, **ds, **rs;
+//     int ***rot;
+//     double **tra, ***dmat, ***rmat, ***pos;
+//     char center[2];
+//     int trigonal, hexagonal, usehex;
+//     size_t size1, size2, size3;
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.read("/CrystalStructure/CrystalSystem", crystal_system);
+//     hdf.read("/CrystalStructure/CenteringVector", center);
+//     hdf.read("/CrystalStructure/HallNumber", hall_number);
+//     hdf.read("/CrystalStructure/SpaceGroupNumber", space_group);
+//     hdf.read("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
+//     hdf.read("/CrystalStructure/PointGroupNumber", point_group);
+//     hdf.read("/CrystalStructure/PointGroupSymbol", point_group_symbol);
+//     hdf.read("/CrystalStructure/SamplingType", sampling_type);
+//     hdf.read("/CrystalStructure/IsTrigonal", trigonal);
+//     hdf.read("/CrystalStructure/IsHexagonal", hexagonal);
+//     hdf.read("/CrystalStructure/UseHexagonal", usehex);
+//     hdf.read("/CrystalStructure/Volume", vol);
+//     hdf.read_array("/CrystalStructure/Lattice", &lat, size1);
+//     hdf.read_array_2d("/CrystalStructure/DirectSpaceMatrix", &ds, size1, size2);
+//     hdf.read_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", &rs, size1, size2);
+//     hdf.read_array_2d("/CrystalStructure/DirectMetricTensor", &dm, size1, size2);
+//     hdf.read_array_2d("/CrystalStructure/ReciprocalMetricTensor", &rm, size1, size2);
+//     hdf.read("/CrystalStructure/PointSymmetryNumber", npointsym);
+//     hdf.read("/CrystalStructure/SymmetryNumber", nsymmetry);
+//     hdf.read_array_3d("/CrystalStructure/SymmetryRotations", &rot, size1, size2, size3);
+//     hdf.read_array_2d("/CrystalStructure/SymmetryTranslations", &tra, size1, size2);
+//     hdf.read_array_3d("/CrystalStructure/PointSymmetryDmatrices", &dmat, size1, size2, size3);
+//     hdf.read_array_3d("/CrystalStructure/PointSymmetryRmatrices", &rmat, size1, size2, size3);
+//     hdf.read("/CrystalStructure/AsymmetricNumber", napos);
+//     hdf.read("/CrystalStructure/PositionNumber", npos);
+//     hdf.read_array("/CrystalStructure/AsymmetricType", &apos_type, size1);
+//     hdf.read_array("/CrystalStructure/AsymmetricMultiplicity", &apos_multi, size1);
+//     hdf.read_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", &pos, size1, size2, size3);
+//     hdf.read_array("/CrystalStructure/AsymmetricAtomicNumber", &apos_Z, size1);
+//     hdf.read_array("/CrystalStructure/AsymmetricAtomicMass", &apos_M, size1);
+//     hdf.read_array("/CrystalStructure/AsymmetricDebyeWallerFactor", &apos_DW, size1);
+//     hdf.read_array("/CrystalStructure/AsymmetricSiteOccupation", &apos_occupation, size1);
+//     hdf.read("/CrystalStructure/AveragedAtomicMass", ave_M);
+//     hdf.read("/CrystalStructure/AveragedAtomicNumber", ave_Z);
+//     hdf.read("/CrystalStructure/Density", density);
+//     hdf.close();
+//     callocate_3d(&apos_pos, napos, nsymmetry, 3, 0.0);
+//     a0=lat[0]; b0=lat[1]; c0=lat[2]; alpha=lat[3]; beta=lat[4]; gamma=lat[5];
+//     for(int i=0;i<3;i++){
+//         for(int j=0;j<3;j++){
+//             dmt[i][j]=dm[i][j]; rmt[i][j]=rm[i][j];
+//             dsm[i][j]=ds[i][j]; rsm[i][j]=rs[i][j];
+//         }
+//     }
+//     for(int i=0;i<192;i++){
+//         for(int j=0;j<3;j++){
+//             sym_translations[i][j]=tra[i][j];
+//             for(int k=0;k<3;k++){
+//                 sym_rotations[i][j][k]=rot[j][k][i];
+//             }
+//         }
+//     }
+//     for(int i=0;i<48;i++){
+//         for(int j=0;j<3;j++){
+//             for(int k=0;k<3;k++){
+//                 point_dmats[i][j][k]=dmat[j][k][i];
+//                 point_rmats[i][j][k]=rmat[j][k][i];
+//             }
+//         }
+//     }
+//     for(int i=0;i<napos;i++){
+//         for(int j=0;j<nsymmetry;j++){
+//             for(int k=0;k<3;k++){
+//                 apos_pos[i][j][k]=pos[j][k][i];
+//             }
+//         }
+//     }
+//     deallocate(lat);
+//     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
+//     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
+//     deallocate_3d(rot, 3, 3);
+//     deallocate_2d(tra, 192);
+//     deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
+//     deallocate_3d(pos, nsymmetry, 3);
+//     centering=center[0];
+//     is_trigonal=trigonal==1?true:false;
+//     is_hexagonal=hexagonal==1?true:false;
+//     use_hexagonal=usehex==1?true:false;
+//     logging();
+// }
 
-void CELL::hdf5(const char* hdf5_path)
-{
-    double *lat;
-    double **dm, **rm, **ds, **rs;
-    callocate(&lat, 6, 0.0);
-    callocate_2d(&dm, 3, 3, 0.0); 
-    callocate_2d(&rm, 3, 3, 0.0);
-    callocate_2d(&ds, 3, 3, 0.0); 
-    callocate_2d(&rs, 3, 3, 0.0);
-    int ***rot; 
-    double **tra, ***dmat, ***rmat, ***pos;
-    callocate_3d(&rot, 3, 3, 192, 0);
-    callocate_2d(&tra, 192, 3, 0.0);
-    callocate_3d(&dmat, 3, 3, 48, 0.0); 
-    callocate_3d(&rmat, 3, 3, 48, 0.0);
-    callocate_3d(&pos, nsymmetry, 3, napos, 0.0);
-    lat[0]=a0; lat[1]=b0; lat[2]=c0; lat[3]=alpha; lat[4]=beta; lat[5]=gamma;
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            dm[i][j]=dmt[i][j]; rm[i][j]=rmt[i][j];
-            ds[i][j]=dsm[i][j]; rs[i][j]=rsm[i][j];
-        }
-    }
-    for(int i=0;i<192;i++){
-        for(int j=0;j<3;j++){
-            tra[i][j]=sym_translations[i][j];
-            for(int k=0;k<3;k++){
-                rot[j][k][i]=sym_rotations[i][j][k];
-            }
-        }
-    }
-    for(int i=0;i<48;i++){
-        for(int j=0;j<3;j++){
-            for(int k=0;k<3;k++){
-                dmat[j][k][i]=point_dmats[i][j][k];
-                rmat[j][k][i]=point_rmats[i][j][k];
-            }
-        }
-    }
-    for(int i=0;i<napos;i++){
-        for(int j=0;j<nsymmetry;j++){
-            for(int k=0;k<3;k++){
-                pos[j][k][i]=apos_pos[i][j][k];
-            }
-        }
-    }
-    char center[]={centering, '\0'};
-    HDF5 hdf;
-    hdf.open(hdf5_path);
-    hdf.write_group("/CrystalStructure");
-    hdf.write("/CrystalStructure/CrystalSystem", crystal_system);
-    hdf.write("/CrystalStructure/CenteringVector", center);
-    hdf.write("/CrystalStructure/HallNumber", hall_number);
-    hdf.write("/CrystalStructure/SpaceGroupNumber", space_group);
-    hdf.write("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-    hdf.write("/CrystalStructure/PointGroupNumber", point_group);
-    hdf.write("/CrystalStructure/PointGroupSymbol", point_group_symbol);
-    hdf.write("/CrystalStructure/SamplingType", sampling_type);
-    hdf.write("/CrystalStructure/IsTrigonal", is_trigonal);
-    hdf.write("/CrystalStructure/IsHexagonal", is_hexagonal);
-    hdf.write("/CrystalStructure/UseHexagonal", use_hexagonal);
-    hdf.write("/CrystalStructure/Volume", vol);
-    hdf.write_array("/CrystalStructure/Lattice", lat, 6);
-    hdf.write_array_2d("/CrystalStructure/DirectSpaceMatrix", ds, 3, 3);
-    hdf.write_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", rs, 3, 3);
-    hdf.write_array_2d("/CrystalStructure/DirectMetricTensor", dm, 3, 3);
-    hdf.write_array_2d("/CrystalStructure/ReciprocalMetricTensor", rm, 3, 3);
-    hdf.write("/CrystalStructure/SymmetryNumber", nsymmetry);
-    hdf.write("/CrystalStructure/PointSymmetryNumber", npointsym);
-    hdf.write_array_3d("/CrystalStructure/SymmetryRotations", rot, 3, 3, 192);
-    hdf.write_array_2d("/CrystalStructure/SymmetryTranslations", tra, 192, 3);
-    hdf.write_array_3d("/CrystalStructure/PointSymmetryDmatrices", dmat, 3, 3, 48);
-    hdf.write_array_3d("/CrystalStructure/PointSymmetryRmatrices", rmat, 3, 3, 48);
-    hdf.write("/CrystalStructure/AsymmetricNumber", napos);
-    hdf.write("/CrystalStructure/PositionNumber", npos);
-    hdf.write_array("/CrystalStructure/AsymmetricType", apos_type, napos);
-    hdf.write_array("/CrystalStructure/AsymmetricMultiplicity", apos_multi, napos);
-    hdf.write_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", pos, nsymmetry, 3, napos);
-    hdf.write_array("/CrystalStructure/AsymmetricAtomicNumber", apos_Z, napos);
-    hdf.write_array("/CrystalStructure/AsymmetricAtomicMass", apos_M, napos);
-    hdf.write_array("/CrystalStructure/AsymmetricDebyeWallerFactor", apos_DW, napos);
-    hdf.write_array("/CrystalStructure/AsymmetricSiteOccupation", apos_occupation, napos);
-    hdf.write("/CrystalStructure/AveragedAtomicMass", ave_M);
-    hdf.write("/CrystalStructure/AveragedAtomicNumber", ave_Z);
-    hdf.write("/CrystalStructure/Density", density);
-    hdf.close();
-    deallocate(lat);
-    deallocate_2d(dm, 3); deallocate_2d(rm, 3);
-    deallocate_2d(ds, 3); deallocate_2d(rs, 3);
-    deallocate_3d(rot, 3, 3);
-    deallocate_2d(tra, 192);
-    deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
-    deallocate_3d(pos, nsymmetry, 3);
-}
+// void CELL::hdf5(const char* hdf5_path)
+// {
+//     double *lat;
+//     double **dm, **rm, **ds, **rs;
+//     callocate(&lat, 6, 0.0);
+//     callocate_2d(&dm, 3, 3, 0.0); 
+//     callocate_2d(&rm, 3, 3, 0.0);
+//     callocate_2d(&ds, 3, 3, 0.0); 
+//     callocate_2d(&rs, 3, 3, 0.0);
+//     int ***rot; 
+//     double **tra, ***dmat, ***rmat, ***pos;
+//     callocate_3d(&rot, 3, 3, 192, 0);
+//     callocate_2d(&tra, 192, 3, 0.0);
+//     callocate_3d(&dmat, 3, 3, 48, 0.0); 
+//     callocate_3d(&rmat, 3, 3, 48, 0.0);
+//     callocate_3d(&pos, nsymmetry, 3, napos, 0.0);
+//     lat[0]=a0; lat[1]=b0; lat[2]=c0; lat[3]=alpha; lat[4]=beta; lat[5]=gamma;
+//     for(int i=0;i<3;i++){
+//         for(int j=0;j<3;j++){
+//             dm[i][j]=dmt[i][j]; rm[i][j]=rmt[i][j];
+//             ds[i][j]=dsm[i][j]; rs[i][j]=rsm[i][j];
+//         }
+//     }
+//     for(int i=0;i<192;i++){
+//         for(int j=0;j<3;j++){
+//             tra[i][j]=sym_translations[i][j];
+//             for(int k=0;k<3;k++){
+//                 rot[j][k][i]=sym_rotations[i][j][k];
+//             }
+//         }
+//     }
+//     for(int i=0;i<48;i++){
+//         for(int j=0;j<3;j++){
+//             for(int k=0;k<3;k++){
+//                 dmat[j][k][i]=point_dmats[i][j][k];
+//                 rmat[j][k][i]=point_rmats[i][j][k];
+//             }
+//         }
+//     }
+//     for(int i=0;i<napos;i++){
+//         for(int j=0;j<nsymmetry;j++){
+//             for(int k=0;k<3;k++){
+//                 pos[j][k][i]=apos_pos[i][j][k];
+//             }
+//         }
+//     }
+//     char center[]={centering, '\0'};
+//     HDF5 hdf;
+//     hdf.open(hdf5_path);
+//     hdf.write_group("/CrystalStructure");
+//     hdf.write("/CrystalStructure/CrystalSystem", crystal_system);
+//     hdf.write("/CrystalStructure/CenteringVector", center);
+//     hdf.write("/CrystalStructure/HallNumber", hall_number);
+//     hdf.write("/CrystalStructure/SpaceGroupNumber", space_group);
+//     hdf.write("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
+//     hdf.write("/CrystalStructure/PointGroupNumber", point_group);
+//     hdf.write("/CrystalStructure/PointGroupSymbol", point_group_symbol);
+//     hdf.write("/CrystalStructure/SamplingType", sampling_type);
+//     hdf.write("/CrystalStructure/IsTrigonal", is_trigonal);
+//     hdf.write("/CrystalStructure/IsHexagonal", is_hexagonal);
+//     hdf.write("/CrystalStructure/UseHexagonal", use_hexagonal);
+//     hdf.write("/CrystalStructure/Volume", vol);
+//     hdf.write_array("/CrystalStructure/Lattice", lat, 6);
+//     hdf.write_array_2d("/CrystalStructure/DirectSpaceMatrix", ds, 3, 3);
+//     hdf.write_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", rs, 3, 3);
+//     hdf.write_array_2d("/CrystalStructure/DirectMetricTensor", dm, 3, 3);
+//     hdf.write_array_2d("/CrystalStructure/ReciprocalMetricTensor", rm, 3, 3);
+//     hdf.write("/CrystalStructure/SymmetryNumber", nsymmetry);
+//     hdf.write("/CrystalStructure/PointSymmetryNumber", npointsym);
+//     hdf.write_array_3d("/CrystalStructure/SymmetryRotations", rot, 3, 3, 192);
+//     hdf.write_array_2d("/CrystalStructure/SymmetryTranslations", tra, 192, 3);
+//     hdf.write_array_3d("/CrystalStructure/PointSymmetryDmatrices", dmat, 3, 3, 48);
+//     hdf.write_array_3d("/CrystalStructure/PointSymmetryRmatrices", rmat, 3, 3, 48);
+//     hdf.write("/CrystalStructure/AsymmetricNumber", napos);
+//     hdf.write("/CrystalStructure/PositionNumber", npos);
+//     hdf.write_array("/CrystalStructure/AsymmetricType", apos_type, napos);
+//     hdf.write_array("/CrystalStructure/AsymmetricMultiplicity", apos_multi, napos);
+//     hdf.write_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", pos, nsymmetry, 3, napos);
+//     hdf.write_array("/CrystalStructure/AsymmetricAtomicNumber", apos_Z, napos);
+//     hdf.write_array("/CrystalStructure/AsymmetricAtomicMass", apos_M, napos);
+//     hdf.write_array("/CrystalStructure/AsymmetricDebyeWallerFactor", apos_DW, napos);
+//     hdf.write_array("/CrystalStructure/AsymmetricSiteOccupation", apos_occupation, napos);
+//     hdf.write("/CrystalStructure/AveragedAtomicMass", ave_M);
+//     hdf.write("/CrystalStructure/AveragedAtomicNumber", ave_Z);
+//     hdf.write("/CrystalStructure/Density", density);
+//     hdf.close();
+//     deallocate(lat);
+//     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
+//     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
+//     deallocate_3d(rot, 3, 3);
+//     deallocate_2d(tra, 192);
+//     deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
+//     deallocate_3d(pos, nsymmetry, 3);
+// }
 
 void CELL::logging()
 {
