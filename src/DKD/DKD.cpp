@@ -635,25 +635,25 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     INFO=LAPACKE_zgetri_work(LAPACK_ROW_MAJOR, NS, CGINV, LDA, IPIV, MIWORK, MILWORK);
     deallocate(IPIV); deallocate(MIWORK);
 
-    complex<double> *NW; callocate(&NW, NS, 0.0+0.0i);
+    complex<double> *NW; callocate(&NW, NS, complex<double>(0.0, 0.0));
     complex<double> F(2.0*KN, 0.0);
     for(int i=0;i<NS;i++){
         NW[i]=W[i];
         NW[i]=NW[i]/F;
     }
-    complex<double> **NCGINV; callocate_2d(&NCGINV, NS, NS, 0.0+0.0i);
+    complex<double> **NCGINV; callocate_2d(&NCGINV, NS, NS, complex<double>(0.0, 0.0));
     for(int i=0;i<NS;i++){
         for(int j=0;j<NS;j++){
             NCGINV[i][j]=CGINV[i*NS+j];
         }
     }
-    complex<double> **NCG; callocate_2d(&NCG, NS, NS, 0.0+0.0i);
+    complex<double> **NCG; callocate_2d(&NCG, NS, NS, complex<double>(0.0, 0.0));
     for(int i=0;i<NS;i++){
         for(int j=0;j<NS;j++){
             NCG[i][j]=CG[i*NS+j];
         }
     }
-    complex<double> **IJK; callocate_2d(&IJK, NS, NS, 0.0+0.0i);
+    complex<double> **IJK; callocate_2d(&IJK, NS, NS, complex<double>(0.0, 0.0));
     double TPI=TWO_PI*DZ, DZT=DZ/Z;
     for(int j=0;j<NS;j++){
         for(int k=0;k<NS;k++){
@@ -667,9 +667,9 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
             IJK[j][k]*=DZT;
         }
     }
-    complex<double> **NCGCONJ; callocate_2d(&NCGCONJ, NS, NS, 0.0+0.0i);
-    complex<double> **NCGT; callocate_2d(&NCGT, NS, NS, 0.0+0.0i);
-    complex<double> **TEMP; callocate_2d(&TEMP, NS, NS, 0.0+0.0i);
+    complex<double> **NCGCONJ; callocate_2d(&NCGCONJ, NS, NS, complex<double>(0.0, 0.0));
+    complex<double> **NCGT; callocate_2d(&NCGT, NS, NS, complex<double>(0.0, 0.0));
+    complex<double> **TEMP; callocate_2d(&TEMP, NS, NS, complex<double>(0.0, 0.0));
     for(int i=0;i<NS;i++){
         for(int j=0;j<NS;j++){
             NCGCONJ[i][j]=conj(NCG[i][j]);
