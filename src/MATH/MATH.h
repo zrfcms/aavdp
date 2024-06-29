@@ -54,7 +54,7 @@ T min(T a, T b)
 
 extern void int_to_str(char str[], int num);
 extern void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num);
-extern void split_path(char name[], char ext[], const char file_path[]);
+extern void split_path(char name[], char ext[], char file_path[]);
 
 template <typename T>
 extern void vector_copy(T c_v[3], T v[3]);

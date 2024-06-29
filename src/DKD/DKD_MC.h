@@ -53,7 +53,7 @@ public:
     // DKD_MC(const char* hdf5_path);
     ~DKD_MC();
     // void   hdf5(const char *hdf5_path);
-    void   img(const char *img_path, double dimension=6.0, int resolution=512);
+    void   img(char *img_path, double dimension=6.0, int resolution=512);
 private:
     RNG   *rng;
     const int nbatch=100;

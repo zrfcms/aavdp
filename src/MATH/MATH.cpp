@@ -31,7 +31,7 @@ void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num)
     }
 }
 
-void split_path(char name[], char ext[], const char file_path[])
+void split_path(char name[], char ext[], char file_path[])
 {
     char *ch=strrchr(file_path,'.');
     strcpy(name, file_path);

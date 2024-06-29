@@ -791,7 +791,7 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
                     update_Fourier_coefficient(voltage, g, true);
                     int i=imh+ih, j=imk+ik, k=iml+il;
                     LUTUg[i][j][k]=fouri.Ug; LUTqg[i][j][k]=fouri.qg;
-                    if(fabs(fouri.Ug)<=1e-5){
+                    if(abs(fouri.Ug)<=1e-5){
                         is_double_diffrac[i][j][k]=true;
                     }
                 }

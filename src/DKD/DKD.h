@@ -3,20 +3,20 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <ctime>
 #include <complex>
-#include <complex.h>
+#define lapack_complex_float std::complex<float>
+#define lapack_complex_double std::complex<double>
 #include "../include/lapacke.h"
-#include "DKD_MC.h"
-#include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"
-// #include "../HDF5/HDF5.h"
+#include "../MODEL/MODEL.h"
+#include "DKD_MC.h"
+
 using namespace std;
 
 struct BETHE{
-    double c1=8.0, c2=50.0, c3=100.0;
-    double c_sg=1.00;
+    double c1=4.0, c2=8.0, c3=50.0;
+    double c_sg=1.0;
 };
 
 struct DKD_KNODE{
@@ -37,8 +37,8 @@ public:
     double *knarray;
     int    **kijarray;
 private:
-    DKD_KNODE  *khead=nullptr;
-    DKD_KNODE  *ktail=nullptr;
+    DKD_KNODE *khead=nullptr;
+    DKD_KNODE *ktail=nullptr;
     FILE   *fp=nullptr;
     void   add_k_vector(CELL *cell, double xy[2], double kn, int i=0, int j=0, bool southern_flag=false);
     void   free_k_node(DKD_KNODE *khead);
@@ -50,9 +50,9 @@ struct DKD_GNODE{
     double sg;//excitation error
     bool   is_double_diffrac;
     bool   is_weak, is_strong;
-    DKD_GNODE  *next=nullptr;
-    DKD_GNODE  *nextw=nullptr;//weak
-    DKD_GNODE  *nexts=nullptr;//strong
+    DKD_GNODE *next=nullptr;
+    DKD_GNODE *nextw=nullptr;//weak
+    DKD_GNODE *nexts=nullptr;//strong
 };
 
 class DKD_GVECTOR
@@ -62,15 +62,12 @@ public:
     ~DKD_GVECTOR();
     int    numg=0;
     int    nstrong=0, nweak=0;
-    DKD_GNODE  *ghead=nullptr;
-    DKD_GNODE  *headw=nullptr;
+    DKD_GNODE *ghead=nullptr;
+    DKD_GNODE *headw=nullptr;
 private:
-    DKD_GNODE  *gtail=nullptr;
+    DKD_GNODE *gtail=nullptr;
     void   add_g_vector(double hkl[3], complex<double> Ug, complex<double> qg, double sg, bool is_double_diffrac=false);
 };
-
-extern complex<double> to_complex(lapack_complex_double c);
-extern lapack_complex_double to_lapack_complex(complex<double> c);
 
 class DKD
 {
@@ -82,10 +79,8 @@ public:
     double ***mLPNH=nullptr, ***mLPSH=nullptr; //The modified Lambert Projection Northern/Southern Hemisphere
     double ***mSPNH=nullptr, ***mSPSH=nullptr; //The master Stereographic Projection Northern/Southern Hemisphere
     DKD(DKD_MC *mc, CELL *cell, double dmin, double c1, double c2, double c3, double c_sg);
-    // DKD(const char* hdf5_path);
     ~DKD();
-    void   img(const char *img_path, double dimension=6, int resolution=512);
-    // void   hdf5(const char *hdf5_path);
+    void   img(char *img_path, double dimension=6, int resolution=512);
 private:
     FILE   *fp=nullptr;
     double **lambdaE=nullptr;
@@ -95,7 +90,6 @@ private:
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
     void   compute_Lambert_projection(int iE, bool is_hexagonal);
     void   compute_stereographic_projection(int iE, bool is_hexagonal);
-    // void   hdf5(const char *hdf5_path, int offset);
 };
 
 #endif

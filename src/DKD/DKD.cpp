@@ -309,7 +309,7 @@ DKD_GVECTOR::DKD_GVECTOR(CELL *cell, BETHE bethe, double k[3], double fn[3], dou
                                 add_g_vector(g, Ug, qg, sg, is_double_diffrac);
                             }
                         }else{
-                            double rg=kn*fabs(sg)/fabs(Ug);
+                            double rg=kn*fabs(sg)/abs(Ug);
                             if(rg<=bethe.c3){
                                 add_g_vector(g, Ug, qg, sg, is_double_diffrac);
                             }
@@ -347,7 +347,7 @@ DKD_GVECTOR::DKD_GVECTOR(CELL *cell, BETHE bethe, double k[3], double fn[3], dou
             if(cell->is_double_diffrac[ix][iy][iz]){
                 temp=1.0e4;
             }else{
-                temp=sgp/fabs(cell->LUTUg[ix][iy][iz]);
+                temp=sgp/abs(cell->LUTUg[ix][iy][iz]);
             }
             if(temp<imin) imin=temp;
         }
@@ -402,18 +402,6 @@ void DKD_GVECTOR::add_g_vector(double hkl[3], complex<double> Ug, complex<double
     gtail->sg=sg;
     gtail->is_double_diffrac=is_double_diffrac;
     numg++;
-}
-
-complex<double> to_complex(lapack_complex_double c){
-    complex<double> res;
-    res.real(creal(c));
-    res.imag(cimag(c));
-    return res;
-}
-
-lapack_complex_double to_lapack_complex(complex<double> c){
-    lapack_complex_double res=c.real()+c.imag()*I;
-    return res;
 }
 
 DKD::DKD(DKD_MC *mc, CELL *cell, double dmin, double c1, double c2, double c3, double c_sg)
@@ -575,7 +563,7 @@ void DKD::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DKD_GVECTOR
                     ik=rtemp->hkl[1]-wtemp->hkl[1]+imk;
                     il=rtemp->hkl[2]-wtemp->hkl[2]+iml;
                     Ughp=cell->LUTUg[ih][ik][il];
-                    wsum+=fabs(Ughp)*fabs(Ughp)/wtemp->sg;
+                    wsum+=abs(Ughp)*abs(Ughp)/wtemp->sg;
                     wtemp=wtemp->nextw;
                 }
                 wsum*=k0_2i;
@@ -619,11 +607,11 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     lapack_complex_double *A; mallocate(&A, LDA*NS);
     for(int i=0;i<LDA;i++){
         for(int j=0;j<NS;j++){
-            A[i*LDA+j]=to_lapack_complex(DMAT[i][j]);
+            A[i*LDA+j]=DMAT[i][j];
         }
     }
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//determine the optimal LWORK, i.e., WORK[0]
-    LWORK=std::min(LWMAX, int(creal(WORK[0]))); LDA=NS;
+    LWORK=std::min(LWMAX, int(WORK[0].real())); LDA=NS;
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//call the eigenvalue solver
     if(0!=INFO){
         printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
@@ -641,8 +629,8 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     lapack_complex_double *GETMILWORK; mallocate(&GETMILWORK, LWMAX); 
     LDA=NS; 
     INFO=LAPACKE_zgetri_work(LAPACK_ROW_MAJOR, NS, CGINV, LDA, IPIV, GETMILWORK, MILWORK);
-    MILWORK=int(creal(GETMILWORK[0]));
-    lapack_complex_double *MIWORK; callocate(&MIWORK, MILWORK, 0.0+0.0*I);
+    MILWORK=int(GETMILWORK[0].real());
+    lapack_complex_double *MIWORK; callocate(&MIWORK, MILWORK, lapack_complex_double(0.0, 0.0));
     LDA=NS;
     INFO=LAPACKE_zgetri_work(LAPACK_ROW_MAJOR, NS, CGINV, LDA, IPIV, MIWORK, MILWORK);
     deallocate(IPIV); deallocate(MIWORK);
@@ -650,19 +638,19 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     complex<double> *NW; callocate(&NW, NS, 0.0+0.0i);
     complex<double> F(2.0*KN, 0.0);
     for(int i=0;i<NS;i++){
-        NW[i]=to_complex(W[i]);
+        NW[i]=W[i];
         NW[i]=NW[i]/F;
     }
     complex<double> **NCGINV; callocate_2d(&NCGINV, NS, NS, 0.0+0.0i);
     for(int i=0;i<NS;i++){
         for(int j=0;j<NS;j++){
-            NCGINV[i][j]=to_complex(CGINV[i*NS+j]);
+            NCGINV[i][j]=CGINV[i*NS+j];
         }
     }
     complex<double> **NCG; callocate_2d(&NCG, NS, NS, 0.0+0.0i);
     for(int i=0;i<NS;i++){
         for(int j=0;j<NS;j++){
-            NCG[i][j]=to_complex(CG[i*NS+j]);
+            NCG[i][j]=CG[i*NS+j];
         }
     }
     complex<double> **IJK; callocate_2d(&IJK, NS, NS, 0.0+0.0i);
@@ -937,7 +925,7 @@ DKD::~DKD()
 //     printf("[INFO] Information for dynamic Kikuchi diffraction stored in file %s.\n", hdf5_path);
 // }
 
-void DKD::img(const char *img_path, double dimension, int resolution)
+void DKD::img(char *img_path, double dimension, int resolution)
 {
     char name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
     split_path(name, ext, img_path);

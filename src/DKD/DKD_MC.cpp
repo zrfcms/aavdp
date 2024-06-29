@@ -355,7 +355,7 @@ DKD_MC::~DKD_MC()
 //     printf("[INFO] Monte-carlo data stored in %s.\n", hdf5_path);
 // }
 
-void DKD_MC::img(const char *img_path, double dimension, int resolution)
+void DKD_MC::img(char *img_path, double dimension, int resolution)
 {
     char name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
     split_path(name, ext, img_path);
