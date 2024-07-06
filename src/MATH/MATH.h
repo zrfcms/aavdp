@@ -1,8 +1,8 @@
 #ifndef __AAVDP_MATH_H__
 #define __AAVDP_MATH_H__
+#include <cstdio>
 #include <cmath>
 #include <cstring>
-#include "../include/png.h"
 
 #define PATH_CHAR_NUMBER 100
 #define EXT_CHAR_NUMBER 20
@@ -446,42 +446,5 @@ void unreshape_4d(T **wdata, T ****data, int nrow, int ncol, int nlayer, int nbl
             }
         }
     }
-}
-
-extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
-template <typename T>
-extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);
-template <typename T>
-void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background)
-{
-    int numpx=width*resolution, numpy=height*resolution;
-    int multiplier=min(numpx/ncol, numpy/nrow);
-    numpx=ncol*multiplier; numpy=nrow*multiplier;
-    double **warr; callocate_2d(&warr, numpy, numpx, 0.0);
-    for(int i=0;i<nrow;i++){
-        for(int j=0;j<ncol;j++){
-            for(int k=0;k<multiplier;k++){
-                for(int n=0;n<multiplier;n++){
-                    warr[i*multiplier+k][j*multiplier+n]=arr[i][j];
-                }
-            }
-        }
-    }
-    int nump=numpx*numpy;
-    double *wdata; unreshape_2d(&wdata, warr, numpy, numpx);
-    double wmax=wdata[0], wmin=wdata[0];
-    for(int i=0;i<nump;i++){
-        if(wmax<wdata[i]) wmax=wdata[i];
-        if(wmin>wdata[i]) wmin=wdata[i];
-    }
-    double wdiff=wmax-wmin;
-    double wref=is_black_background?wmin:wmax;
-
-    unsigned char *pixels;
-    mallocate(&pixels, 3*nump);
-    for(int i=0;i<nump;i++){
-        pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(wref-wdata[i])/wdiff*255.0);
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
 }
 #endif

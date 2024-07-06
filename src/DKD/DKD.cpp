@@ -111,6 +111,7 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
                 }
             }
         }
+        break;
     case 13://hexagonal 312 [not implemented: rhombohedral -3]
         for(int j=0;j>=-npx;j--){
             for(int i=j/2;i<npx;i++){

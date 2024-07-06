@@ -9,6 +9,7 @@
 #define lapack_complex_double std::complex<double>
 #include "../include/lapacke.h"
 #include "../MATH/MATH.h"
+#include "../MATH/GRAPH.h"
 #include "../MODEL/MODEL.h"
 #include "DKD_MC.h"
 

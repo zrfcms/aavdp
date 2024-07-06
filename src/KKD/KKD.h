@@ -8,6 +8,7 @@
 #include <ctime>
 #include "../SED/SED.h"
 #include "../MATH/MATH.h"
+#include "../MATH/GRAPH.h"
 
 using namespace std;
 

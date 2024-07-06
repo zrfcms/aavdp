@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include "../MATH/MATH.h"
+#include "../MATH/GRAPH.h"
 // #include "../HDF5/HDF5.h"
 #include "../MODEL/MODEL.h"
 
