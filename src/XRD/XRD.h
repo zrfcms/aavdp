@@ -8,6 +8,7 @@
 #include <ctime>
 #include "../MODEL/MODEL.h"
 #include "../MATH/MATH.h"
+#include "../MATH/GRAPH.h"
 #define ZERO_LIMIT 0.000001
 
 struct XRD_KNODE{
@@ -27,7 +28,7 @@ public:
     XRD_KNODE  *ktail=nullptr;
     XRD(XMODEL *model, double min2Theta, double max2Theta, double spacing[3], bool is_spacing_auto, bool is_lorentz);
     ~XRD();
-    void   xrd(const char *xrd_path, int nbin=0);
+    void   xrd(char *xrd_path, char *png_path, double dt=0.02);
 private:
     bool   is_lorentz_flag=true;
     double spacingK[3]={0.1, 0.1, 0.1};

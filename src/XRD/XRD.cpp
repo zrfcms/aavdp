@@ -168,45 +168,50 @@ void XRD::quick_unique()
     }
 }
 
-void XRD::xrd(const char *xrd_path, int nbin)
+void XRD::xrd(char *xrd_path, char *png_path, double dt)
 {
     FILE *fp=nullptr;
     fp=fopen(xrd_path,"w");
-    if(0==nbin){
-        double constn=100.0/intensity_max;
-        XRD_KNODE *ktemp=khead;
-        fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d points)\n", numk);
-        for(int i=0;i<numk&&ktemp!=nullptr;i++){
-            fprintf(fp, "%.8f\t%.8f\t%.8f\n",
-                        2*ktemp->theta/DEG_TO_RAD, ktemp->intensity, constn*ktemp->intensity);
-            fflush(fp);
-            ktemp=ktemp->next;
-        }
-    }else{
-        double *kintensity=nullptr;
-        callocate(&kintensity, nbin, 0.0);
-        XRD_KNODE *ktemp=khead;
-        double tbin=(maxTheta-minTheta)/double(nbin);
-        for(int i=0;i<numk&&ktemp!=nullptr;i++){
-            int j=int((ktemp->theta-minTheta)/tbin);
-            kintensity[j]+=ktemp->intensity;
-            ktemp=ktemp->next;
-        }
-        double imax=kintensity[0];
-        for(int i=1;i<nbin;i++){
-            if(imax<kintensity[i]) imax=kintensity[i];
-        }
-        double constn=100.0/imax;
-        fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d bins)\n", nbin);
-        for(int i=0;i<nbin;i++){
-            fprintf(fp, "%.8f\t%.8f\t%.8f\n",
-                        2*(minTheta+tbin*(i+0.5))/DEG_TO_RAD, kintensity[i], constn*kintensity[i]);
-            fflush(fp);
-        }
-        deallocate(kintensity);
+    double tbin=dt/2.0*DEG_TO_RAD;
+    int    nbin=round((maxTheta-minTheta)/tbin);
+    double *ktheta=nullptr, *kintensity=nullptr;
+    callocate(&ktheta, nbin, 0.0);
+    callocate(&kintensity, nbin, 0.0);
+    XRD_KNODE *ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        int j=int((ktemp->theta-minTheta)/tbin);
+        kintensity[j]+=ktemp->intensity;
+        ktemp=ktemp->next;
+    }
+    double imax=kintensity[0];
+    for(int i=1;i<nbin;i++){
+        ktheta[i]=2*(minTheta+tbin*(i+0.5))/DEG_TO_RAD;
+        if(imax<kintensity[i]) imax=kintensity[i];
+    }
+    double constn=100.0/imax;
+    fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d bins)\n", nbin);
+    for(int i=0;i<nbin;i++){
+        fprintf(fp, "%.8f\t%.8f\t", ktheta[i], kintensity[i]);
+        kintensity[i]*=constn;
+        fprintf(fp, "%.8f\n", kintensity[i]);
+        fflush(fp);
     }
     fclose(fp);
     printf("[INFO] Information for x-ray pattern stored in %s\n", xrd_path);
+    double min2Theta=2*minTheta/DEG_TO_RAD, max2Theta=2*maxTheta/DEG_TO_RAD;
+    double height=4.0, width=6.0;
+    GRAPH graph(width, height, 300);
+    graph.set_xlim(min2Theta, max2Theta);
+    graph.set_ylim(0.0, 100.0);
+    graph.set_xtick_spacing(10, 5);
+    graph.set_ytick_spacing(10, 5);
+    graph.set_tick_in(false);
+    graph.set_top_visible(false);
+    graph.set_right_visible(false);
+    graph.line(ktheta, kintensity, nbin);
+    graph.draw(png_path);
+    deallocate(ktheta);
+    deallocate(kintensity);
 }
 
 // XRD::XRD(XMODEL *model, bool is_lorentz)

@@ -16,10 +16,11 @@ int main(int argc, char* argv[])
         double lambda=1.54180;
         double c[3]={0.0, 0.0, 0.0};
         double min2Theta=0.0, max2Theta=180.0;
-        int    nbin=0;
+        double dt=0.02;
         bool   is_lorentz=true;
         bool   is_spacing_auto=true;
         char   xrd_path[PATH_CHAR_NUMBER]; strcpy(xrd_path, name); strcat(xrd_path, ".xrd");
+        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name); strcat(png_path, ".png");
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -44,9 +45,9 @@ int main(int argc, char* argv[])
                 min2Theta=be_double(argv[i++]);
                 max2Theta=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-n")){
+            }else if(0==strcmp(argv[i], "-dt")){
                 i++;
-                nbin=(int)be_double(argv[i++]);
+                dt=be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-c")){
                 i++;
@@ -82,7 +83,7 @@ int main(int argc, char* argv[])
         }
         XMODEL model(input_path, types, DWs, lambda);
         XRD xrd(&model, min2Theta, max2Theta, c, is_spacing_auto, is_lorentz);
-        xrd.xrd(xrd_path, nbin);
+        xrd.xrd(xrd_path, png_path, dt);
     }else if(0==strcmp(argv[i], "--snd")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);

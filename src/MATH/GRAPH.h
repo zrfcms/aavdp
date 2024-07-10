@@ -49,56 +49,70 @@ struct POINT
     double x=0.0, y=0.0;
     double black=1.0;
     char   style='c';
-    double psize=10.0;
+    double psize=5.0;
     bool   is_in_area_checked=true;
 };
 
 struct AXIS
 {
-    double limit[2]={0.0};
-    double spacing=0.0;
-    bool   is_tick_in=true;
-    int    n_major_tick=9;
-    int    n_minor_tick=1;
     double major_tick_spacing;
     double minor_tick_spacing;
     double major_tick_psize=20.0;
     double minor_tick_psize=10.0;
-    double line_pwidth=5.0;
+    bool   is_tick_in=true;
+    bool   is_visible=true;
     double black=1.0;
+    double line_pwidth=5.0;
+    bool   is_in_area_checked=false;
+};
+
+struct AREA
+{
+    double border_width_factor=0.1;
+    double border_height_factor=0.1;
+    int    pwidth, pheight;
+    int    start_px, start_py;
+    int    end_px, end_py;
+    double spacing_x, spacing_y;
+    double start_x, end_x;
+    double start_y, end_y;
+    double ratio_x, ratio_y;
 };
 
 struct IMAGE
 {
     int    pwidth, pheight;
-    double border_width_factor=0.1;
-    double border_height_factor=0.1;
-    int    area_pwidth, area_pheight;
-    int    area_start_px, area_start_py;
-    int    area_end_px, area_end_py;
-    double **pixels=nullptr;//0.0-0.1
     double black=0.0;
+    double **pixels=nullptr;
 };
 
 class GRAPH
 {
 public:
+    char   style[10];
     IMAGE  image;
-    AXIS   xaxis, yaxis;
+    AREA   area;
+    AXIS   left, right, top, down;
     int    nump=0;
     POINT  *points;
     GRAPH(double width, double height, int resolution);
-    void scatter(const char *png_path, double *x, double *y, double *value, int num);
-    void line(const char *png_path, double *x, double *y, int num);
+    ~GRAPH();
+    void set_xlim(double xmin, double xmax);
+    void set_ylim(double ymin, double ymax);
+    void set_xtick_spacing(double major_spacing, double minor_spacing);
+    void set_ytick_spacing(double major_spacing, double minor_spacing);
+    void set_tick_in(bool is_tick_in);
+    void set_top_visible(bool is_visible);
+    void set_right_visible(bool is_visible);
+    void scatter(double *x, double *y, double *value, int num);
+    void line(double *x, double *y, int num);
+    void draw(const char *png_path);
 private:
     void get_pixel(int &i, int &j, double x, double y);
     void draw_marker(POINT *point);
     void draw_line(POINT *start_point, POINT *end_point);
-    void auto_xlim();
-    void auto_ylim();
-    void draw_xaxes();
-    void draw_yaxes();
-    void draw(const char *png_path);
+    void draw_xaxis(AXIS *axis, double x1, double x2, double y);
+    void draw_yaxis(AXIS *axis, double y1, double y2, double x);
     // inline void rgb_to_hsl(int hsl[3], int rgb[3]){
     //     double r=rgb[0]/255.0;
     //     double g=rgb[1]/255.0;
