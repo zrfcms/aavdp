@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
         split_path(name, ext, input_path);
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
-        double lambda=1.54180;
+        double lambda=1.54184;
         double c[3]={0.0, 0.0, 0.0};
         double min2Theta=0.0, max2Theta=180.0;
         double dt=0.02;
