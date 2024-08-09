@@ -174,7 +174,7 @@ class XMODEL:public MODEL
 public:
     XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=XLAMBDA);
     ~XMODEL();
-    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz);
+    double get_diffraction_intensity(double theta, double g[3], int lp_type);
 private:
     double get_Debye_Waller_factor(double S, double DW);
     //complex<double> get_atomic_scattering_factor(double S, int type);
@@ -187,7 +187,7 @@ class NMODEL:public MODEL
 public:
     NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=NLAMBDA);
     ~NMODEL();
-    double get_diffraction_intensity(double theta, double g[3], bool is_lorentz);
+    double get_diffraction_intensity(double theta, double g[3], int lp_type);
 private:
     double get_Debye_Waller_factor(double S, double DW);
     complex<double> get_atomic_structure_factor(double theta, double g[3]);

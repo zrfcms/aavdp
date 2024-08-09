@@ -6,7 +6,7 @@ CC=gcc
 src=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
 obj=$(patsubst %.cpp, %.o, $(src))
 
-./bin/AAVDP: $(obj)
+./AAVDP: $(obj)
 	@echo "Start..."
 	$(CXX) $(obj) -o $@ \
 	-g $(inc) $(lib)

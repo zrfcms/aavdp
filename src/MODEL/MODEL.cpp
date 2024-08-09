@@ -1275,12 +1275,26 @@ complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//
 //     return res;
 // }
 
-double XMODEL::get_diffraction_intensity(double theta, double g[3], bool is_lorentz)
+double XMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
 {
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    if(is_lorentz){
+    switch(lp_type)
+    {
+    case 0:
+        break;
+    case 1:
+        res*=((1+cos(2*theta)*cos(2*theta))/2);
+        break;
+    case 2:
+        res*=((1+cos(2*theta)*cos(2*theta))/2/sin(2*theta));
+        break;
+    case 3:
         res*=((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
+        break;
+    default:
+        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
+        exit(EXIT_FAILURE);
     }
     return res;
 }
@@ -1324,12 +1338,23 @@ complex<double> NMODEL::get_atomic_structure_factor(double theta, double g[3])//
     return res;
 }
 
-double NMODEL::get_diffraction_intensity(double theta, double g[3], bool is_lorentz)
+double NMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
 {
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    if(is_lorentz){
+    switch(lp_type)
+    {
+    case 0:
+        break;
+    case 1:
+        res*=(1.0/sin(2*theta));
+        break;
+    case 2:
         res*=(1.0/(sin(theta)*sin(theta)*cos(theta)));
+        break;
+    default:
+        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
+        exit(EXIT_FAILURE);
     }
     return res;
 }

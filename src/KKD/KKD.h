@@ -10,29 +10,32 @@
 #include "../MATH/MATH.h"
 #include "../MATH/GRAPH.h"
 
+#define MAX_LENTH_IN_NAME 50
+#define MAX_WORD_NUMBER 100
+
 using namespace std;
 
 //kinematic Kikuchi diffraction
 class KKD
 {
 public:
-    KKD(SED *sed, double threshold, double screenD, int screenW, int screen_dpi);
-    KKD(SED *sed, int zone[3], double threshold, double screenD, int screenW, int screenH, int screen_dpi);
+    KKD(const char *restart_path, double threshold, double screenD, int screenW, int screen_dpi);
+    KKD(const char *restart_path, int zone[3], double threshold, double screenD, int screenW, int screenH, int screen_dpi);
     ~KKD();
-    double lambda;
     int    numpx=0, numpy=0;//ncol, nrow
     double ***screenG=nullptr;
     double **screenI=nullptr;
     double intensity_min=1.0e8, intensity_max=0.0;
     void   img(const char* img_path, char mode='w');
 private:
-    int    numk;
-    double **Kvectors;
-    double *Kintensity;
-    double radiusE;
-    void   compute_Kikuchi_sphere_projection(SED *sed, int screenW, int screen_dpi);
-    void   compute_Kikuchi_sphere_projection(SED *sed, int zone[3], double screenD, double screenW, double screenH, int screen_dpi);
-    void   compute_Kikuchi_intensity_projection(SED *sed, double threshold, double screenD, int screen_dpi);
+    int    numk=0;
+    double **Kvectors=nullptr;
+    double *Kintensity=nullptr;
+    double radiusK;
+    void   restart(const char *restart_path);
+    void   compute_Kikuchi_sphere_projection(int screenW, int screen_dpi);
+    void   compute_Kikuchi_sphere_projection(int zone[3], double screenD, double screenW, double screenH, int screen_dpi);
+    void   compute_Kikuchi_intensity_projection(double threshold, double screenD, int screen_dpi);
 };
 
 // class KKD

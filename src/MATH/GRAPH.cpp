@@ -1,5 +1,36 @@
 #include "GRAPH.h"
 
+void pseudo_Voigt(double *y, double *x, int num, double eta, double x0, double w)
+{
+    if(eta<0.0||eta>1.0){
+        printf("Unrecognized mixing parameter for pseudo-Voigt formula\n");
+        exit(EXIT_FAILURE);
+    }
+    double c0=4, c1=4.0*log(2.0);
+    double constl=eta*sqrt(c0)/(PI*w), constg=(1.0-eta)*sqrt(c1)/(sqrt(PI)*w);
+    for(int i=0;i<num;i++){
+        double xk=2.0*(x[i]-x0)/w;
+        y[i]=constl/(1.0+c0*xk*xk)+constg*exp(-c1*xk*xk);
+    }
+}
+
+void convolve(double *res, double *values, double *weights, int vnum, int wnum, int anchor)
+{
+    double *c_values=nullptr; mallocate(&c_values, vnum);
+    for(int i=0;i<vnum;i++){
+        c_values[i]=values[i];
+    }
+    for(int i=0;i<vnum;i++){
+        res[i]=0.0;
+        int start_j=(anchor-i)>0?(anchor-i):0, end_j=(vnum-anchor+i)>wnum?(wnum+anchor-i):vnum;
+        int start_k=(anchor-i)>0?0:(i-anchor), end_k=(vnum-anchor+i)>wnum?wnum:(vnum-1-anchor+i);
+        for(int j=start_j, k=start_k;j<end_j&&k<end_k;j++, k++){
+            res[i]+=c_values[j]*weights[k];
+        }
+    }
+    deallocate(c_values);
+}
+
 void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy)
 {	
     png_structp png_ptr;  
@@ -74,27 +105,35 @@ void GRAPH::set_ylim(double ymin, double ymax)
     area.spacing_y=ymax-ymin;
 }
 
-void GRAPH::set_xtick_spacing(double major_spacing, double minor_spacing)
+void GRAPH::set_xticks(double *major_ticks, double n_major_tick)
 {
-    top.major_tick_spacing=major_spacing;
-    down.major_tick_spacing=major_spacing;
-    top.minor_tick_spacing=minor_spacing;
-    down.minor_tick_spacing=minor_spacing;
+    top.n_major_tick=n_major_tick;
+    down.n_major_tick=n_major_tick;
+    mallocate(&top.major_ticks, n_major_tick);
+    mallocate(&down.major_ticks, n_major_tick);
+    for(int i=0;i<n_major_tick;i++){
+        top.major_ticks[i]=major_ticks[i];
+        down.major_ticks[i]=major_ticks[i];
+    }
 }
 
-void GRAPH::set_ytick_spacing(double major_spacing, double minor_spacing)
+void GRAPH::set_yticks(double *major_ticks, double n_major_tick)
 {
-    left.major_tick_spacing=major_spacing;
-    right.major_tick_spacing=major_spacing;
-    left.minor_tick_spacing=minor_spacing;
-    right.minor_tick_spacing=minor_spacing;
+    right.n_major_tick=n_major_tick;
+    left.n_major_tick=n_major_tick;
+    mallocate(&right.major_ticks, n_major_tick);
+    mallocate(&left.major_ticks, n_major_tick);
+    for(int i=0;i<n_major_tick;i++){
+        right.major_ticks[i]=major_ticks[i];
+        left.major_ticks[i]=major_ticks[i];
+    }
 }
 
 void GRAPH::set_tick_in(bool is_tick_in)
 {
     left.is_tick_in=is_tick_in;
-    right.is_tick_in=is_tick_in;
-    top.is_tick_in=is_tick_in;
+    right.is_tick_in=!is_tick_in;
+    top.is_tick_in=!is_tick_in;
     down.is_tick_in=is_tick_in;
 }
 
@@ -119,23 +158,13 @@ void GRAPH::draw_xaxis(AXIS *axis, double x1, double x2, double y)
     p1.x=x1; p2.x=x2; p1.y=p2.y=y;
     draw_line(&p1, &p2);
     double x_major_tick_length=axis->major_tick_psize*area.ratio_y;
-    double x_minor_tick_length=axis->minor_tick_psize*area.ratio_y;
-    int    n_major_tick=round(area.spacing_x/axis->major_tick_spacing);
-    int    n_minor_tick=round(axis->major_tick_spacing/axis->minor_tick_spacing);
     int    dr=axis->is_tick_in?1:-1;
-    for(int i=0;i<n_major_tick;i++){
-        p1.x=x1+i*axis->major_tick_spacing;
+    for(int i=0;i<axis->n_major_tick;i++){
+        if(axis->major_ticks[i]<x1||axis->major_ticks[i]>x2) continue;
+        p1.x=p2.x=axis->major_ticks[i];
         p2.x=p1.x; p2.y=y+x_major_tick_length*dr;
         draw_line(&p1, &p2);
-        for(int j=0;j<n_minor_tick;j++){
-            p1.x=p1.x+j*axis->minor_tick_spacing;
-            p2.x=p1.x; p2.y=y+x_minor_tick_length*dr;
-            draw_line(&p1, &p2);
-        }
     }
-    p1.x=x2;
-    p2.x=p1.x; p2.y=y+x_major_tick_length*dr;
-    draw_line(&p1, &p2);
 }
 
 void GRAPH::draw_yaxis(AXIS *axis, double y1, double y2, double x)
@@ -146,30 +175,19 @@ void GRAPH::draw_yaxis(AXIS *axis, double y1, double y2, double x)
     p1.style=p2.style='s';
     p1.psize=p2.psize=axis->line_pwidth;
     p1.is_in_area_checked=p2.is_in_area_checked=axis->is_in_area_checked;
-    p1.x=x; p1.y=y1;
-    p2.x=x; p2.y=y2;
+    p1.y=y1; p2.y=y2; p1.x=p2.x=x;
     draw_line(&p1, &p2);
     double y_major_tick_length=axis->major_tick_psize*area.ratio_x;
-    double y_minor_tick_length=axis->minor_tick_psize*area.ratio_x;
-    int    n_major_tick=round(area.spacing_y/axis->major_tick_spacing);
-    int    n_minor_tick=round(axis->major_tick_spacing/axis->minor_tick_spacing);
     int    dr=axis->is_tick_in?1:-1;
-    for(int i=0;i<n_major_tick;i++){
-        p1.y=y1+i*axis->major_tick_spacing;
-        p2.x=x+y_major_tick_length*dr; p2.y=p1.y;
+    for(int i=0;i<axis->n_major_tick;i++){
+        if(axis->major_ticks[i]<y1||axis->major_ticks[i]>y2) continue;
+        p1.y=p2.y=axis->major_ticks[i];
+        p2.x=x+y_major_tick_length*dr;
         draw_line(&p1, &p2); 
-        for(int j=0;j<n_minor_tick;j++){
-            p1.y=p1.y+j*axis->minor_tick_spacing;
-            p2.x=x+y_minor_tick_length*dr; p2.y=p1.y;
-            draw_line(&p1, &p2);
-        }
     }
-    p1.y=y2;
-    p2.x=x+y_major_tick_length*dr; p2.y=p1.y;
-    draw_line(&p1, &p2); 
 }
 
-void GRAPH::scatter(double *x, double *y, double *value, int num)
+void GRAPH::scatter(double *x, double *y, double *value, int num, char marker_style, double marker_size)
 {
     strcpy(style, "scatter");
     nump=num;
@@ -178,6 +196,8 @@ void GRAPH::scatter(double *x, double *y, double *value, int num)
     for(int i=0;i<num;i++){
         points[i].x=x[i];
         points[i].y=y[i];
+        points[i].style=marker_style;
+        points[i].psize=marker_size;
         if(max_value<value[i]){
             max_value=value[i];
         }
@@ -187,7 +207,7 @@ void GRAPH::scatter(double *x, double *y, double *value, int num)
     }
 }
 
-void GRAPH::line(double *x, double *y, int num)
+void GRAPH::line(double *x, double *y, int num, double line_width)
 {
     strcpy(style, "line");
     nump=num;
@@ -195,6 +215,19 @@ void GRAPH::line(double *x, double *y, int num)
     for(int i=0;i<num;i++){
         points[i].x=x[i];
         points[i].y=y[i];
+        points[i].psize=line_width;
+    }
+}
+
+void GRAPH::hist(double *x, double *y, int num, double line_width)
+{
+    strcpy(style, "hist");
+    nump=num;
+    mallocate(&points, num);
+    for(int i=0;i<num;i++){
+        points[i].x=x[i];
+        points[i].y=y[i];
+        points[i].psize=line_width;
     }
 }
 
@@ -215,6 +248,12 @@ void GRAPH::draw(const char *png_path)
     }else if(0==strcmp(style, "line")){
         for(int i=1;i<nump;i++){
             draw_line(&points[i-1], &points[i]);
+        }
+    }else if(0==strcmp(style, "hist")){
+        POINT p{area.start_x, area.start_y, points[0].black, 's', points[0].psize, points[0].is_in_area_checked};
+        for(int i=0;i<nump;i++){
+            p.x=points[i].x;
+            draw_line(&p, &points[i]);
         }
     }else{
         printf("[ERROR] Unable to draw graph without data input");

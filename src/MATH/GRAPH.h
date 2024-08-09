@@ -7,6 +7,11 @@
 #include "MATH.h"
 #include "../include/png.h"
 
+#define SCHERRER_CONST 0.90
+
+extern void pseudo_Voigt(double *y, double *x, int num, double eta, double x0, double w);
+extern void convolve(double *res, double *values, double *weights, int vnum, int wnum, int anchor);
+
 extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
 template <typename T>
 extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);
@@ -55,10 +60,9 @@ struct POINT
 
 struct AXIS
 {
-    double major_tick_spacing;
-    double minor_tick_spacing;
+    int    n_major_tick;
+    double *major_ticks;
     double major_tick_psize=20.0;
-    double minor_tick_psize=10.0;
     bool   is_tick_in=true;
     bool   is_visible=true;
     double black=1.0;
@@ -99,13 +103,14 @@ public:
     ~GRAPH();
     void set_xlim(double xmin, double xmax);
     void set_ylim(double ymin, double ymax);
-    void set_xtick_spacing(double major_spacing, double minor_spacing);
-    void set_ytick_spacing(double major_spacing, double minor_spacing);
+    void set_xticks(double *major_ticks, double n_major_tick);
+    void set_yticks(double *major_ticks, double n_major_tick);
     void set_tick_in(bool is_tick_in);
     void set_top_visible(bool is_visible);
     void set_right_visible(bool is_visible);
-    void scatter(double *x, double *y, double *value, int num);
-    void line(double *x, double *y, int num);
+    void scatter(double *x, double *y, double *value, int num, char marker_style='c', double marker_size=20.0);
+    void line(double *x, double *y, int num, double line_width=5.0);
+    void hist(double *x, double *y, int num, double line_width=5.0);
     void draw(const char *png_path);
 private:
     void get_pixel(int &i, int &j, double x, double y);

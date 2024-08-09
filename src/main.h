@@ -2,13 +2,15 @@
 #define __AAVDP_MAIN__
 #include "./MODEL/MODEL.h"
 #include "./XRD/XRD.h"
-#include "./SND/SND.h"
+#include "./NED/NED.h"
 #include "./SED/SED.h"
 #include "./KKD/KKD.h"
 #include "./DKD/DKD_MC.h"
 #include "./DKD/DKD.h"
 #include "./RDF/RDF.h"
 #include "./SSF/SSF.h"
+
+#define ZERO_LIMIT 0.000001
 
 #define TYPE_INPUT_NUMBER 10
 #define ZONE_INPUT_NUMBER 10
