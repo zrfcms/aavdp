@@ -136,8 +136,8 @@ void KKD::compute_Kikuchi_sphere_projection(int zone[3], double screenD, double 
             screenG[i][j][2]*=radiusK;
         }
     }
-    printf("[INFO] Range of kinematic Kikuchi pattern along x axis (in Angstrom): %.8f %.8f\n", screenG[0][0][1], screenG[screen_npy-1][screen_npx-1][1]);
-    printf("[INFO] Range of kinematic Kikuchi pattern along y axis (in Angstrom): %.8f %.8f\n", screenG[0][0][2], screenG[screen_npy-1][screen_npx-1][2]);
+    printf("[INFO] Range of kinematic Kikuchi pattern along x axis (in Angstrom-1): %.8f %.8f\n", screenG[0][0][1], screenG[screen_npy-1][screen_npx-1][1]);
+    printf("[INFO] Range of kinematic Kikuchi pattern along y axis (in Angstrom-1): %.8f %.8f\n", screenG[0][0][2], screenG[screen_npy-1][screen_npx-1][2]);
     for(int i=0;i<screen_npy;i++){
         for(int j=0;j<screen_npx;j++){
             vector_rotate(screenG[i][j], R, screenG[i][j]);//zone axis transformation
@@ -156,7 +156,7 @@ void KKD::compute_Kikuchi_intensity_projection(double threshold, double screenD,
     int countk=0; int countp=0;
     for(int i=0;i<numk;i++){
         double Kmag=vector_length(Kvectors[i]);
-        if(Kmag>1.0e-6&&Kintensity[i]>threshold){
+        if(Kmag>ZERO_LIMIT&&Kintensity[i]>threshold){
             double upper_bound=sqrt(radiusK*radiusK+Kmag*dK/2.0);
             double lower_bound=sqrt(radiusK*radiusK-Kmag*dK/2.0);
             for(int j=0;j<numpy;j++){
@@ -172,7 +172,7 @@ void KKD::compute_Kikuchi_intensity_projection(double threshold, double screenD,
             countp++;
         }
         countk++;
-        if(0==countk%5){
+        if(0==countk%1000){
             printf("[INFO] Completed Kikuchi line intensity %d of %d\n", countk, numk);
         }
     }

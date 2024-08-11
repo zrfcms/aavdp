@@ -8,6 +8,7 @@ NED::NED(NMODEL *model, double min2Theta, double max2Theta, int lp_type, double 
     }else{
         vector_copy(spacingK, spacing);
     }
+    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
     minTheta=min2Theta/2.0*DEG_TO_RAD; maxTheta=max2Theta/2.0*DEG_TO_RAD;
     double Kmagnitude_max=2.0/model->lambda*sin(maxTheta);
     for(int i=0;i<3;i++){
@@ -49,15 +50,17 @@ void NED::add_k_node(int h, int k, int l, double theta, double intensity, int mu
 
 void NED::compute_diffraction_intensity(NMODEL *model, int lp_type)
 {
-    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
-    printf("[INFO] Range of diffraction angle in reciprocal space (degree): %.8f %.8f\n", 2.0*minTheta/DEG_TO_RAD, 2.0*maxTheta/DEG_TO_RAD);
     printf("[INFO] Starting computation of diffraction intensity...\n");
     clock_t start, finish;
     start=clock();
-    int countk=0;
-    for(int ih=kmin[0];ih<=kmax[0];ih++){
-        for(int ik=kmin[1];ik<=kmax[1];ik++){
-            for(int il=kmin[2];il<=kmax[2];il++){
+    int num=(kmax[0]-kmin[0]+1)*(kmax[1]-kmin[1]+1)*(kmax[2]-kmin[2]+1);
+    int count;
+    int kkmin[3], kkmax[3];
+    vector_copy(kkmin, kmin);
+    vector_copy(kkmax, kmax);
+    for(int ih=kkmin[0];ih<=kkmax[0];ih++){
+        for(int ik=kkmin[1];ik<=kkmax[1];ik++){
+            for(int il=kkmin[2];il<=kkmax[2];il++){
                 if(0==ih&&0==ik&&0==il) continue;
                 double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
                 double Kmag=model->get_reciprocal_vector_length(K);
@@ -75,20 +78,22 @@ void NED::compute_diffraction_intensity(NMODEL *model, int lp_type)
                         if(intensity<intensity_min) intensity_min=intensity;
                         if(intensity>intensity_max) intensity_max=intensity;
                         add_k_node(ih, ik, il, theta, intensity, 0);
-                        countk++;
                     }
+                }
+                count++;
+                if(0==count%100){
+                    printf("[INFO] Completed diffraction intensity %d of %d\n", count, num);
                 }
             }
         }
     }
-    numk=countk;
     printf("[INFO] Ending computation of diffraction intensity\n");
     finish=clock();
     printf("[INFO] Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
     printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
     printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
     printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
-    printf("[INFO] Number of diffraction intensity: %d\n", countk);
+    printf("[INFO] Number of diffraction intensity: %d\n", numk);
     printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
@@ -154,7 +159,7 @@ void NED::quick_unique()
         ktemp=ktemp->next;
     }
     printf("[INFO] Number of unique diffraction intensity: %d\n", numk);
-    printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
+    printf("[INFO] Range of unique diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
 void NED::ned(char *ned_path, char *png_path)
@@ -176,6 +181,7 @@ void NED::ned(char *ned_path, char *png_path)
     }
     fclose(fp);
     printf("[INFO] Information for neutron pattern stored in %s\n", ned_path);
+
     double min2Theta=2*minTheta/DEG_TO_RAD, max2Theta=2*maxTheta/DEG_TO_RAD;
     int n_major_xtick=19, n_major_ytick=11;
     double *major_xticks, *major_yticks;
@@ -213,10 +219,12 @@ void NED::ned(char *ned_path, char *png_path, double peak_parameter, double sche
     for(int i=0;i<nbin;i++){
         ktheta[i]=(minTheta+tbin*(i+0.5));
     }
-    NED_KNODE *ktemp=khead;
+
     double constw=SCHERRER_CONST*scherrer_lambda/scherrer_size;
-    double *kweights=nullptr; callocate(&kweights, nbin, 0.0);
-    double *kintensity_c=nullptr; callocate(&kintensity_c, nbin, 0.0);
+    double *kweights=nullptr, *kintensity_c=nullptr; 
+    callocate(&kweights, nbin, 0.0);
+    callocate(&kintensity_c, nbin, 0.0);
+    NED_KNODE *ktemp=khead;
     for(int i=0;i<numk&&ktemp!=nullptr;i++){
         int j=floor((ktemp->theta-minTheta)/tbin);
         double FWHM=constw/cos(ktheta[j]);
@@ -231,10 +239,14 @@ void NED::ned(char *ned_path, char *png_path, double peak_parameter, double sche
     }
     deallocate(kweights);
     deallocate(kintensity_c);
-    double imax=0.0;
+
+    double imax=0.0, imin=1.0e8;
     for(int i=0;i<nbin;i++){
         if(imax<kintensity[i]) imax=kintensity[i];
+        if(imin>kintensity[i]) imin=kintensity[i];
     }
+    printf("[INFO] Number of profiled diffraction intensity: %d\n", nbin);
+    printf("[INFO] Range of profiled diffraction intensity: %.8f %.8f\n", imin, imax);
     double constn=100.0/imax;
     FILE *fp=nullptr;
     fp=fopen(ned_path,"w");
@@ -248,6 +260,7 @@ void NED::ned(char *ned_path, char *png_path, double peak_parameter, double sche
     }
     fclose(fp);
     printf("[INFO] Information for neutron pattern stored in %s\n", ned_path);
+
     double min2Theta=2.0*minTheta/DEG_TO_RAD, max2Theta=2.0*maxTheta/DEG_TO_RAD;
     int n_major_xtick=19, n_major_ytick=11;
     double *major_xticks, *major_yticks;

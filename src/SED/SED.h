@@ -14,6 +14,7 @@ using namespace std;
 struct SED_KNODE{
     int    k[3];
     double K[3];
+    double Kmag;
     double intensity;
     SED_KNODE *next=nullptr;
 };
@@ -26,10 +27,8 @@ public:
     SED(EMODEL *model, int zone[3], double thickness, double Kmagnitude_max, double spacing[3], bool is_spacing_auto);
     ~SED();
     int    numk=0;
-    int    **kvectors=nullptr;
-    double **Kvectors=nullptr;
-    double *Kintensity=nullptr;
-    double intensity_min=1.0e8, intensity_max=0.0;
+    SED_KNODE  *khead=nullptr;
+    SED_KNODE  *ktail=nullptr;
     void   vtk(const char *vtk_path, double threshold);
     void   sed(const char *sed_path, double threshold);
     void   sed(const char *sed_path, char *png_path, int xaxis[3], int yaxis[3], int zaxis[3], double threshold);
@@ -39,8 +38,9 @@ private:
     double radiusK=1.70;
     double spacingK[3]={0.1, 0.1, 0.1};
     int    kmax[3]={-10000, -10000, -10000}, kmin[3]={10000, 10000, 10000};
-    void   count_diffraction_vectors(EMODEL *model);
-    void   count_diffraction_vectors(EMODEL *model, int zone[3], double thickness);
+    double intensity_0;
+    double intensity_min=1.0e8, intensity_max=0.0;
+    void   add_k_node(int h, int k, int l, double K[3], double Kmag, double intensity);
     void   compute_diffraction_intensity(EMODEL *model);
     void   compute_diffraction_intensity(EMODEL *model, int zone[3], double thickness);
 };

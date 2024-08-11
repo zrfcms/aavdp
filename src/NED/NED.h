@@ -26,7 +26,6 @@ public:
     NED_KNODE  *khead=nullptr;
     NED_KNODE  *ktail=nullptr;
     NED(NMODEL *model, double min2Theta, double max2Theta, int lp_type, double spacing[3], bool is_spacing_auto);
-    NED(char *ned_path);
     ~NED();
     void   ned(char *ned_path, char *png_path);
     void   ned(char *ned_path, char *png_path, double peak_parameter, double scherrer_lambda, double scherrer_size, double dt);

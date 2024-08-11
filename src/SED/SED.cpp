@@ -10,7 +10,15 @@ SED::SED(EMODEL *model, double Kmagnitude_max, double spacing[3], bool is_spacin
     }else{
         vector_copy(spacingK, spacing);
     }
-    count_diffraction_vectors(model);
+    int NspacingK[3];
+    for(int i=0;i<3;i++){
+        NspacingK[i]=ceil(radiusK/spacingK[i]);
+    }
+    vector_copy(kmax, NspacingK); vector_constant(kmin, -1, NspacingK);
+    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
     compute_diffraction_intensity(model);
     printf("[INFO] Ending computation of selected-area electron diffraction\n");
 }
@@ -25,98 +33,125 @@ SED::SED(EMODEL *model, int zone[3], double thickness, double Kmagnitude_max, do
     }else{
         vector_copy(spacingK, spacing);
     }
-    count_diffraction_vectors(model, zone, thickness);
+    int NspacingK[3];
+    for(int i=0;i<3;i++){
+        NspacingK[i]=ceil(radiusK/spacingK[i]);
+    }
+    vector_copy(kmax, NspacingK); vector_constant(kmin, -1, NspacingK);
+    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
     compute_diffraction_intensity(model, zone, thickness);
     printf("[INFO] Ending computation of selected-area electron diffraction\n");
 }
 
 SED::~SED()
 {
-    if(0!=numk){
-        deallocate_2d(kvectors, numk);
-        deallocate_2d(Kvectors, numk);
-        deallocate(Kintensity);
+    SED_KNODE *cur=khead;
+    while(cur!=nullptr){
+        SED_KNODE *temp=cur;
+        cur=cur->next;
+        delete temp;
     }
 }
 
-void SED::count_diffraction_vectors(EMODEL *model)
-{
-    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
-    printf("[INFO] Radius of reciprocal sphere (Angstrom-1): %.8f\n", radiusK);
-    int NspacingK[3];
-    for(int i=0;i<3;i++){
-        NspacingK[i]=ceil(radiusK/spacingK[i]);
-    }
-    vector_copy(kmax, NspacingK); vector_constant(kmin, -1, NspacingK);
-    for(int ih=kmin[0];ih<=kmax[0];ih++){
-        for(int ik=kmin[1];ik<=kmax[1];ik++){
-            for(int il=kmin[2];il<=kmax[2];il++){
-                double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
-                double Kmag=model->get_reciprocal_vector_length(K);
-                if(Kmag<radiusK){
-                    numk++;
-                }
-            }
-        }
-    }
-    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
-    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
-    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
-    printf("[INFO] Number of diffraction vector in reciprocal space: %d\n", numk);
-}
+// void SED::count_diffraction_vectors(EMODEL *model)
+// {
+//     printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+//     printf("[INFO] Radius of reciprocal sphere (Angstrom-1): %.8f\n", radiusK);
+//     int NspacingK[3];
+//     for(int i=0;i<3;i++){
+//         NspacingK[i]=ceil(radiusK/spacingK[i]);
+//     }
+//     vector_copy(kmax, NspacingK); vector_constant(kmin, -1, NspacingK);
+//     for(int ih=kmin[0];ih<=kmax[0];ih++){
+//         for(int ik=kmin[1];ik<=kmax[1];ik++){
+//             for(int il=kmin[2];il<=kmax[2];il++){
+//                 double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
+//                 double Kmag=model->get_reciprocal_vector_length(K);
+//                 if(Kmag<radiusK){
+//                     numk++;
+//                 }
+//             }
+//         }
+//     }
+//     printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+//     printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+//     printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
+//     printf("[INFO] Number of diffraction vector in reciprocal space: %d\n", numk);
+// }
 
-void SED::count_diffraction_vectors(EMODEL *model, int zone[3], double thickness)
+// void SED::count_diffraction_vectors(EMODEL *model, int zone[3], double thickness)
+// {
+//     printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+//     printf("[INFO] Radius of reciprocal sphere (Angstrom-1): %.8f\n", radiusK);
+//     int NspacingK[3];
+//     for(int i=0;i<3;i++){
+//         NspacingK[i]=ceil(radiusK/spacingK[i]);
+//     }
+//     double n_zone[3]={double(zone[0]), double(zone[1]), double(zone[2])};
+//     vector_normalize(n_zone, n_zone);
+//     vector_constant(n_zone, radiusE, n_zone);
+//     double upper_bound=radiusE+thickness/2.0;
+//     double lower_bound=radiusE-thickness/2.0;
+//     printf("[INFO] Range along zone-[%d %d %d] in reciprocal space (Angstrom-1): %.8f %.8f\n", zone[0], zone[1], zone[2], lower_bound, upper_bound);
+//     for(int ih=-NspacingK[0];ih<=NspacingK[0];ih++){
+//         for(int ik=-NspacingK[1];ik<=NspacingK[1];ik++){
+//             for(int il=-NspacingK[2];il<=NspacingK[2];il++){
+//                 double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
+//                 double Kmag=model->get_reciprocal_vector_length(K);
+//                 if(Kmag<radiusK){
+//                     double d[3];
+//                     model->reciprocal_to_cartesian(K, K);
+//                     vector_difference(d, K, n_zone);
+//                     double dmag=vector_length(d);
+//                     if((dmag>lower_bound)&&(dmag<upper_bound)){
+//                         if(ih<kmin[0]) kmin[0]=ih;
+//                         if(ik<kmin[1]) kmin[1]=ik;
+//                         if(il<kmin[2]) kmin[2]=il;
+//                         if(ih>kmax[0]) kmax[0]=ih;
+//                         if(ik>kmax[1]) kmax[1]=ik;
+//                         if(il>kmax[2]) kmax[2]=il;
+//                         numk++;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+//     printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+//     printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
+//     printf("[INFO] Number of diffraction vector in reciprocal space: %d\n", numk);
+// }
+
+void SED::add_k_node(int h, int k, int l, double K[3], double Kmag, double intensity)
 {
-    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
-    printf("[INFO] Radius of reciprocal sphere (Angstrom-1): %.8f\n", radiusK);
-    int NspacingK[3];
-    for(int i=0;i<3;i++){
-        NspacingK[i]=ceil(radiusK/spacingK[i]);
+    if(ktail==nullptr){
+        khead=ktail=new SED_KNODE;
+        ktail->k[0]=h; ktail->k[1]=k; ktail->k[2]=l;
+        vector_copy(ktail->K, K);
+        ktail->Kmag=Kmag;
+        ktail->intensity=intensity;
+        numk++;
+    }else{
+        ktail->next=new SED_KNODE;
+        ktail=ktail->next;
+        ktail->k[0]=h; ktail->k[1]=k; ktail->k[2]=l;
+        vector_copy(ktail->K, K);
+        ktail->Kmag=Kmag;
+        ktail->intensity=intensity;
+        numk++;
     }
-    double n_zone[3]={double(zone[0]), double(zone[1]), double(zone[2])};
-    vector_normalize(n_zone, n_zone);
-    vector_constant(n_zone, radiusE, n_zone);
-    double upper_bound=radiusE+thickness/2.0;
-    double lower_bound=radiusE-thickness/2.0;
-    printf("[INFO] Range along zone-[%d %d %d] in reciprocal space (Angstrom-1): %.8f %.8f\n", zone[0], zone[1], zone[2], lower_bound, upper_bound);
-    for(int ih=-NspacingK[0];ih<=NspacingK[0];ih++){
-        for(int ik=-NspacingK[1];ik<=NspacingK[1];ik++){
-            for(int il=-NspacingK[2];il<=NspacingK[2];il++){
-                double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
-                double Kmag=model->get_reciprocal_vector_length(K);
-                if(Kmag<radiusK){
-                    double d[3];
-                    model->reciprocal_to_cartesian(K, K);
-                    vector_difference(d, K, n_zone);
-                    double dmag=vector_length(d);
-                    if((dmag>lower_bound)&&(dmag<upper_bound)){
-                        if(ih<kmin[0]) kmin[0]=ih;
-                        if(ik<kmin[1]) kmin[1]=ik;
-                        if(il<kmin[2]) kmin[2]=il;
-                        if(ih>kmax[0]) kmax[0]=ih;
-                        if(ik>kmax[1]) kmax[1]=ik;
-                        if(il>kmax[2]) kmax[2]=il;
-                        numk++;
-                    }
-                }
-            }
-        }
-    }
-    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
-    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
-    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
-    printf("[INFO] Number of diffraction vector in reciprocal space: %d\n", numk);
 }
 
 void SED::compute_diffraction_intensity(EMODEL *model)
 {
-    callocate_2d(&kvectors, numk, 3, 0);
-    callocate_2d(&Kvectors, numk, 3, 0.0);
-    callocate(&Kintensity, numk, 0.0);
     printf("[INFO] Starting computation of diffraction intensity...\n");
     clock_t start, finish;
     start=clock();
-    int countk=0;
+    int num=(kmax[0]-kmin[0]+1)*(kmax[1]-kmin[1]+1)*(kmax[2]-kmin[2]+1);
+    int count=0;
     for(int ih=kmin[0];ih<=kmax[0];ih++){
         for(int ik=kmin[1];ik<=kmax[1];ik++){
             for(int il=kmin[2];il<=kmax[2];il++){
@@ -126,15 +161,19 @@ void SED::compute_diffraction_intensity(EMODEL *model)
                     model->reciprocal_to_cartesian(K, K);
                     double theta=asin(0.5*model->lambda*Kmag);
                     double intensity=model->get_diffraction_intensity(theta, K);
-                    if(intensity>intensity_max) intensity_max=intensity;
-                    if(intensity<intensity_min) intensity_min=intensity;
-                    kvectors[countk][0]=ih; kvectors[countk][1]=ik; kvectors[countk][2]=il;
-                    Kvectors[countk][0]=K[0]; Kvectors[countk][1]=K[1]; Kvectors[countk][2]=K[2];
-                    Kintensity[countk]=intensity;
-                    countk++;
-                    if(0==countk%1000){
-                        printf("[INFO] Completed diffraction intensity %d of %d\n", countk, numk);
+                    if(intensity>ZERO_LIMIT){
+                        if(Kmag<ZERO_LIMIT){
+                            intensity_0=intensity;
+                        }else{
+                            if(intensity>intensity_max) intensity_max=intensity;
+                            if(intensity<intensity_min) intensity_min=intensity;
+                            add_k_node(ih, ik, il, K, Kmag, intensity);
+                        }
                     }
+                }
+                count++;
+                if(0==count%1000){
+                    printf("[INFO] Completed diffraction intensity %d of %d\n", count, num);
                 }
             }
         }
@@ -142,7 +181,8 @@ void SED::compute_diffraction_intensity(EMODEL *model)
     printf("[INFO] Ending computation of diffraction intensity\n");
     finish=clock();
     printf("[INFO] Computation time [s]: %.2f\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("[INFO] Number of diffraction intensity: %d\n", countk);
+    printf("[INFO] Intensity at the transmission spot: %.8f\n", intensity_0);
+    printf("[INFO] Number of diffraction intensity: %d\n", numk);
     printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
@@ -153,13 +193,12 @@ void SED::compute_diffraction_intensity(EMODEL *model, int zone[3], double thick
     vector_constant(n_zone, radiusE, n_zone);
     double upper_bound=radiusE+thickness/2.0;
     double lower_bound=radiusE-thickness/2.0;
-    callocate_2d(&kvectors, numk, 3, 0);
-    callocate_2d(&Kvectors, numk, 3, 0.0);
-    callocate(&Kintensity, numk, 0.0);
+    printf("[INFO] Range along zone-[%d %d %d] in reciprocal space (Angstrom-1): %.8f %.8f\n", zone[0], zone[1], zone[2], lower_bound, upper_bound);
     printf("[INFO] Starting computation of diffraction intensity...\n");
     clock_t start, finish;
     start=clock();
-    int countk=0;
+    int num=(kmax[0]-kmin[0]+1)*(kmax[1]-kmin[1]+1)*(kmax[2]-kmin[2]+1);
+    int count=0;
     for(int ih=kmin[0];ih<=kmax[0];ih++){
         for(int ik=kmin[1];ik<=kmax[1];ik++){
             for(int il=kmin[2];il<=kmax[2];il++){
@@ -173,16 +212,20 @@ void SED::compute_diffraction_intensity(EMODEL *model, int zone[3], double thick
                     if((dmag>lower_bound)&&(dmag<upper_bound)){
                         double theta=asin(0.5*model->lambda*Kmag);
                         double intensity=model->get_diffraction_intensity(theta, K);
-                        if(intensity>intensity_max) intensity_max=intensity;
-                        if(intensity<intensity_min) intensity_min=intensity;
-                        kvectors[countk][0]=ih; kvectors[countk][1]=ik; kvectors[countk][2]=il;
-                        Kvectors[countk][0]=K[0]; Kvectors[countk][1]=K[1]; Kvectors[countk][2]=K[2];
-                        Kintensity[countk]=intensity;
-                        countk++;
-                        if(0==countk%1000){
-                            printf("[INFO] Completed diffraction intensity %d of %d\n", countk, numk);
+                        if(intensity>ZERO_LIMIT){
+                            if(Kmag<ZERO_LIMIT){
+                                intensity_0=intensity;
+                            }else{
+                                if(intensity>intensity_max) intensity_max=intensity;
+                                if(intensity<intensity_min) intensity_min=intensity;
+                                add_k_node(ih, ik, il, K, Kmag, intensity);
+                            }
                         }
                     }
+                }
+                count++;
+                if(0==count%1000){
+                    printf("[INFO] Completed diffraction intensity %d of %d\n", count, num);
                 }
             }
         }
@@ -190,7 +233,8 @@ void SED::compute_diffraction_intensity(EMODEL *model, int zone[3], double thick
     printf("[INFO] Ending computation of diffraction intensity\n");
     finish=clock();
     printf("[INFO] Computation time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("[INFO] Number of diffraction intensity: %d\n", countk);
+    printf("[INFO] Intensity at the transmission spot: %.8f\n", intensity_0);
+    printf("[INFO] Number of diffraction intensity: %d\n", numk);
     printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
@@ -214,16 +258,19 @@ void SED::vtk(const char *vtk_path, double threshold)
     fprintf(fp, "LOOKUP_TABLE default\n");
     double ***data; 
     callocate_3d(&data, dimension[0], dimension[1], dimension[2], -1.0);
-    for(int i=0;i<numk;i++){
-        int ix=kvectors[i][0]-kmin[0];
-        int iy=kvectors[i][1]-kmin[1];
-        int iz=kvectors[i][2]-kmin[2];
-        data[ix][iy][iz]=Kintensity[i];
+    SED_KNODE *ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        int ix=ktemp->k[0]-kmin[0];
+        int iy=ktemp->k[1]-kmin[1];
+        int iz=ktemp->k[2]-kmin[2];
+        data[ix][iy][iz]=ktemp->intensity;
+        ktemp=ktemp->next;
     }
+    data[-kmin[0]][-kmin[1]][-kmin[2]]=intensity_0;
     for(int il=0;il<dimension[2];il++){
         for(int ik=0;ik<dimension[1];ik++){
             for(int ih=0;ih<dimension[0];ih++){
-                if(fabs(data[ih][ik][il])<threshold) data[ih][ik][il]=0.0;
+                if(data[ih][ik][il]<=threshold) data[ih][ik][il]=0.0;
                 fprintf(fp, "%g\n", data[ih][ik][il]);
                 fflush(fp);
             }
@@ -239,22 +286,25 @@ void SED::sed(const char *sed_path, double threshold)
     FILE *fp=nullptr;
     fp=fopen(sed_path,"w");
     int numi=0;
-    double imax=0.0;
-    for(int i=0;i<numk;i++){
-        if(Kintensity[i]>=threshold) numi++;
-        if(Kintensity[i]>imax&&fabs(Kintensity[i]-intensity_max)>1.0e-6) imax=Kintensity[i];
+    SED_KNODE *ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        if(ktemp->intensity>threshold) numi++;
+        ktemp=ktemp->next;
     }
-    fprintf(fp, "# x\ty\tz\tintensity\tintensity_norm (%d points)\n", numi);
-    double consti=100.0/imax;
-    for(int i=0;i<numk;i++){
-        if(Kintensity[i]<threshold) continue;
-        fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", Kvectors[i][0], Kvectors[i][1], Kvectors[i][2], Kintensity[i], consti*Kintensity[i]);
-        fflush(fp);
+
+    fprintf(fp, "# x\ty\tz\tintensity\tintensity_norm (%d points)\n", numi+1);
+    fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", 0.0, 0.0, 0.0, intensity_0, 100.0);
+    double consti=100.0/intensity_max;
+    ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        if(ktemp->intensity>threshold){
+            fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", ktemp->K[0], ktemp->K[1], ktemp->K[2], ktemp->intensity, consti*ktemp->intensity);
+            fflush(fp);
+        }
+        ktemp=ktemp->next;
     }
     fclose(fp);
-    printf("[INFO] Information for three-dimensional selected-area electron pattern stored in %s.\n", sed_path);
-    printf("[INFO] Number of diffraction intensity stored: %d\n", numi);
-    printf("[INFO] Range of diffraction intensity stored: %.8f %.8f\n", threshold, intensity_max);
+    printf("[INFO] Information for three-dimensional selected-area electron pattern stored in %s\n", sed_path);
 }
 
 void SED::sed(const char *sed_path, char *png_path, int xaxis[3], int yaxis[3], int zaxis[3], double threshold)
@@ -265,13 +315,13 @@ void SED::sed(const char *sed_path, char *png_path, int xaxis[3], int yaxis[3], 
     double x[3]={double(xaxis[0]), double(xaxis[1]), double(xaxis[2])};
     if(0==xaxis[0]&&0==xaxis[1]&&0==xaxis[2]){
         double Kmin=1.0e8;
-        for(int i=0;i<numk;i++){
-            if((0==kvectors[i][0]&&0==kvectors[i][1]&&0==kvectors[i][2])||Kintensity[i]<threshold) continue;
-            double Kmag=vector_length(Kvectors[i]);
-            if(Kmag<Kmin){
-                vector_copy(x, Kvectors[i]);
-                Kmin=Kmag;
+        SED_KNODE *ktemp=khead;
+        for(int i=0;i<numk&&ktemp!=nullptr;i++){
+            if(ktemp->Kmag<Kmin&&ktemp->intensity>threshold){
+                vector_copy(x, ktemp->K);
+                Kmin=ktemp->Kmag;
             }
+            ktemp=ktemp->next;
         }
     }
     vector_normalize(x, x); vector_copy(rotation[0], x);
@@ -284,37 +334,37 @@ void SED::sed(const char *sed_path, char *png_path, int xaxis[3], int yaxis[3], 
     FILE *fp=nullptr;
     fp=fopen(sed_path,"w");
     int numi=0;
-    double imax=0.0;
-    for(int i=0;i<numk;i++){
-        if(Kintensity[i]>=threshold) numi++;
-        if(Kintensity[i]>imax&&fabs(Kintensity[i]-intensity_max)>1.0e-6) imax=Kintensity[i];
+    SED_KNODE *ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        if(ktemp->intensity>threshold) numi++;
+        ktemp=ktemp->next;
     }
-    fprintf(fp, "# x\ty\tz\tintensity\tintensity_norm (%d points, x-[%.2f %.2f %.2f], y-[%.2f %.2f %.2f], z-[%.2f %.2f %.2f])\n", numi, x[0], x[1], x[2], y[0], y[1], y[2], z[0], z[1], z[2]);
+    fprintf(fp, "# x\ty\tz\tintensity\tintensity_norm (%d points, x-[%.2f %.2f %.2f], y-[%.2f %.2f %.2f], z-[%.2f %.2f %.2f])\n", numi+1, x[0], x[1], x[2], y[0], y[1], y[2], z[0], z[1], z[2]);
     double *kvector_x, *kvector_y, *kintensity;
-    mallocate(&kvector_x, numi); mallocate(&kvector_y, numi); mallocate(&kintensity, numi);
+    callocate(&kvector_x, numi+1, 0.0); 
+    callocate(&kvector_y, numi+1, 0.0); 
+    callocate(&kintensity, numi+1, 0.0);
     int counti=0;
-    double consti=100.0/imax;
-    for(int i=0;i<numk;i++){
-        if(Kintensity[i]<threshold) continue;
-        if(0==kvectors[i][0]&&0==kvectors[i][1]&&0==kvectors[i][2]){
-            kvector_x[counti]=kvector_y[counti]=0.0; kintensity[counti]=100.0;
-            fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", 0.0, 0.0, 0.0, Kintensity[i], 100.0);
+    kvector_x[counti]=kvector_y[counti]=0.0; kintensity[counti]=100.0;
+    fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", 0.0, 0.0, 0.0, ktemp->intensity, 100.0);
+    counti++;
+    double consti=100.0/intensity_max;
+    ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        if(ktemp->intensity>threshold){
+            double xyz[3], intensity;
+            vector_rotate(xyz, rotation, ktemp->K);
+            intensity=consti*ktemp->intensity;
+            kvector_x[counti]=xyz[0]; kvector_y[counti]=xyz[1]; kintensity[counti]=intensity;
+            fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", xyz[0], xyz[1], xyz[2], ktemp->intensity, intensity);
             counti++;
-            continue;
+            fflush(fp);
         }
-        
-        double xyz[3], intensity;
-        vector_rotate(xyz, rotation, Kvectors[i]);
-        intensity=consti*Kintensity[i];
-        kvector_x[counti]=xyz[0]; kvector_y[counti]=xyz[1]; kintensity[counti]=intensity;
-        fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", xyz[0], xyz[1], xyz[2], Kintensity[i], intensity);
-        counti++;
-        fflush(fp);
+        ktemp=ktemp->next;
     }
     fclose(fp);
     printf("[INFO] Information for selected-area electron pattern stored in %s.\n", sed_path);
-    printf("[INFO] Number of diffraction intensity stored: %d\n", numi);
-    printf("[INFO] Range of diffraction intensity stored: %.8f %.8f\n", threshold, intensity_max);
+
     double height=6.0, width=6.0;
     int tick_max=int(floor(radiusK));
     int n_major_tick=2*tick_max+1;
@@ -340,8 +390,14 @@ void SED::restart(const char *restart_path)
     fprintf(fp, "%.8f\n", radiusE);
     fprintf(fp, "Kikuchi_line_intensity\n");
     fprintf(fp, "%d\n", numk);
-    for(int i=0;i<numk;i++){
-        fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\n", Kvectors[i][0], Kvectors[i][1], Kvectors[i][2], Kintensity[i]);
+    SED_KNODE *ktemp=khead;
+    for(int i=0;i<numk&&ktemp!=nullptr;i++){
+        fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\n", ktemp->K[0], ktemp->K[1], ktemp->K[2], ktemp->intensity);
+        fflush(fp);
+        ktemp=ktemp->next;
     }
+    fclose(fp);
+    printf("[INFO] Number of Kikuchi lines stored: %d\n", numk);
+    printf("[INFO] Range of Kikuchi line intensity stored: %.8f %.8f\n", intensity_min, intensity_max);
     printf("[INFO] Restart data for Kikuchi pattern stored in %s\n", restart_path);
 }
