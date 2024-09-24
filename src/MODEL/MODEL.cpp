@@ -536,6 +536,11 @@ void CELL::cartesian_to_reciprocal(double r_v[3], double v[3])
     vector_rotate(r_v, dsm, v);
 }
 
+void CELL::direct_to_reciprocal(double r_v[3], double v[3])
+{
+    vector_transform(r_v, v, dmt);
+}
+
 void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space)
 {
     double s[3]={0.0};
@@ -656,6 +661,115 @@ void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int
     nequiv=iequiv;
 }
 
+void CELL::compute_shortest_reciprocal_vectors(double g1[3], double g2[3], double k[3])
+{
+    double zeros[3]={0.0};
+    int nzero=0;
+    for(int i=0;i<3;i++){
+        if(0.0==k[i]){
+            nzero++;
+            zeros[i]=1.0;
+        }
+    }
+    double ga[3]={0.0}, gb[3]={0.0};
+    double u=k[0], v=k[1], w=k[2];
+    switch(nzero)
+    {
+    case 0:
+        ga[0]=v; ga[1]=-u;
+        gb[0]=w; gb[2]=-u;
+        break;
+    case 1:{
+        double ones[3]={1.0, 1.0, 1.0}, temp[3]={0.0};
+        vector_copy(ga, zeros);
+        vector_difference(gb, ones, zeros);
+        if(1==int(zeros[0])){
+            temp[1]=w; temp[2]=-v;
+        }else if(1==int(zeros[1])){
+            temp[0]=w; temp[2]=-u;
+        }else if(1==int(zeros[2])){
+            temp[0]=v; temp[1]=-u;
+        }
+        vector_multiply(gb, gb, temp);
+        }
+        break;
+    case 2:
+        if(1==int(zeros[0])&&1==int(zeros[1])){
+            ga[0]=1.0; gb[1]=1.0;
+        }else if(1==int(zeros[0])&&1==int(zeros[2])){
+            ga[2]=1.0; gb[0]=1.0;
+        }else if(1==int(zeros[1])&&1==int(zeros[2])){
+            ga[1]=1.0; gb[2]=1.0;
+        }
+        break;
+    default:
+        printf("[ERROR] Invalid incident beam direction-[%.2f %.2f %.2f].", u, v, w);
+        exit(EXIT_FAILURE);
+    }
+
+    int num=10;
+    int mb=0, ma=0, nb=0, na=0;
+    double min_sum=50.0;
+    for(int ia=-num;ia<=num;ia++){
+        for(int ib=-num;ib<=num;ib++){
+            for(int ja=-num;ja<=num;ja++){
+                for(int jb=-num;jb<=num;jb++){
+                    double gi[3], gj[3];
+                    double t1[3], t2[3];
+                    vector_constant(t1, double(ib), ga);
+                    vector_constant(t2, double(ia), gb);
+                    vector_difference(gi, t1, t2);
+                    vector_constant(t1, double(ja), gb);
+                    vector_constant(t2, double(jb), ga);
+                    vector_difference(gj, t1, t2);
+                    int denom=ja*ib-jb*ia;
+                    if(0!=denom){
+                        double ic=1.0/double(denom);
+                        vector_constant(gi, ic, gi);
+                        vector_constant(gj, ic, gj);
+                        bool is_int=true;
+                        for(int i=0;i<3;i++){
+                            if((fabs(gi[i]-double(int(gi[i])))!=0.0)||(fabs(gj[i]-double(int(gj[i])))!=0.0)){
+                                is_int=false;
+                                break;
+                            }
+                        }
+                        if(is_int){
+                            double isum=vector_dot(gi, gi)+vector_dot(gj, gj);
+                            if(isum<min_sum){
+                                min_sum=isum;
+                                mb=ib; ma=ia; nb=jb; na=ja; 
+                            }
+                        }
+                    }        
+                }
+            }
+        }
+    }
+    double c=1.0/double(na*mb-nb*ma);
+    double t1[3], t2[3];
+    double gi[3], gj[3];
+    vector_constant(t1, double(mb), ga);
+    vector_constant(t2, double(ma), gb);
+    vector_difference(gi, t1, t2);
+    vector_constant(t1, double(nb), ga);
+    vector_constant(t2, double(na), gb);
+    vector_difference(gj, t1, t2);
+    vector_constant(gi, c, gi);
+    vector_constant(gj, c, gj);
+
+    double gp[3]; 
+    vector_cross(gp, gi, gj);
+    direct_to_reciprocal(gp, gp);
+    double gz[3]={u, v, w};
+    if(dot(gp, gz, 'r')<0){
+        vector_copy(g1, gj); vector_copy(g2, gi);
+    }else{
+        vector_copy(g1, gi); vector_copy(g2, gj);
+    }
+// !isym
+}
+
 double CELL::get_interplanar_spacing(double g[3])
 {
     double dotgg=dot(g, g);
@@ -686,6 +800,10 @@ double CELL::get_excitation_error(double g[3], double k[3], double fn[3])
     double tkpg[3]={2.0*k[0]+g[0], 2.0*k[1]+g[1], 2.0*k[2]+g[2]};
     double q1=length(kpg), q2=angle(kpg, fn);
     double res=-1.0*dot(g, tkpg)/(2.0*q1*cos(q2));
+    if(int(g[0])==-2&&int(g[1])==-2&&int(g[2])==0){
+        printf("g %.2f %.2f %.2f k %.2f %.2f %.2f fn %.2f %.2f %.2f\n", g[0], g[1], g[2], k[0], k[1], k[2], fn[0], fn[1], fn[2]);
+        printf("%.2f\n", res);
+    }
     return res;
 }
 
@@ -1071,7 +1189,7 @@ MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[],
     lambda=mlambda;
     QB_tools QB;
     QB_init(&QB);
-    QB_read_lmp(&QB, model_path);
+    QB_read_file(&QB, model_path);
     set_lattice(QB.mat);
     is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
     ntype=QB.TypeNumber;
@@ -1146,9 +1264,8 @@ double MODEL::get_reciprocal_vector_length(double g[3])
 {
     double r_g[3];
     vector_rotate(r_g, rmt, g);
-    double len=vector_dot(g, r_g);
-    len=sqrt(len);
-    return len;
+    double dot=vector_dot(g, r_g);
+    return sqrt(dot);
 }
 
 void MODEL::reciprocal_to_cartesian(double c_g[3], double r_g[3])
@@ -1224,7 +1341,7 @@ complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//
 {
     complex<double> res(0.0, 0.0);
     double S=sin(theta)/lambda;
-    for(int i=0;i<natom;i++){
+    for(int i=0;i<natom;++i){
         int    t=type_index[atom_type[i]-1];
         const double *A=X_A[t], *B=X_B[t], C=X_C[t];
         double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
@@ -1232,48 +1349,6 @@ complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//
     }
     return res;
 }
-
-// complex<double> XMODEL::get_atomic_scattering_factor(double S, int type)//xrd
-// {
-//     double O[11]={2.960427, 2.508818, 0.637853, 0.722838, 1.142756, 0.027014,
-//                   14.182259, 5.936858, 0.112726, 34.958481, 0.390240};
-//     double Al[11]={4.730796, 2.313951, 1.541980, 1.117564, 3.154754, 0.139509,
-//                    3.628931, 43.051166, 0.095960, 108.932389, 1.555918};
-//     double f1Al=2.10718e-1, f2Al=2.45924e-1, fntAl=-3.43610e-3;
-//     double f1O=4.78150e-2, f2O=3.20985e-2, fntO=-2.19440e-3;
-//     double res=0.0;
-//     complex<double> F(0.0, 0.0);
-//     if(1==type){
-//         for(int i=0;i<5;i++){
-//             res+=O[i]*exp(-O[i+6]*S*S);//S, scattering vector
-//         }
-//         res+=O[5];
-//     }else if(2==type){
-//         for(int i=0;i<5;i++){
-//             res+=Al[i]*exp(-Al[i+6]*S*S);//S, scattering vector
-//         }
-//         res+=Al[5];
-//     }
-//     if(1==type){
-//         F+=complex<double>(res+f1O+fntO, f2O);
-//     }else if(2==type){
-//         F+=complex<double>(res+f1Al+fntAl, f2Al);
-//     }
-//     return F;
-// }
-
-// complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
-// {
-//     complex<double> res(0.0, 0.0);
-//     double S=sin(theta)/lambda;
-//     for(int i=0;i<natom;i++){
-//         int    t=atom_type[i];
-//         double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
-//         res+=get_Debye_Waller_factor(S, atom_DW[i])*get_atomic_scattering_factor(S, t)*complex<double>(cos(q), sin(q));
-//     }
-//     if(fabs(g[0]-0.0)<1e-8&&fabs(g[1]-0.0)<1e-8) printf("%.8f %.8f\n", res.real(), res.imag());
-//     return res;
-// }
 
 double XMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
 {

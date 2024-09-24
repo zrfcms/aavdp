@@ -398,6 +398,7 @@ void DKD_GVECTOR::add_g_vector(double hkl[3], complex<double> Ug, complex<double
     gtail->next=new DKD_GNODE;
     gtail=gtail->next;
     gtail->hkl[0]=hkl[0]; gtail->hkl[1]=hkl[1]; gtail->hkl[2]=hkl[2];
+    printf("%.2f %.2f %.2f\n", hkl[0], hkl[1], hkl[2]);
     gtail->Ug=Ug;
     gtail->qg=qg;
     gtail->sg=sg;
@@ -555,6 +556,7 @@ void DKD::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DKD_GVECTOR
                 ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
                 il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
                 dmat[ir][ic]=cell->LUTUg[ih][ik][il]-wsum;
+                printf("%.2f+%.2fi\t", dmat[ir][ic].real(), dmat[ir][ic].imag());
             }else{
                 double wsum=0.0;
                 DKD_GNODE *wtemp=gvec->headw;
@@ -569,9 +571,11 @@ void DKD::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DKD_GVECTOR
                 }
                 wsum*=k0_2i;
                 dmat[ir][ir]=complex<double>(k0_2*rtemp->sg-wsum, cell->fouri0.Upmod);
+                printf("%.2f+%.2fi\t", dmat[ir][ic].real(), dmat[ir][ic].imag());
             }
             ctemp=ctemp->nexts;
         }
+        printf("\n");
         rtemp=rtemp->nexts;
     }
 }

@@ -401,6 +401,77 @@ int main(int argc, char* argv[])
             SED sed(&model, Kmax, c, is_spacing_auto);
             sed.restart(restart_path);
         }
+    }else if(0==strcmp(argv[i], "--ded")){
+        i++;
+        char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
+        char   name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
+        split_path(name, ext, input_path);
+        char   types[TYPE_INPUT_NUMBER][10]={0};
+        double DWs[TYPE_INPUT_NUMBER]={0.0};
+        for(int i=0;i<TYPE_INPUT_NUMBER;i++) DWs[i]=1.0e-6;
+        int    zone[3]={0, 0, 1};
+        int    fnorm[3]={0, 0, 1};
+        double thickness=10.0;
+        double dmin=0.1;
+        double voltage=200.0;
+        double precangle=10.472*1.0e-3;//radian
+        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
+        char   ded_path[PATH_CHAR_NUMBER]; strcpy(ded_path, name); strcat(ded_path, ".ded");
+        while(i<argc){
+            if(0==strcmp(argv[i], "-e")){
+                i++;
+                int count=0;
+                while(i<argc&&is_parameter(argv[i])){
+                    strcpy(types[count++], argv[i++]);
+                }
+                continue;
+            }else if(0==strcmp(argv[i], "-dw")){
+                i++;
+                int count=0;
+                while(i<argc&&is_parameter(argv[i])){
+                    DWs[count++]=be_double(argv[i++]);
+                }
+                continue;
+            }else if(0==strcmp(argv[i], "-z")){
+                i++;
+                zone[0]=(int)be_double(argv[i++]);
+                zone[1]=(int)be_double(argv[i++]);
+                zone[2]=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-n")){
+                i++;
+                fnorm[0]=(int)be_double(argv[i++]);
+                fnorm[1]=(int)be_double(argv[i++]);
+                fnorm[2]=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-t")){
+                i++;
+                thickness=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-d")){
+                i++;
+                dmin=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-v")){
+                i++;
+                voltage=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-p")){
+                i++;
+                precangle=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-c")){
+                i++;
+                c1=be_double(argv[i++]);
+                c2=be_double(argv[i++]);
+                c3=be_double(argv[i++]);
+                c_sg=be_double(argv[i++]);
+            }else{
+                i++;
+                continue;
+            }
+        }
+        CELL cell(input_path, types, DWs);
+        DED ded(&cell, zone, fnorm, thickness, dmin, voltage, precangle, c1, c2, c3, c_sg);
+        ded.ded(ded_path);
     }else if(0==strcmp(argv[i], "--dkd")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
@@ -408,6 +479,9 @@ int main(int argc, char* argv[])
         split_path(name, ext, input_path);
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
+        for(int i=0;i<TYPE_INPUT_NUMBER;i++){
+            DWs[i]=1.0e-6;
+        }
         double omega=0.0, sigma=75.7;
         double EkeV=20.0, Emin=19.0;
         double zmax=100.0, zstep=1.0;

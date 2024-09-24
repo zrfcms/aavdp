@@ -78,6 +78,8 @@ template <typename T>
 extern void vector_rotate(T r_v[3], T R[3][3], T v[3]);
 extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
 template <typename T>
+extern void vector_transform(T t_v[3], T v[3], T R[3][3]);
+template <typename T>
 void vector_copy(T c_v[3], T v[3])
 {
     c_v[0]=v[0]; c_v[1]=v[1]; c_v[2]=v[2];
@@ -138,6 +140,18 @@ void vector_rotate(T r_v[3], T R[3][3], T v[3])
         r_v[i]=0.0;
         for(int j=0;j<3;j++){
             r_v[i]+=R[i][j]*c_v[j];
+        }
+    }
+}
+template <typename T>
+void vector_transform(T t_v[3], T v[3], T R[3][3])
+{
+    T c_v[3];
+    vector_copy(c_v, v);
+    for(int i=0;i<3;i++){
+        t_v[i]=0.0;
+        for(int j=0;j<3;j++){
+            t_v[i]+=R[j][i]*c_v[j];
         }
     }
 }

@@ -15,6 +15,9 @@ XRD::XRD(XMODEL *model, double min2Theta, double max2Theta, int lp_type, double 
         int NspacingK=ceil(Kmagnitude_max/spacingK[i]);
         kmin[i]=-NspacingK; kmax[i]=NspacingK;
     }
+    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
+    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
+    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
     compute_diffraction_intensity(model, lp_type);
     quick_unique();
     printf("[INFO] Ending computation of x-ray diffraction\n");
@@ -55,33 +58,25 @@ void XRD::compute_diffraction_intensity(XMODEL *model, int lp_type)
     start=clock();
     int num=(kmax[0]-kmin[0]+1)*(kmax[1]-kmin[1]+1)*(kmax[2]-kmin[2]+1);
     int count=0;
-    int kkmin[3], kkmax[3];
-    vector_copy(kkmin, kmin);
-    vector_copy(kkmax, kmax);
-    for(int ih=kkmin[0];ih<=kkmax[0];ih++){
-        for(int ik=kkmin[1];ik<=kkmax[1];ik++){
-            for(int il=kkmin[2];il<=kkmax[2];il++){
+    double Kmagnitude_max=2.0/model->lambda*sin(maxTheta), Kmagnitude_min=2.0/model->lambda*sin(minTheta);
+    for(int ih=kmin[0];ih<=kmax[0];++ih){
+        for(int ik=kmin[1];ik<=kmax[1];++ik){
+            for(int il=kmin[2];il<=kmax[2];++il){
                 if(0==ih&&0==ik&&0==il) continue;
                 double K[3]={double(ih)*spacingK[0], double(ik)*spacingK[1], double(il)*spacingK[2]};
                 double Kmag=model->get_reciprocal_vector_length(K);
-                if(2.0>=Kmag*model->lambda){
+                if(Kmag<=Kmagnitude_max&&Kmag>=Kmagnitude_min){
                     model->reciprocal_to_cartesian(K, K);
                     double theta=asin(0.5*model->lambda*Kmag);
                     double intensity=model->get_diffraction_intensity(theta, K, lp_type);
-                    if((intensity>ZERO_LIMIT)&&(theta<=maxTheta)&&(theta>=minTheta)){
-                        if(ih<kmin[0]) kmin[0]=ih;
-                        if(ik<kmin[1]) kmin[1]=ik;
-                        if(il<kmin[2]) kmin[2]=il;
-                        if(ih>kmax[0]) kmax[0]=ih;
-                        if(ik>kmax[1]) kmax[1]=ik;
-                        if(il>kmax[2]) kmax[2]=il;
+                    if(intensity>ZERO_LIMIT){
                         if(intensity<intensity_min) intensity_min=intensity;
                         if(intensity>intensity_max) intensity_max=intensity;
                         add_k_node(ih, ik, il, theta, intensity, 0);
                     }
                 }
                 count++;
-                if(0==count%100){
+                if(0==count%1000){
                     printf("[INFO] Completed diffraction intensity %d of %d\n", count, num);
                 }
             }
@@ -90,9 +85,6 @@ void XRD::compute_diffraction_intensity(XMODEL *model, int lp_type)
     printf("[INFO] Ending computation of diffraction intensity\n");
     finish=clock();
     printf("[INFO] Computation time [s]: %.8f\n", double(finish-start)/CLOCKS_PER_SEC);
-    printf("[INFO] Range of Miller index h in reciprocal space: %d %d\n", kmin[0], kmax[0]);
-    printf("[INFO] Range of Miller index k in reciprocal space: %d %d\n", kmin[1], kmax[1]);
-    printf("[INFO] Range of Miller index l in reciprocal space: %d %d\n", kmin[2], kmax[2]);
     printf("[INFO] Number of diffraction intensity: %d\n", numk);
     printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
