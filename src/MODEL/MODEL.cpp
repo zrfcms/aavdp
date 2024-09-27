@@ -541,6 +541,11 @@ void CELL::direct_to_reciprocal(double r_v[3], double v[3])
     vector_transform(r_v, v, dmt);
 }
 
+void CELL::direct_to_cartesian(double c_v[3], double v[3])
+{
+    vector_rotate(c_v, dsm, v);
+}
+
 void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space)
 {
     double s[3]={0.0};
@@ -767,6 +772,10 @@ void CELL::compute_shortest_reciprocal_vectors(double g1[3], double g2[3], doubl
     }else{
         vector_copy(g1, gi); vector_copy(g2, gj);
     }
+    for(int i=0;i<3;i++){
+        if(fabs(g1[i])<1.0e-6) g1[i]=0.0;
+        if(fabs(g2[i])<1.0e-6) g2[i]=0.0;
+    }
 // !isym
 }
 
@@ -800,10 +809,6 @@ double CELL::get_excitation_error(double g[3], double k[3], double fn[3])
     double tkpg[3]={2.0*k[0]+g[0], 2.0*k[1]+g[1], 2.0*k[2]+g[2]};
     double q1=length(kpg), q2=angle(kpg, fn);
     double res=-1.0*dot(g, tkpg)/(2.0*q1*cos(q2));
-    if(int(g[0])==-2&&int(g[1])==-2&&int(g[2])==0){
-        printf("g %.2f %.2f %.2f k %.2f %.2f %.2f fn %.2f %.2f %.2f\n", g[0], g[1], g[2], k[0], k[1], k[2], fn[0], fn[1], fn[2]);
-        printf("%.2f\n", res);
-    }
     return res;
 }
 

@@ -1,6 +1,5 @@
 /doc
-/ht
-/examples/test
+/exp/test
 ./*/*.d
 ./*/*.o
 ./*/*/*.d

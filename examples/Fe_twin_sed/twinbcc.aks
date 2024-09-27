@@ -1,6 +1,0 @@
-#SPaMD_atomkit_save
-#region_plane Slice1 0.000000 0.000000 1.000000 0.000000 0.000000
-#region_move Move1 Slice1 1 0.000000 0.000000 0.500000
-#step_mirroratom Move1 0.000000 1.000000 0.000000 0.000000 0
-#step_wrap
-#END

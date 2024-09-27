@@ -3,16 +3,15 @@
 #include "./MODEL/MODEL.h"
 #include "./XRD/XRD.h"
 #include "./NED/NED.h"
-#include "./SED/SED.h"
-#include "./KKD/KKD.h"
-#include "./DKD/DKD_MC.h"
-#include "./DKD/DKD.h"
+#include "./KED/KED.h"
 #include "./DED/DED.h"
+#include "./KKD/KKD.h"
+#include "./DKD/DKD.h"
 #include "./RDF/RDF.h"
 #include "./SSF/SSF.h"
 
 #define TYPE_INPUT_NUMBER 10
-#define ZONE_INPUT_NUMBER 10
+#define ZERO_LIMIT 1.0e-4
 
 extern double be_double(char str[]);
 extern bool is_parameter(char str[]);

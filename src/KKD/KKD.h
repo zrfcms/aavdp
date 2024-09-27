@@ -6,7 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <ctime>
-#include "../SED/SED.h"
+#include "../KED/KED.h"
 #include "../MATH/MATH.h"
 #include "../MATH/GRAPH.h"
 

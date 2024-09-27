@@ -1,16 +1,16 @@
-inc=-I ./src/include:./src/QSPG/spglib:./src/QB:./src/QSPG:./src/MATH:./src/MODEL:./src/XRD:./src/SND:./src/SED:./src/KKD:./src/DKD:./src/RDF:./src/SSF
-lib=./src/lib/liblapacke.a ./src/lib/liblapack.a ./src/lib/libcblas.a ./src/lib/librefblas.a \
-./src/lib/libgfortran.dll.a ./src/lib/libpng16.a ./src/lib/libz.a
 CXX=g++
-CC=gcc
-src=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
-obj=$(patsubst %.cpp, %.o, $(src))
+SYS=win
+INC=-I ./src/include:./src/QSPG/spglib:./src/QB:./src/QSPG:./src/MATH:./src/MODEL:./src/XRD:./src/NED:./src/KED:./src/DED:./src/KKD:./src/DKD:./src/RDF:./src/SSF
+LIB=./src/lib/$(SYS)/liblapacke.a ./src/lib/$(SYS)/liblapack.a ./src/lib/$(SYS)/libgfortran.dll.a ./src/lib/$(SYS)/libcblas.a ./src/lib/$(SYS)/librefblas.a ./src/lib/$(SYS)/libpng16.a ./src/lib/$(SYS)/libz.a
 
-./AAVDP: $(obj)
-	@echo "Start..."
-	$(CXX) $(obj) -o $@ \
-	-g $(inc) $(lib)
-	@echo "End."
+SRC=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
+OBJ=$(patsubst %.cpp, %.o, $(SRC))
+
+./AAVDP: $(OBJ)
+	@echo "Start building AAVDP..."
+	$(CXX) $(OBJ) -o $@ \
+	-g $(INC) $(LIB)
+	@echo "End building AAVDP."
 
 %.o: %.cpp
 	@echo $<
@@ -18,4 +18,6 @@ obj=$(patsubst %.cpp, %.o, $(src))
 
 .PHONY: clean
 clean: 
-	rm $(obj)
+	rm $(OBJ)
+
+

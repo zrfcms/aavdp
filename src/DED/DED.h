@@ -16,36 +16,14 @@ using namespace std;
 
 struct DED_BETHE{
     double c1=4.0, c2=8.0, c3=50.0;
-    double c_sg=1.0;
-};
-
-struct DED_KNODE{
-    double k[3];
-    double kt[3];
-    double kn;
-    DED_KNODE *next=nullptr;
-};
-
-class DED_KVECTOR
-{
-public:
-    DED_KVECTOR(CELL *cell, double kz[3], double g1[3], double precangle);
-    ~DED_KVECTOR();
-    int    numk=0;
-    double **karray=nullptr;
-    double *knarray=nullptr;
-private:
-    DED_KNODE *khead=nullptr;
-    DED_KNODE *ktail=nullptr;
-    int    ncircle=10, pcircle=360;
-    void   add_k_node(double k[3], double kt[3], double kn);
-    void   free_k_node();
+    double c_sg=0.2;
 };
 
 struct DED_GNODE{
     double hkl[3];//Miller indices
     complex<double> Ug, qg;
-    double sg, sig;//excitation error and excitation distance
+    double sg;//excitation error
+    double xg;// extinction distance
     bool   is_double_diffrac;
     bool   is_weak, is_strong;
     DED_GNODE *next=nullptr;
@@ -56,17 +34,15 @@ struct DED_GNODE{
 class DED_GVECTOR
 {
 public:
-    DED_GVECTOR(CELL *cell, double kz[3], double fn[3], double cutoff, double precangle, double goffset=0.2);
+    DED_GVECTOR(CELL *cell, DED_BETHE *bethe, double kz[3], double fn[3], double cutoff);
     ~DED_GVECTOR();
     int    numg=0;
     int    nstrong=0, nweak=0;
     DED_GNODE *ghead=nullptr;
     DED_GNODE *heads=nullptr, *headw=nullptr;
-    void   filter_g_node(CELL *cell, DED_BETHE *bethe, double k[3], double fn[3]);
-    void   unfilter_g_node();
 private:
     DED_GNODE *gtail=nullptr;
-    void   add_g_node(double hkl[3], complex<double> Ug, complex<double> qg, double sg, double sig, bool is_double_diffrac);
+    void   add_g_node(double hkl[3], complex<double> Ug, complex<double> qg, double sg, bool is_double_diffrac);
 };
 
 struct DED_INODE{
@@ -79,7 +55,7 @@ struct DED_INODE{
 class DED
 {
 public:
-    DED(CELL *cell, int zone[3], int fnorm[3], double thickness, double dmin, double voltage, double precangle, double c1, double c2, double c3, double c_sg);
+    DED(CELL *cell, DED_BETHE *bethe, int zone[3], int fnorm[3], double voltage, double thickness, double dmin);
     ~DED();
     int    numi=0;
     DED_INODE  *ihead=nullptr;

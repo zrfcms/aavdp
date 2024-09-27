@@ -167,15 +167,14 @@ void NED::ned(char *ned_path, char *png_path)
     FILE *fp=nullptr;
     fp=fopen(ned_path,"w");
     double constn=100.0/intensity_max;
-    fprintf(fp,"# H\tK\tL\tmultiplicity\t2theta\tintensity\tintensity_norm (%d points)\n", numk);
+    fprintf(fp,"# 2theta\tintensity\tintensity_norm (%d points)\n", numk);
     double *ktheta=nullptr, *kintensity=nullptr;
     callocate(&ktheta, numk, 0.0);
     callocate(&kintensity, numk, 0.0);
     NED_KNODE *ktemp=khead;
     for(int i=0;i<numk&&ktemp!=nullptr;i++){
         ktheta[i]=ktemp->theta*2.0*RAD_TO_DEG; kintensity[i]=constn*ktemp->intensity;
-        fprintf(fp, "%d\t%d\t%d\t%d\t%.8f\t%.8f\t%.8f\n", ktemp->k[0], ktemp->k[1], ktemp->k[2], 
-                ktemp->multiplicity, ktheta[i], ktemp->intensity, kintensity[i]);
+        fprintf(fp, "%.8f\t%.8f\t%.8f\n", ktheta[i], ktemp->intensity, kintensity[i]);
         fflush(fp);
         ktemp=ktemp->next;
     }

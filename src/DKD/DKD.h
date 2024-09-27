@@ -16,7 +16,8 @@
 using namespace std;
 
 struct BETHE{
-    double c1=4.0, c2=8.0, c3=50.0;
+    double c1=4.0, c2=8.0;
+    double c_rg=50.0;
     double c_sg=1.0;
 };
 

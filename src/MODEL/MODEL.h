@@ -109,6 +109,7 @@ public:
     void   reciprocal_to_cartesian(double c_v[3], double v[3]);//from reciprocal
     void   cartesian_to_reciprocal(double r_v[3], double v[3]);//from cartesian
     void   direct_to_reciprocal(double r_v[3], double v[3]);
+    void   direct_to_cartesian(double c_v[3], double v[3]);
     void   compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space='r');
     void   apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int nump);
     void   compute_shortest_reciprocal_vectors(double g1[3], double g2[3], double k[3]);

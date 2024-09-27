@@ -1,0 +1,1 @@
+..\..\..\AAVDP.exe --ked ./Ni.lmp -e Ni -auto -z 0 1 1 -x 0 1 -1 -y 1 0 0

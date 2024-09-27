@@ -1,0 +1,1 @@
+..\..\..\AAVDP.exe --xrd ./ZnO.lmp -e Zn O -2t 0 80 -auto -pk 0.5 -d 294

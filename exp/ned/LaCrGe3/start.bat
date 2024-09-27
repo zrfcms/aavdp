@@ -1,0 +1,1 @@
+..\..\..\AAVDP.exe --ned ./LaCrGe3.lmp -e La Cr Ge -dw 0.7646 0.1028 0.2458 -2t 10.0 80.0 -l 2.43955 -auto -pk 0.0 -d 400

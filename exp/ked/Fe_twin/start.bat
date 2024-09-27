@@ -1,0 +1,1 @@
+..\..\..\AAVDP.exe --ked ./Fe_twin.lmp -e Fe -auto -z 0 1 0 -x 0 0 1 -thr 1

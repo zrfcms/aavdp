@@ -21,8 +21,8 @@ int main(int argc, char* argv[])
         double pk_param=-1;
         double D=400000.0;
         double dt=0.02;
-        char   xrd_path[PATH_CHAR_NUMBER]; strcpy(xrd_path, name); strcat(xrd_path, ".xrd");
-        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name); strcat(png_path, ".png");
+        char   xrd_path[PATH_CHAR_NUMBER]; 
+        char   png_path[PATH_CHAR_NUMBER];
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
                 i++;
                 pk_param=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-D")){
+            }else if(0==strcmp(argv[i], "-d")){
                 i++;
                 D=be_double(argv[i++]);
                 continue;
@@ -83,11 +83,17 @@ int main(int argc, char* argv[])
                 i++;
                 dt=be_double(argv[i++]);
                 continue;
+            }else if(0==strcmp(argv[i], "-o")){
+                i++;
+                strcpy(name, argv[i++]);
+                continue;
             }else{
                 i++;
                 continue;
             }
         }
+        strcpy(xrd_path, name); strcat(xrd_path, ".xrd");
+        strcpy(png_path, name); strcat(png_path, ".xrd"); strcat(png_path, ".png");
         XMODEL model(input_path, types, DWs, lambda);
         XRD xrd(&model, min2Theta, max2Theta, lp_type, c, is_spacing_auto);
         if(pk_param<0.0){
@@ -110,8 +116,8 @@ int main(int argc, char* argv[])
         double pk_param=-1;
         double D=400000.0;;
         double dt=0.02;
-        char   ned_path[PATH_CHAR_NUMBER]; strcpy(ned_path, name); strcat(ned_path, ".ned");
-        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name); strcat(png_path, ".png");
+        char   ned_path[PATH_CHAR_NUMBER]; 
+        char   png_path[PATH_CHAR_NUMBER]; 
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -164,7 +170,7 @@ int main(int argc, char* argv[])
                 i++;
                 pk_param=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-D")){
+            }else if(0==strcmp(argv[i], "-d")){
                 i++;
                 D=be_double(argv[i++]);
                 continue;
@@ -172,11 +178,17 @@ int main(int argc, char* argv[])
                 i++;
                 dt=be_double(argv[i++]);
                 continue;
+            }else if(0==strcmp(argv[i], "-o")){
+                i++;
+                strcpy(name, argv[i++]);
+                continue;
             }else{
                 i++;
                 continue;
             }
         }
+        strcpy(ned_path, name); strcat(ned_path, ".ned");
+        strcpy(png_path, name); strcat(png_path, ".ned"); strcat(png_path, ".png");
         NMODEL model(input_path, types, DWs, lambda);
         NED ned(&model, min2Theta, max2Theta, lp_type, c, is_spacing_auto);
         if(pk_param<0.0){
@@ -184,7 +196,7 @@ int main(int argc, char* argv[])
         }else{
             ned.ned(ned_path, png_path, pk_param, lambda, D, dt);
         }
-    }else if(0==strcmp(argv[i], "--sed")){
+    }else if(0==strcmp(argv[i], "--ked")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
         char   name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
@@ -193,14 +205,14 @@ int main(int argc, char* argv[])
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double lambda=0.0251;
         double Kmax=1.70;
-        int    zone[3]={0};
+        int    zaxs[3]={0};
         int    xaxs[3]={0}, yaxs[3]={0};
         double c[3]={0.0, 0.0, 0.0};
         double thickness=0.1;
         double threshold=0.001;
         bool   is_spacing_auto=true;
         bool   is_vtk_output=false;
-        char   sed_path[PATH_CHAR_NUMBER]; 
+        char   ked_path[PATH_CHAR_NUMBER]; 
         char   png_path[PATH_CHAR_NUMBER];
         char   vtk_path[PATH_CHAR_NUMBER]; 
         while(i<argc){
@@ -221,9 +233,9 @@ int main(int argc, char* argv[])
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
-                zone[0]=(int)be_double(argv[i++]);
-                zone[1]=(int)be_double(argv[i++]);
-                zone[2]=(int)be_double(argv[i++]);
+                zaxs[0]=(int)be_double(argv[i++]);
+                zaxs[1]=(int)be_double(argv[i++]);
+                zaxs[2]=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-x")){
                 i++;
@@ -265,6 +277,10 @@ int main(int argc, char* argv[])
                 i++;
                 threshold=be_double(argv[i++]);
                 continue;
+            }else if(0==strcmp(argv[i], "-o")){
+                i++;
+                strcpy(name, argv[i++]);
+                continue;
             }else if(0==strcmp(argv[i], "-vtk")){
                 i++;
                 is_vtk_output=true;
@@ -279,21 +295,21 @@ int main(int argc, char* argv[])
             printf("[WARNING] Unable to create vtk file since the input model is not orthogonal");
             is_vtk_output=false;
         }
-        if(zone[0]==0&&zone[1]==0&&zone[2]==0){
-            strcpy(sed_path, name); strcat(sed_path, ".sed");
+        if(zaxs[0]==0&&zaxs[1]==0&&zaxs[2]==0){
+            strcpy(ked_path, name); strcat(ked_path, ".ked");
             strcpy(vtk_path, name); strcat(vtk_path, ".vtk");
-            SED sed(&model, Kmax, c, is_spacing_auto);
-            sed.sed(sed_path, threshold);
-            if(is_vtk_output) sed.vtk(vtk_path, threshold);
+            KED ked(&model, Kmax, c, is_spacing_auto);
+            ked.ked(ked_path, threshold);
+            if(is_vtk_output) ked.vtk(vtk_path, threshold);
         }else{
-            SED sed(&model, zone, thickness, Kmax, c, is_spacing_auto);
+            KED ked(&model, zaxs, thickness, Kmax, c, is_spacing_auto);
             char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
-            int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
-            strcpy(sed_path, name); merge_path(sed_path, uvw, 4); strcat(sed_path, ".sed");
-            strcpy(vtk_path, name); merge_path(vtk_path, uvw, 4); strcat(vtk_path, ".sed");
-            strcpy(png_path, name); merge_path(png_path, uvw, 4); strcat(png_path, ".png");
-            sed.sed(sed_path, png_path, xaxs, yaxs, zone, threshold);
-            if(is_vtk_output) sed.vtk(vtk_path, threshold);
+            int_to_str(uvw[1], zaxs[0]); int_to_str(uvw[2], zaxs[1]); int_to_str(uvw[3], zaxs[2]);
+            strcpy(ked_path, name); merge_path(ked_path, uvw, 4); strcat(ked_path, ".ked");
+            strcpy(vtk_path, name); merge_path(vtk_path, uvw, 4); strcat(vtk_path, ".vtk");
+            strcpy(png_path, name); merge_path(png_path, uvw, 4); strcat(png_path, ".ked.png");
+            ked.ked(ked_path, png_path, xaxs, yaxs, zaxs, threshold);
+            if(is_vtk_output) ked.vtk(vtk_path, threshold);
         }
     }else if(0==strcmp(argv[i], "--kkd")){
         i++;
@@ -307,11 +323,11 @@ int main(int argc, char* argv[])
         double c[3]={0.0};
         double threshold=0.001;
         bool   is_spacing_auto=true;
-        int    zone[3]={0};
+        int    zaxs[3]={0};
         double dist=3.0;
         int    dpi=300;
-        int    width=6;
-        int    height=4;
+        double width=3;
+        double height=3;
         char   background='w';
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
@@ -351,9 +367,9 @@ int main(int argc, char* argv[])
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
-                zone[0]=(int)be_double(argv[i++]);
-                zone[1]=(int)be_double(argv[i++]);
-                zone[2]=(int)be_double(argv[i++]);
+                zaxs[0]=(int)be_double(argv[i++]);
+                zaxs[1]=(int)be_double(argv[i++]);
+                zaxs[2]=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-thr")){
                 i++;
@@ -382,24 +398,24 @@ int main(int argc, char* argv[])
         }
         if(0==strcmp(ext, ".restart")){
             char   img_path[PATH_CHAR_NUMBER]; 
-            if(0==zone[0]&&0==zone[1]&&0==zone[2]){
-                strcpy(img_path, name); strcat(img_path, ".png");
+            if(0==zaxs[0]&&0==zaxs[1]&&0==zaxs[2]){
+                strcpy(img_path, name); strcat(img_path, ".kkd.png");
                 KKD kkd(input_path, threshold, dist, width, dpi);
                 kkd.img(img_path, background);
             }else{
                 strcpy(img_path, name);
                 char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
-                int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
-                strcpy(img_path, name); merge_path(img_path, uvw, 4); strcat(img_path, ".png");
-                KKD kkd(input_path, zone, threshold, dist, width, height, dpi);
+                int_to_str(uvw[1], zaxs[0]); int_to_str(uvw[2], zaxs[1]); int_to_str(uvw[3], zaxs[2]);
+                strcpy(img_path, name); merge_path(img_path, uvw, 4); strcat(img_path, ".kkd.png");
+                KKD kkd(input_path, zaxs, threshold, dist, width, height, dpi);
                 kkd.img(img_path, background);
             }
         }else{
             char   restart_path[PATH_CHAR_NUMBER];
             strcpy(restart_path, name); strcat(restart_path, ".restart");
             EMODEL model(input_path, types, DWs, lambda);
-            SED sed(&model, Kmax, c, is_spacing_auto);
-            sed.restart(restart_path);
+            KED ked(&model, Kmax, c, is_spacing_auto);
+            ked.restart(restart_path);
         }
     }else if(0==strcmp(argv[i], "--ded")){
         i++;
@@ -414,9 +430,7 @@ int main(int argc, char* argv[])
         double thickness=10.0;
         double dmin=0.1;
         double voltage=200.0;
-        double precangle=10.472*1.0e-3;//radian
-        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
-        char   ded_path[PATH_CHAR_NUMBER]; strcpy(ded_path, name); strcat(ded_path, ".ded");
+        double c1=4.0, c2=8.0, c3=50.0, c_sg=0.2;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -454,10 +468,6 @@ int main(int argc, char* argv[])
                 i++;
                 voltage=be_double(argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "-p")){
-                i++;
-                precangle=be_double(argv[i++]);
-                continue;
             }else if(0==strcmp(argv[i], "-c")){
                 i++;
                 c1=be_double(argv[i++]);
@@ -469,8 +479,13 @@ int main(int argc, char* argv[])
                 continue;
             }
         }
+        char   ded_path[PATH_CHAR_NUMBER]; strcpy(ded_path, name);
+        char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
+        int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
+        strcpy(ded_path, name); merge_path(ded_path, uvw, 4); strcat(ded_path, ".ded");
         CELL cell(input_path, types, DWs);
-        DED ded(&cell, zone, fnorm, thickness, dmin, voltage, precangle, c1, c2, c3, c_sg);
+        DED_BETHE bethe={c1, c2, c3, c_sg};
+        DED ded(&cell, &bethe, zone, fnorm, voltage, thickness, dmin);
         ded.ded(ded_path);
     }else if(0==strcmp(argv[i], "--dkd")){
         i++;
@@ -483,12 +498,12 @@ int main(int argc, char* argv[])
             DWs[i]=1.0e-6;
         }
         double omega=0.0, sigma=75.7;
-        double EkeV=20.0, Emin=19.0;
+        double EkeV=20.0, Eexit=19.0;
         double zmax=100.0, zstep=1.0;
         int    num_e=20000;
         int    nump=501;
         double dmin=0.1;
-        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
+        double c1=4.0, c2=8.0, c_rg=50.0, c_sg=1.0;
         double img_L=6.0;
         int    img_dpi=512;
         char   img_path[PATH_CHAR_NUMBER]; strcpy(img_path, name); strcat(img_path, ".png");
@@ -507,13 +522,17 @@ int main(int argc, char* argv[])
                     DWs[count++]=be_double(argv[i++]);
                 }
                 continue;
-            }else if(0==strcmp(argv[i], "-E")){
+            }else if(0==strcmp(argv[i], "-en")){
                 i++;
                 EkeV=be_double(argv[i++]);
-                Emin=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-z")){
+            }else if(0==strcmp(argv[i], "-ex")){
+                i++;
+                Eexit=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-z0")){
                 i++;
                 zmax=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-dz")){
+                i++;
                 zstep=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-ne")){
                 i++;
@@ -528,9 +547,13 @@ int main(int argc, char* argv[])
                 i++;
                 c1=be_double(argv[i++]);
                 c2=be_double(argv[i++]);
-                c3=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-rg")){
+                i++;
+                c_rg=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-sg")){
+                i++;
                 c_sg=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-L")){
+            }else if(0==strcmp(argv[i], "-w")){
                 i++;
                 img_L=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-dpi")){
@@ -542,9 +565,9 @@ int main(int argc, char* argv[])
             }
         }
         CELL cell(input_path, types, DWs);
-        DKD_MC mc(&cell, omega, sigma, EkeV, Emin, EkeV-Emin, zmax, zstep, num_e, nump);
+        DKD_MC mc(&cell, omega, sigma, EkeV, Eexit, EkeV-Eexit, zmax, zstep, num_e, nump);
         mc.img(img_path, img_L, img_dpi);
-        DKD dkd(&mc, &cell, dmin, c1, c2, c3, c_sg);
+        DKD dkd(&mc, &cell, dmin, c1, c2, c_rg, c_sg);
         dkd.img(img_path, img_L, img_dpi);
     }else if(0==strcmp(argv[i], "--rdf")){
         i++;
