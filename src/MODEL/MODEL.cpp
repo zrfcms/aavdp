@@ -507,7 +507,7 @@ double CELL::angle(double v1[3], double v2[3], char space)
     double dot12=dot(v1, v2, space), len1=length(v1, space), len2=length(v2, space);
     if(0.0==len1||0.0==len2){
         printf("[ERROR] Zero length for vector [%d %d %d] or [%d %d %d] in angle computation.", 
-               v1[0], v1[1], v1[2], v2[0], v2[1], v2[2]);
+               int(v1[0]), int(v1[1]), int(v1[2]), int(v2[0]), int(v2[1]), int(v2[2]));
         exit(EXIT_FAILURE);
     }
     double res=dot12/(len1*len2);
@@ -1297,7 +1297,7 @@ void MODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3
         for(int i=0;i<3;i++){
             if(!is_periodic[i]){
                 dimK[i]=aveK;
-            }
+            }        
         }
     }
     for(int i=0;i<3;i++){

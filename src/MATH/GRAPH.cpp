@@ -250,7 +250,10 @@ void GRAPH::draw(const char *png_path)
             draw_line(&points[i-1], &points[i]);
         }
     }else if(0==strcmp(style, "hist")){
-        POINT p{area.start_x, area.start_y, points[0].black, 's', points[0].psize, points[0].is_in_area_checked};
+        POINT p;
+        p.x=area.start_x; p.y=area.start_y; 
+        p.black=points[0].black; p.style='s'; p.psize=points[0].psize;
+        p.is_in_area_checked=points[0].is_in_area_checked;
         for(int i=0;i<nump;i++){
             p.x=points[i].x;
             draw_line(&p, &points[i]);
@@ -338,7 +341,10 @@ void GRAPH::draw_line(POINT *start_point, POINT *end_point)
 {
     if(fabs(start_point->x-end_point->x)<fabs(start_point->y-end_point->y)){
         double dy=area.ratio_y;
-        POINT  p={start_point->x, start_point->y, start_point->black, start_point->style, start_point->psize, start_point->is_in_area_checked};
+        POINT p;
+        p.x=start_point->x; p.y=start_point->y; 
+        p.black=start_point->black; p.style=start_point->style; p.psize=start_point->psize;
+        p.is_in_area_checked=start_point->is_in_area_checked;
         double k=(start_point->x-end_point->x)/(start_point->y-end_point->y);
         double b=end_point->x-k*end_point->y;
         if(start_point->y<end_point->y){
@@ -355,7 +361,10 @@ void GRAPH::draw_line(POINT *start_point, POINT *end_point)
         draw_marker(end_point);
     }else{
         double dx=area.ratio_x;
-        POINT  p={start_point->x, start_point->y, start_point->black, start_point->style, start_point->psize, start_point->is_in_area_checked};
+        POINT  p;
+        p.x=start_point->x; p.y=start_point->y; 
+        p.black=start_point->black; p.style=start_point->style; p.psize=start_point->psize;
+        p.is_in_area_checked=start_point->is_in_area_checked;
         double k=(start_point->y-end_point->y)/(start_point->x-end_point->x);
         double b=end_point->y-k*end_point->x;
         if(start_point->x<end_point->x){

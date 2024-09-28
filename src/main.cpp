@@ -484,7 +484,8 @@ int main(int argc, char* argv[])
         int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
         strcpy(ded_path, name); merge_path(ded_path, uvw, 4); strcat(ded_path, ".ded");
         CELL cell(input_path, types, DWs);
-        DED_BETHE bethe={c1, c2, c3, c_sg};
+        DED_BETHE bethe;
+        bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
         DED ded(&cell, &bethe, zone, fnorm, voltage, thickness, dmin);
         ded.ded(ded_path);
     }else if(0==strcmp(argv[i], "--dkd")){

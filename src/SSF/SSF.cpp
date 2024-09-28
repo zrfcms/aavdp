@@ -7,7 +7,7 @@ SSF::SSF(const char *model_path, double qmax, int nbin, bool is_partial)
 	QB_init(&QB);
 	QB_read_file(&QB, model_path);
     double spacingK[3]={TWO_PI/QB.mat[0][0], TWO_PI/QB.mat[1][1], TWO_PI/QB.mat[2][2]};
-    int NspacingK[3]={ceil(qmax/spacingK[0]), ceil(qmax/spacingK[1]), ceil(qmax/spacingK[2])};
+    int NspacingK[3]={int(ceil(qmax/spacingK[0])), int(ceil(qmax/spacingK[1])), int(ceil(qmax/spacingK[2]))};
     printf("Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
 	
     numqbin=nbin;
