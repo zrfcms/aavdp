@@ -398,7 +398,7 @@ void KKD::img(const char* img_path, char mode)
 //             if(maxs<mLPSH[j][k]) maxs=mLPSH[j][k];
 //         }
 //     }
-//     double minm=min(minn, mins);
+//     double minm=m_min(minn, mins);
 //     for(int j=0;j<npx;j++){
 //         for(int k=0;k<npy;k++){
 //             mLPNH[j][k]=(mLPNH[j][k]-minm)/(maxn-minm);

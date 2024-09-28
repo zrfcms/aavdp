@@ -612,7 +612,7 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
         }
     }
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//determine the optimal LWORK, i.e., WORK[0]
-    LWORK=std::min(LWMAX, int(WORK[0].real())); LDA=NS;
+    LWORK=m_min(LWMAX, int(WORK[0].real())); LDA=NS;
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//call the eigenvalue solver
     if(0!=INFO){
         printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
