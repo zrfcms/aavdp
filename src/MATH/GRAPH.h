@@ -19,7 +19,7 @@ template <typename T>
 void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background)
 {
     int numpx=width*resolution, numpy=height*resolution;
-    int multiplier=std::min(numpx/ncol, numpy/nrow);
+    int multiplier=min(numpx/ncol, numpy/nrow);
     numpx=ncol*multiplier; numpy=nrow*multiplier;
     double **warr; callocate_2d(&warr, numpy, numpx, 0.0);
     for(int i=0;i<nrow;i++){

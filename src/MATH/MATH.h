@@ -36,9 +36,9 @@
 #define CONST_IN_AREA_INV 1.5273987E19 //1.0/(5.21E-21*(4*PI))
 
 template <typename T>
-extern T max(T a, T b);
+extern T m_max(T a, T b);
 template <typename T>
-extern T min(T a, T b);
+extern T m_min(T a, T b);
 
 template <typename T>
 T max(T a, T b)

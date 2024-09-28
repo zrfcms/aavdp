@@ -199,7 +199,7 @@ DED::DED(CELL *cell, DED_BETHE *bethe, int zone[3], int fnorm[3], double voltage
         x1=vector_dot(gtemp->hkl, gx);
         x2=vector_dot(gtemp->hkl, gy);
         double pos[2]={gx_len*DD*(DM[0][0]*x1+DM[0][1]*x2), gy_len*DD*(DM[1][0]*x1+DM[1][1]*x2)};
-        add_intensity_node(gtemp->hkl, pos, pow(fabs(sumq), 2));
+        add_intensity_node(gtemp->hkl, pos, pow(abs(sumq), 2));
         gtemp=gtemp->nexts;
     }
 }
