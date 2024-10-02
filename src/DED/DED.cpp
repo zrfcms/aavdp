@@ -322,7 +322,7 @@ void DED::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//call the eigenvalue solver
     if(0!=INFO){
         printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     deallocate(VL);
     deallocate(WORK); deallocate(RWORK);
@@ -334,7 +334,7 @@ void DED::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     INFO=LAPACKE_zgetrf(LAPACK_ROW_MAJOR, LDA, NS, CGINV, LDA, IPIV);
     if(0!=INFO){
         printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     int MILWORK=64*NS;
     lapack_complex_double *MIWORK; callocate(&MIWORK, MILWORK, lapack_complex_double(0.0, 0.0));

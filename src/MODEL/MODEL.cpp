@@ -492,7 +492,7 @@ double CELL::dot(double v1[3], double v2[3], char space)
         res=vector_dot(v1, temp);
     default:
         printf("[ERROR] Unrecognized space %c in dot computation.", space);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return res;
 }
@@ -508,7 +508,7 @@ double CELL::angle(double v1[3], double v2[3], char space)
     if(0.0==len1||0.0==len2){
         printf("[ERROR] Zero length for vector [%d %d %d] or [%d %d %d] in angle computation.", 
                int(v1[0]), int(v1[1]), int(v1[2]), int(v2[0]), int(v2[1]), int(v2[2]));
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     double res=dot12/(len1*len2);
     if(res>=1.0) return 0.0;
@@ -559,7 +559,7 @@ void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequi
                 s[j]=vector_dot(point_dmats[i][j], g);
             }else{
                 printf("[ERROR] Unrecognized space %c in star computation.", space);
-                exit(EXIT_FAILURE);
+                exit(1);
             }
         }
         bool is_new=true;
@@ -709,7 +709,7 @@ void CELL::compute_shortest_reciprocal_vectors(double g1[3], double g2[3], doubl
         break;
     default:
         printf("[ERROR] Invalid incident beam direction-[%.2f %.2f %.2f].", u, v, w);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
     int num=10;
@@ -784,7 +784,7 @@ double CELL::get_interplanar_spacing(double g[3])
     double dotgg=dot(g, g);
     if(dotgg<=0.0){
         printf("[ERROR] Zero reciprocal vector in interplanar spacing compution.");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return 1.0/sqrt(dotgg);
 }
@@ -849,7 +849,7 @@ bool CELL::is_centering_allowed(double g[3])
         break;
     default:
         printf("[ERROR] Unrecognized centering symbol %c (not P, F, I, A, B, C, or R).", centering);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return is_allowed;
 }
@@ -1119,7 +1119,7 @@ double CELL::IH2(double X)
     int    I=int(200.0*INVX);
     if(I<0||I>DURCH_NUMBER-1){
         printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];
     double RIH2=D1+200.0*(D2-D1)*(INVX-0.5e-3*I);
@@ -1374,7 +1374,7 @@ double XMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
         break;
     default:
         printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return res;
 }
@@ -1434,7 +1434,7 @@ double NMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
         break;
     default:
         printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return res;
 }

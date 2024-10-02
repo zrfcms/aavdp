@@ -8,7 +8,7 @@ KKD::KKD(const char *restart_path, double threshold, double screenD, int screenW
         restart(restart_path);
     }else{
         printf("[ERROR] Unrecognized file %s.", restart_path);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     compute_Kikuchi_sphere_projection(screenW, screen_dpi);
     compute_Kikuchi_intensity_projection(threshold, screenD, screen_dpi);
@@ -23,7 +23,7 @@ KKD::KKD(const char *restart_path, int zone[3], double threshold, double screenD
         restart(restart_path);
     }else{
         printf("[ERROR] Unrecognized file %s.", restart_path);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     compute_Kikuchi_sphere_projection(zone, screenD, screenW, screenH, screen_dpi);
     compute_Kikuchi_intensity_projection(threshold, screenD, screen_dpi);
@@ -69,7 +69,7 @@ void KKD::restart(const char *restart_path)
     }
     if(2!=keyi){
         printf("[ERROR] Unrecognized parameters in file %s", restart_path);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 }
 
@@ -209,7 +209,7 @@ void KKD::img(const char* img_path, char mode)
         break;
     default:
         printf("[ERROR] Unrecognized mode %d.", mode);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     for(int i=0;i<num;i++){
         pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(Iref-wdata[i])/diff*255.0);
@@ -226,11 +226,11 @@ void KKD::img(const char* img_path, char mode)
 //         flag=read_parameters_from_nml(file_path);
 //     }else{
 //         printf("[ERROR] Unrecognized file %s.", file_path);
-//         exit(EXIT_FAILURE);
+//         exit(1);
 //     }
 //     if(!flag){
 //         printf("[ERROR] Unrecognized parameters in file %s.", file_path);
-//         exit(EXIT_FAILURE);
+//         exit(1);
 //     }
 // }
 

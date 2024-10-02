@@ -23,7 +23,7 @@ double be_double(char str[])
     if(strlen(err)!='\0')
     {
         printf("[ERROR] Input parameter %s should be float or int type", str);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     return value;
 }

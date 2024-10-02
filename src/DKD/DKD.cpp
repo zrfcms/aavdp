@@ -101,7 +101,7 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
         break;
     case 11://rhombohedral 3
         printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-        exit(EXIT_FAILURE);
+        exit(1);
     case 12://hexagonal -3, 321, -6 [not implemented: rhombohedral 32]
         for(int j=0;j<=npx;j++){
             for(int i=0;i<=npx;i++){
@@ -208,7 +208,7 @@ DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
         break;
     default:
         printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     mallocate_2d(&karray, numk, 3); mallocate_2d(&kijarray, numk, 3);
     mallocate(&knarray, numk);
@@ -616,7 +616,7 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     INFO=LAPACKE_zgeev_work(LAPACK_ROW_MAJOR, JOBVL, JOBVR, NS, A, LDA, W, VL, NS, CG, NS, WORK, LWORK, RWORK);//call the eigenvalue solver
     if(0!=INFO){
         printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     deallocate(VL);
     deallocate(WORK); deallocate(RWORK);
@@ -723,7 +723,7 @@ void DKD::compute_Lambert_projection(int iE, bool use_hexagonal)
             }
             if(0!=ierr){
                 printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
-                exit(EXIT_FAILURE);
+                exit(1);
             }
             xy[0]*=double(imp); xy[1]*=double(imp);
             int ix=floor(xy[0]), iy=floor(xy[1]);
@@ -760,7 +760,7 @@ void DKD::compute_stereographic_projection(int iE, bool use_hexagonal)
                 compute_square_Lambert(xy, ierr, xyz);
                 if(0!=ierr){
                     printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
-                    exit(EXIT_FAILURE);
+                    exit(1);
                 }
                 xy[0]*=imp; xy[1]*=imp;
                 int ix=int(imp+xy[0])-imp, iy=int(imp+xy[1])-imp;
@@ -932,7 +932,7 @@ void DKD::img(char *img_path, double dimension, int resolution)
     split_path(name, ext, img_path);
     if(0!=strcmp(ext, ".png")){
         printf("[ERROR] Unrecognized extension %s.", ext);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     char png_path[PATH_CHAR_NUMBER]; 
     char exts[3][EXT_CHAR_NUMBER]; strcpy(exts[2], ext);

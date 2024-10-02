@@ -159,7 +159,7 @@ void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3])
                 break;
             default:
                 printf("[ERROR] Unrecognized hexagonal sextant %d (not between 0 and 5).", sextant);
-                exit(EXIT_FAILURE);
+                exit(1);
             }
         }
     }
@@ -203,7 +203,7 @@ void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2
             break;
         default:
             printf("[ERROR] Unrecognized hexagonal sextant %d (not between 0 and 5).", sextant);
-            exit(EXIT_FAILURE);
+            exit(1);
         }
         q=x*x+y*y;
         if(q>4.0){//make sure that the input point lies inside the hexagon

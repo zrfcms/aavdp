@@ -4,7 +4,7 @@ void pseudo_Voigt(double *y, double *x, int num, double eta, double x0, double w
 {
     if(eta<0.0||eta>1.0){
         printf("Unrecognized mixing parameter for pseudo-Voigt formula\n");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     double c0=4, c1=4.0*log(2.0);
     double constl=eta*sqrt(c0)/(PI*w), constg=(1.0-eta)*sqrt(c1)/(sqrt(PI)*w);
@@ -38,19 +38,19 @@ void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int nu
     FILE *fp=fopen(png_path, "wb");  
     if(!fp){
         printf("[ERROR] Unable to create %s using fopen.\n", png_path);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     png_ptr=png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);  
     if(png_ptr==NULL){  
         printf("[ERROR] Unable to create %s using png_create_write_struct.\n", png_path);
         fclose(fp);
-        exit(EXIT_FAILURE);
+        exit(1);
     }  
     info_ptr=png_create_info_struct(png_ptr);
     if(info_ptr==NULL){  
         printf("[ERROR] Unable to create %s using png_create_info_struct.\n", png_path);
         png_destroy_write_struct(&png_ptr, NULL);  
-        exit(EXIT_FAILURE);
+        exit(1);
     }  
     png_init_io(png_ptr, fp);  
     png_set_IHDR(png_ptr, info_ptr, numpx, numpy, 8, 
@@ -60,7 +60,7 @@ void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int nu
         printf("[ERROR] Unable to create palette using png_malloc.\n");
         fclose(fp);
         png_destroy_write_struct(&png_ptr, &info_ptr);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     png_set_PLTE(png_ptr, info_ptr, palette, PNG_MAX_PALETTE_LENGTH);  
     png_write_info(png_ptr, info_ptr);  
@@ -260,7 +260,7 @@ void GRAPH::draw(const char *png_path)
         }
     }else{
         printf("[ERROR] Unable to draw graph without data input");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     draw_xaxis(&top, area.start_x, area.end_x, area.end_y);
     draw_xaxis(&down, area.start_x, area.end_x, area.start_y);
@@ -333,7 +333,7 @@ void GRAPH::draw_marker(POINT *point)
         break;
     default:
         printf("[ERROR] Unrecognized marker style %c", point->style);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 }
 

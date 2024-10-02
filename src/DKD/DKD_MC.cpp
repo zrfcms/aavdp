@@ -55,7 +55,7 @@ void RNG::seed(int id)
 {
     if(id>=nseed){
         printf("[ERROR] The seed id %d exceeds the allowed range %d-%d", id, 0, nseed-1);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     for(int i=0;i<ns;i++){
         state[i]=default_seeds[id][i];
@@ -147,7 +147,7 @@ void DKD_MC::compute(int &count_bse, int &count_e, int ne, int id)
                 compute_Lambert_Projection(dxy, ierr, dir);  //Coordinate in the Lambert projection
                 if(ierr==1){
                     printf("[ERROR] Zero electron direction in the Monte Carlo simulation");
-                    exit(EXIT_FAILURE);
+                    exit(1);
                 }
                 dxy[0]*=(double)imp; dxy[1]*=(double)imp;
                 int ipx=int(round(dxy[1])), ipy=int(round(-dxy[0]));
@@ -361,7 +361,7 @@ void DKD_MC::img(char *img_path, double dimension, int resolution)
     split_path(name, ext, img_path);
     if(0!=strcmp(ext, ".png")){
         printf("[ERROR] Unrecognized extension %s.", ext);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     char png_path[PATH_CHAR_NUMBER]; 
     char exts[3][EXT_CHAR_NUMBER]; strcpy(exts[0], ".DKD_MC."); strcpy(exts[2], ext);
