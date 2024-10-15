@@ -26,7 +26,7 @@ public:
     double ***screenG=nullptr;
     double **screenI=nullptr;
     double intensity_min=1.0e8, intensity_max=0.0;
-    void   img(const char* img_path, char mode='w');
+    void   img(const char* img_path, double ref_I, char mode='w');
 private:
     int    numk=0;
     double **Kvectors=nullptr;

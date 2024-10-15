@@ -1,17 +1,49 @@
 #include "SSF.h"
 
+SSF::SSF(RDF *rdf, double qmax, int nbin, bool is_partial)
+{
+    numqbin=nbin;
+    numij=rdf->numij;
+    qbin=qmax/(double)nbin;
+	mallocate(&qij, numqbin);
+	for(int i=0;i<numqbin;i++){
+		qij[i]=((double)i+0.5)*qbin;
+	}
+    mallocate_2d(&ij, numij, numqbin);
+    for(int i=0;i<numij;i++){
+        for(int j=0;j<numqbin;j++){
+            ij[i][j]=rdf->ij[i][j];
+        }
+    }
+    callocate(&Smax, numij, -1.0e8);
+    callocate(&Smin, numij, 1.0e8);
+    callocate_2d(&Sij, numij, numqbin, 0.0);
+    double constS=FOUR_PI*rdf->rhoij[0];
+    for(int i=0;i<numij;i++){
+        for(int j=0;j<numqbin;j++){
+            for(int k=0;k<rdf->numrbin;k++){
+                Sij[i][j]+=(sin(qij[j]*rdf->rij[k])/qij[j]*(rdf->gij[i][k]-1.0)*rdf->rij[k]*rdf->dr);
+            }
+            Sij[i][j]=1.0+constS*Sij[i][j];
+            if(Smax[i]<Sij[i][j]) Smax[i]=Sij[i][j];
+            if(Smin[i]>Sij[i][j]) Smin[i]=Sij[i][j];
+        }
+    }  
+}
+
 SSF::SSF(const char *model_path, double qmax, int nbin, bool is_partial)
 {
     printf("[INFO] Starting computation of static structure factor...\n");
 	QB_tools QB;
 	QB_init(&QB);
 	QB_read_file(&QB, model_path);
-    double spacingK[3]={TWO_PI/QB.mat[0][0], TWO_PI/QB.mat[1][1], TWO_PI/QB.mat[2][2]};
+    double dq=TWO_PI/cbrt(QB.mat[0][0]*QB.mat[1][1]*QB.mat[2][2]);
+    double spacingK[3]={dq, dq, dq};
     int NspacingK[3]={int(ceil(qmax/spacingK[0])), int(ceil(qmax/spacingK[1])), int(ceil(qmax/spacingK[2]))};
-    printf("Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
+    printf("[INFO] Spacings along three axes in reciprocal space (Angstrom-1): %.8f %.8f %.8f\n", spacingK[0], spacingK[1], spacingK[2]);
 	
     numqbin=nbin;
-	double qbin=qmax/(double)nbin; 
+	qbin=qmax/(double)nbin; 
 	mallocate(&qij, numqbin);
 	for(int i=0;i<numqbin;i++){
 		qij[i]=((double)i+0.5)*qbin;
@@ -22,6 +54,7 @@ SSF::SSF(const char *model_path, double qmax, int nbin, bool is_partial)
 	}else{
 		numij=1;
 	}
+    callocate(&Smax, numij, -1.0e8); callocate(&Smin, numij, 1.0e8);
 	callocate_2d(&ij, numij, 2, 0);
 	callocate_2d(&Sij, numij, numqbin, 0.0);
 
@@ -74,17 +107,16 @@ void SSF::compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], in
             }
         }
     }
-    double Smax=0.0, Smin=1.0e8;
     for(int i=0;i<numqbin;i++){
         if(0!=nKbins[i]){
             Sij[pairij_id][i]/=double(nKbins[i]*QB->TotalNumber);
         }
-        if(Smax<Sij[pairij_id][i]) Smax=Sij[pairij_id][i];
-        if(Smin>Sij[pairij_id][i]) Smin=Sij[pairij_id][i];
+        if(Smax[pairij_id]<Sij[pairij_id][i]) Smax[pairij_id]=Sij[pairij_id][i];
+        if(Smin[pairij_id]>Sij[pairij_id][i]) Smin[pairij_id]=Sij[pairij_id][i];
     }
     deallocate(nKbins);
     printf("[INFO] Ending computation of static structure factor of pair *-*\n");
-	printf("[INFO] Range of static structure factor of pair *-*: %.8f %.8f\n", Smin, Smax);
+	printf("[INFO] Range of static structure factor of pair *-*: %.8f %.8f\n", Smin[pairij_id], Smax[pairij_id]);
 }
 
 void SSF::compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], int NspacingK[3], int typei, int typej, int pairij_id)
@@ -115,17 +147,16 @@ void SSF::compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], in
             }
         }
     }
-    double Smax=0.0, Smin=1.0e8;
     for(int i=0;i<numqbin;i++){
         if(0!=nKbins[i]){
             Sij[pairij_id][i]/=double(nKbins[i]*QB->TotalNumber);
         }
-        if(Smax<Sij[pairij_id][i]) Smax=Sij[pairij_id][i];
-        if(Smin>Sij[pairij_id][i]) Smin=Sij[pairij_id][i];
+        if(Smax[pairij_id]<Sij[pairij_id][i]) Smax[pairij_id]=Sij[pairij_id][i];
+        if(Smin[pairij_id]>Sij[pairij_id][i]) Smin[pairij_id]=Sij[pairij_id][i];
     }
     deallocate(nKbins);
     printf("[INFO] Ending computation of static structure factor of pair %d-%d\n", typei, typej);
-	printf("[INFO] Range of static structure factor of pair %d-%d: %.8f %.8f\n", typei, typej, Smin, Smax);
+	printf("[INFO] Range of static structure factor of pair %d-%d: %.8f %.8f\n", typei, typej, Smin[pairij_id], Smax[pairij_id]);
 }
 
 // void SSF::compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], int NspacingK[3], int pairij_id)
@@ -150,10 +181,10 @@ void SSF::compute(QB_tools *QB, double qmax, double qbin, double spacingK[3], in
 //     }
 // }
 
-void SSF::ssf(const char *ssf_path)
+void SSF::ssf(const char *ssf_path, const char *png_path)
 {
 	FILE* fp=fopen(ssf_path,"w");
-	fprintf(fp,"# Static Structure Factor (%d data points)\n", numqbin);
+	fprintf(fp,"# Static structure factor (%d data points)\n", numqbin);
 	fprintf(fp,"# q\tS(q)\n");
 	if(numij>1){
 		fprintf(fp,"# *-*\t");
@@ -171,6 +202,35 @@ void SSF::ssf(const char *ssf_path)
 	}
 	fclose(fp);
     printf("[INFO] Visualized data for static structure factor stored in %s.\n", ssf_path);
+    double xlim=qbin*double(numqbin);
+    double ylim=Smax[0];
+    for(int i=1;i<numij;i++){
+        if(ylim<Smax[i]) ylim=Smax[i];
+    }
+    int n_major_xtick=int(xlim/1.0), n_major_ytick=int(ylim/0.1);
+    double *major_xticks, *major_yticks;
+    mallocate(&major_xticks, n_major_xtick);
+    mallocate(&major_yticks, n_major_ytick);
+    for(int i=0;i<=n_major_xtick;i++){
+        major_xticks[i]=double(i);
+    }
+    for(int i=0;i<=10;i++){
+        major_yticks[i]=double(i)*0.1;
+    }
+    double height=4.0, width=6.0;
+    GRAPH graph(width, height, 300);
+    graph.set_xlim(0.0, xlim);
+    graph.set_ylim(0.0, ylim);
+    graph.set_xticks(major_xticks, n_major_xtick);
+    graph.set_yticks(major_yticks, n_major_ytick);
+    graph.set_tick_in(false);
+    graph.set_top_visible(false);
+    graph.set_right_visible(false);
+    for(int i=1;i<numij;i++){
+        graph.line(qij, Sij[i], numqbin);
+    }
+    graph.draw(png_path);
+    printf("[INFO] Image for static structure factor stored in %s\n", png_path);
 }
 
 // void SSF::read(const char *nml_path)

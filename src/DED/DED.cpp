@@ -13,13 +13,13 @@ DED_GVECTOR::DED_GVECTOR(CELL *cell, DED_BETHE *bethe, double kz[3], double fn[3
     add_g_node(g, Ug, qg, sg, is_double_diffrac);
 
     double kn=1.0/cell->fouri0.lambda;
-    double kk[3], nn[3];
+    double kk[3], ff[3];
     cell->direct_to_reciprocal(kk, kz);
     cell->normalize(kk, kk, 'r');
     vector_constant(kk, kn, kk);
-    cell->direct_to_reciprocal(nn, fn);
-    cell->normalize(nn, nn, 'r');
-    vector_constant(nn, kn, nn);
+    cell->direct_to_reciprocal(ff, fn);
+    cell->normalize(ff, ff, 'r');
+    vector_constant(ff, kn, ff);
     for(int ih=-imh;ih<=imh;ih++){
         for(int ik=-imk;ik<=imk;ik++){
             for(int il=-iml;il<=iml;il++){
@@ -27,21 +27,10 @@ DED_GVECTOR::DED_GVECTOR(CELL *cell, DED_BETHE *bethe, double kz[3], double fn[3
                     g[0]=double(ih); g[1]=double(ik); g[2]=double(il);
                     double dhkl=cell->get_interplanar_spacing(g);
                     if(cell->is_centering_allowed(g)&&(dhkl>cutoff)){
-                        // double dt=cell->dot(g, kk, 'r');
-                        // double gp[3], gv[3];
-                        // vector_constant(gp, dt, kk);
-                        // vector_difference(gv, g, gp);
-                        // double gv_len=cell->length(gv, 'r');
-                        // double gp_len=cell->length(gp, 'r');
-                        // if(dt<=0.0) gp_len=-gp_len;
-                        // double y=gv_len*rg, z=ng*ng-gv_len*gv_len;
-                        // double upper_bound=offset+ng-sqrt(z-y);
-                        // double lower_bound=-offset+ng-sqrt(z+y);
-                        // if(gp_len>=lower_bound&&gp_len<=upper_bound){
                         int ix=ih+cx, iy=ik+cy, iz=il+cz;
                         Ug=cell->LUTUg[ix][iy][iz];
                         qg=cell->LUTqg[ix][iy][iz];
-                        sg=cell->get_excitation_error(g, kk, nn);
+                        sg=cell->get_excitation_error(g, kk, ff);
                         is_double_diffrac=cell->is_double_diffrac[ix][iy][iz];
                         if(is_double_diffrac){
                             if(fabs(sg)<=bethe->c_sg){
@@ -53,7 +42,6 @@ DED_GVECTOR::DED_GVECTOR(CELL *cell, DED_BETHE *bethe, double kz[3], double fn[3
                                 add_g_node(g, Ug, qg, sg, is_double_diffrac); 
                             }
                         }
-                        //}
                     }
                 }
             }
@@ -149,6 +137,7 @@ void DED_GVECTOR::add_g_node(double hkl[3], complex<double> Ug, complex<double> 
 
 DED::DED(CELL *cell, DED_BETHE *bethe, int zone[3], int fnorm[3], double voltage, double thickness, double dmin)
 {
+    printf("[INFO] Starting computation of dynamatical electron diffraction...\n");
     cell->compute_reflection_range(dmin);
     printf("[INFO] Range of reflections along a*, b*, and c* = %d, %d, and %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
     cell->compute_Fourier_coefficients(voltage);
@@ -156,52 +145,33 @@ DED::DED(CELL *cell, DED_BETHE *bethe, int zone[3], int fnorm[3], double voltage
     double kz[3]={double(zone[0]), double(zone[1]), double(zone[2])};
     double fn[3]={double(fnorm[0]), double(fnorm[1]), double(fnorm[2])};
     double kn=1.0/cell->fouri0.lambda;
-    double g1[3], g2[3];
-    cell->compute_shortest_reciprocal_vectors(g1, g2, kz);
-    printf("[INFO] The first and second shortest reciprocal lattice vectors are respectively [%.2f %.2f %.2f] and [%.2f %.2f %.2f]\n", g1[0], g1[1], g1[2], g2[0], g2[1], g2[2]);
     DED_GVECTOR gvec(cell, bethe, kz, fn, dmin);
-    printf("[INFO] Total number of reflections is %d, where %d reflections are strong and %d reflections are weak\n", gvec.numg, gvec.nstrong, gvec.nweak);
+    printf("[INFO] Total number of reflections is %d (%d strong reflections and %d weak reflections)\n", gvec.numg, gvec.nstrong, gvec.nweak);
 
     complex<double> **dmat;
     callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
     compute_dynamic_matrix(dmat, cell, &gvec);
-    printf("[INFO] The dynamical scattering matrix is listed as below:\n");
-    for(int i=0;i<gvec.nstrong;i++){
-        printf("[INFO] ");
-        for(int j=0;j<gvec.nstrong;j++){
-            printf("%.2f+%.2fi ", dmat[i][j].real(), dmat[i][j].imag());
-        }
-        printf("\n");
-    }
-
-    complex<double> **Lgh;
-    callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
-    compute_Lgh_matrix(Lgh, dmat, thickness, kn, gvec.nstrong);
-    printf("[INFO] The Bloch wave matrix is listed as below:\n");
-    for(int i=0;i<gvec.nstrong;i++){
-        printf("[INFO] ");
-        for(int j=0;j<gvec.nstrong;j++){
-            printf("%.2f+%.2fi ", Lgh[i][j].real(), Lgh[i][j].imag());
-        }
-        printf("\n");
-    }
-
-    double gx[3]={0, 1, -1}, gy[3]={1, 0, 0};
-    double gx_len=cell->length(gx, 'r'), gy_len=cell->length(gy, 'r');
-    printf("gx %.2f gy %.2f\n", gx_len, gy_len);
-    double DM[2][2]={{vector_dot(gy, gy), -vector_dot(gx, gy)}, {-vector_dot(gx, gy), vector_dot(gx, gx)}};
-    double DD=1.0/(DM[0][0]*DM[1][1]-DM[0][1]*DM[1][0]);
+    double *intens;
+    callocate(&intens, gvec.nstrong, 0.0);
+    compute_diffraction_intensity(intens, dmat, thickness, kn, gvec.nstrong);
     DED_GNODE *gtemp=gvec.heads;
     for(int i=0;i<gvec.nstrong&&gtemp!=nullptr;i++){
-        complex<double> sumq(0.0, 0.0);
-        for(int j=0;j<gvec.nstrong;j++) sumq+=Lgh[i][j];
-        double x1, x2;
-        x1=vector_dot(gtemp->hkl, gx);
-        x2=vector_dot(gtemp->hkl, gy);
-        double pos[2]={gx_len*DD*(DM[0][0]*x1+DM[0][1]*x2), gy_len*DD*(DM[1][0]*x1+DM[1][1]*x2)};
-        add_intensity_node(gtemp->hkl, pos, pow(abs(sumq), 2));
+        if(gtemp->is_double_diffrac){
+            printf("%d %.2f %.2f %.2f %.2f\n", i, gtemp->hkl[0], gtemp->hkl[1], gtemp->hkl[2], intens[i]);
+        }
+        // if(intens[i]>1.0e-4){
+        //     add_intensity_node(gtemp->hkl, intens[i]);
+        // }
+        cell->update_Fourier_coefficient(voltage, gtemp->hkl);
+        double intensity=cell->fouri.Vmod*cell->fouri.Vmod;
+        if(intensity>1.0e-4){
+            add_intensity_node(gtemp->hkl, intensity);
+        }
         gtemp=gtemp->nexts;
     }
+    printf("[INFO] Intensity at the transmission spot: %.8f\n", ihead->intensity);
+    printf("[INFO] Number of diffraction intensity: %d\n", numi);
+    printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
 DED::~DED()
@@ -214,37 +184,87 @@ DED::~DED()
     }
 }
 
-void DED::ded(const char *ded_path)
+void DED::ded(CELL *cell, const char *ded_path, char *png_path, int xaxis[3], int yaxis[3], double threshold)
 {
-    FILE *fp=fopen(ded_path, "w");
-    fprintf(fp, "# h\tk\tl\tx\ty\tintensity\tintensity_norm (%d points)\n", numi);
-    double consti=100.0/intensity_max;
+    double gx[3]={double(xaxis[0]), double(xaxis[1]), double(xaxis[2])};
+    double gy[3]={double(yaxis[0]), double(yaxis[1]), double(yaxis[2])};
+    double gx_len=cell->length(gx, 'r'), gy_len=cell->length(gy, 'r');
+    double DM[2][2]={{vector_dot(gy, gy), -vector_dot(gx, gy)}, {-vector_dot(gx, gy), vector_dot(gx, gx)}};
+    double DD=1.0/(DM[0][0]*DM[1][1]-DM[0][1]*DM[1][0]);
+
+    int num=0;
     DED_INODE *itemp=ihead;
     for(int i=0;i<numi&&itemp!=nullptr;i++){
-        fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", itemp->hkl[0], itemp->hkl[1], itemp->hkl[2], itemp->pos[0]*0.1, itemp->pos[1]*0.1, itemp->intensity, consti*itemp->intensity);
-        fflush(fp);
+        if(itemp->intensity>threshold){
+            num++;
+        }
+        itemp=itemp->next;
+    }
+    double *kvector_x, *kvector_y, *kintensity;
+    callocate(&kvector_x, num, 0.0); 
+    callocate(&kvector_y, num, 0.0); 
+    callocate(&kintensity, num, 0.0);
+
+    FILE *fp=nullptr;
+    fp=fopen(ded_path,"w");
+    fprintf(fp, "# h\tk\tl\tx\ty\tintensity\tintensity_norm (%d points, x-[%d %d %d], y-[%d %d %d])\n", num, xaxis[0], xaxis[1], xaxis[2], yaxis[0], yaxis[1], yaxis[2]);
+    itemp=ihead;
+    int counti=0;
+    kvector_x[0]=kvector_y[0]=0.0; kintensity[0]=100.0;
+    fprintf(fp, "%d\t%d\t%d\t%.8f\t%.8f\t%.8f\t%.8f\n", int(itemp->hkl[0]), int(itemp->hkl[1]), int(itemp->hkl[2]), 0.0, 0.0, itemp->intensity, 100.0);
+    counti++;
+    itemp=itemp->next;
+    double consti=100.0/intensity_max;
+    for(int i=0;i<numi&&itemp!=nullptr;i++){
+        if(itemp->intensity>threshold){
+            double x1, x2;
+            x1=vector_dot(itemp->hkl, gx);
+            x2=vector_dot(itemp->hkl, gy);
+            double pos[2]={gx_len*DD*(DM[0][0]*x1+DM[0][1]*x2)*0.1, gy_len*DD*(DM[1][0]*x1+DM[1][1]*x2)*0.1};
+            double intensity=consti*itemp->intensity;
+            fprintf(fp, "%d\t%d\t%d\t%.8f\t%.8f\t%.8f\t%.8f\n", int(itemp->hkl[0]), int(itemp->hkl[1]), int(itemp->hkl[2]), pos[0], pos[1], itemp->intensity, intensity);
+            kvector_x[counti]=pos[0]; kvector_y[counti]=pos[1]; kintensity[counti]=intensity;
+            counti++;
+            fflush(fp);
+        }
         itemp=itemp->next;
     }
     fclose(fp);
-    printf("[INFO] Information for dynamical electron pattern stored in %s.\n", ded_path);
+    printf("[INFO] Information for dynamatical electron pattern stored in %s.\n", ded_path);
+
+    double radiusK=1.70;
+    double height=6.0, width=6.0;
+    int tick_max=int(floor(radiusK));
+    int n_major_tick=2*tick_max+1;
+    double *major_ticks; mallocate(&major_ticks, n_major_tick);
+    for(int i=0;i<n_major_tick;i++){
+        major_ticks[i]=double(-tick_max+i);
+    }
+    GRAPH graph(width, height, 300);
+    graph.set_xlim(-radiusK, radiusK);
+    graph.set_ylim(-radiusK, radiusK);
+    graph.set_xticks(major_ticks, n_major_tick);
+    graph.set_yticks(major_ticks, n_major_tick);
+    graph.set_tick_in(false);
+    graph.scatter(kvector_x, kvector_y, kintensity, num);
+    graph.draw(png_path);
+    printf("[INFO] Image for dynamatical electron pattern stored in %s\n", png_path);
 }
 
-void DED::add_intensity_node(double hkl[3], double pos[2], double intensity)
+void DED::add_intensity_node(double hkl[3], double intensity)
 {
     if(ihead==nullptr&&itail==nullptr){
         ihead=itail=new DED_INODE;
         vector_copy(itail->hkl, hkl);
-        itail->pos[0]=pos[0]; itail->pos[1]=pos[1];
         itail->intensity=intensity;
     }else{
         itail->next=new DED_INODE;
         itail=itail->next;
         vector_copy(itail->hkl, hkl);
-        itail->pos[0]=pos[0]; itail->pos[1]=pos[1];
         itail->intensity=intensity;
+        if(intensity<intensity_min) intensity_min=intensity;
+        if(intensity>intensity_max) intensity_max=intensity;
     }
-    if(intensity<intensity_min) intensity_min=intensity;
-    if(intensity>intensity_max) intensity_max=intensity;
     numi++;
 }
 
@@ -278,7 +298,6 @@ void DED::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DED_GVECTOR
                 ik=rtemp->hkl[1]-ctemp->hkl[1]+imk;
                 il=rtemp->hkl[2]-ctemp->hkl[2]+iml;
                 dmat[ir][ic]=cell->LUTUg[ih][ik][il]-wsum;
-                //printf("%.2f+%.2fi\t", dmat[ir][ic].real(), dmat[ir][ic].imag());
             }else{
                 double wsum=0.0;
                 DED_GNODE *wtemp=gvec->headw;
@@ -293,16 +312,14 @@ void DED::compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DED_GVECTOR
                 }
                 wsum*=k0_2i;
                 dmat[ir][ir]=complex<double>(k0_2*rtemp->sg-wsum, cell->fouri0.Upmod);
-                //printf("%.2f+%.2fi\t", dmat[ir][ic].real(), dmat[ir][ic].imag());
             }
             ctemp=ctemp->nexts;
         }
-        //printf("\n");
         rtemp=rtemp->nexts;
     }
 }
 
-void DED::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS)
+void DED::compute_diffraction_intensity(double *INTENS, complex<double> **DMAT, double Z, double KN, int NS)
 {
     int INFO;
     char JOBVL='N', JOBVR='V';
@@ -332,13 +349,13 @@ void DED::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
     int *IPIV; mallocate(&IPIV, NS); 
     LDA=NS; 
     INFO=LAPACKE_zgetrf(LAPACK_ROW_MAJOR, LDA, NS, CGINV, LDA, IPIV);
-    if(0!=INFO){
-        printf("[ERROR] Unable to return INFO as zero when calling the eigenvalue solver.");
-        exit(1);
-    }
-    int MILWORK=64*NS;
-    lapack_complex_double *MIWORK; callocate(&MIWORK, MILWORK, lapack_complex_double(0.0, 0.0));
+    int MILWORK=-1;
+    lapack_complex_double *GETMILWORK; mallocate(&GETMILWORK, LWMAX); 
     LDA=NS; 
+    INFO=LAPACKE_zgetri_work(LAPACK_ROW_MAJOR, NS, CGINV, LDA, IPIV, GETMILWORK, MILWORK);
+    MILWORK=int(GETMILWORK[0].real());
+    lapack_complex_double *MIWORK; callocate(&MIWORK, MILWORK, lapack_complex_double(0.0, 0.0));
+    LDA=NS;
     INFO=LAPACKE_zgetri_work(LAPACK_ROW_MAJOR, NS, CGINV, LDA, IPIV, MIWORK, MILWORK);
     deallocate(IPIV); deallocate(MIWORK);
 
@@ -360,21 +377,13 @@ void DED::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
             NCG[i][j]=CG[i*NS+j];
         }
     }
-    double TPI=TWO_PI*Z;
+    complex<double> TPI(0.0, TWO_PI*Z);
     for(int j=0;j<NS;j++){
+        complex<double> PW(0.0, 0.0);
         for(int k=0;k<NS;k++){
-            complex<double> sumq(0.0, 0.0);
-            complex<double> q(TPI*(NW[j].imag()+NW[k].imag()), TPI*(NW[j].real()-NW[k].real()));
-            if(q.real()<0.0) q=-q;
-            Lgh[j][k]=NCG[j][k]*exp(-q)*NCGINV[k][0];
+            PW+=(NCGINV[k][0]*NCG[j][k]*exp(TPI*NW[k]));
         }
+        INTENS[j]=abs(PW)*abs(PW);
     }
-    // for(int j=0;j<NS;j++){
-    //     complex<double> q(cos(Z*NW[j].real()), sin(Z*NW[j].real()));
-    //     q*=exp(-Z*NW[j].imag());
-    //     for(int k=0;k<NS;k++){
-    //         Lgh[k][j]=NCG[k][j]*q*NCGINV[j][0];
-    //         //printf("%.2f %.2f %.2f %.2f %.2f %.2f\n", q.real(), q.imag(), NCG[j][k].real(), NCG[j][k].imag(), NCGINV[k][0].real(), NCGINV[k][0].imag());
-    //     }
-    // }
+
 }

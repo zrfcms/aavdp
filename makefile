@@ -6,7 +6,7 @@ LIB=./src/lib/$(SYS)/liblapacke.a ./src/lib/$(SYS)/liblapack.a ./src/lib/$(SYS)/
 SRC=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
 OBJ=$(patsubst %.cpp, %.o, $(SRC))
 
-./bin/AAVDP: $(OBJ)
+./AAVDP: $(OBJ)
 	@echo "Start building AAVDP..."
 	$(CXX) $(OBJ) -o $@ \
 	-g $(INC) $(LIB)

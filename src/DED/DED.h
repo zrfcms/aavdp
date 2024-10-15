@@ -16,7 +16,7 @@ using namespace std;
 
 struct DED_BETHE{
     double c1=4.0, c2=8.0, c3=50.0;
-    double c_sg=0.2;
+    double c_sg=1.0;
 };
 
 struct DED_GNODE{
@@ -47,7 +47,6 @@ private:
 
 struct DED_INODE{
     double hkl[3];
-    double pos[2];
     double intensity;
     DED_INODE *next=nullptr;
 };
@@ -60,12 +59,12 @@ public:
     int    numi=0;
     DED_INODE  *ihead=nullptr;
     DED_INODE  *itail=nullptr;
-    void   ded(const char *ded_path);
+    void   ded(CELL *cell, const char *ded_path, char *png_path, int xaxis[3], int yaxis[3], double threshold);
 private:
     double intensity_min=1.0e8, intensity_max=0.0;
     void   compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DED_GVECTOR *gvec);
-    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
-    void   add_intensity_node(double hkl[3], double pos[2], double intensity);
+    void   compute_diffraction_intensity(double *INTENS, complex<double> **DMAT, double Z, double KN, int NS);
+    void   add_intensity_node(double hkl[3], double intensity);
 };
 
 #endif

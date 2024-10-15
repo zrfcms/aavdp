@@ -1,0 +1,167 @@
+LAMMPS (24 Jan 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (../comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+#-------------------------VARIABLES DEFINITION----------------------------
+variable latparam equal 3.615
+variable ftemp equal 2000
+variable ltemp equal 2000
+
+#-----------------------INITIALIZATION---------------------
+units           metal
+dimension       3
+boundary        p p p
+atom_style      atomic
+
+#-----------------------ATOM DEFINITION----------------------
+lattice         fcc ${latparam}
+lattice         fcc 3.615
+Lattice spacing in x,y,z = 3.615 3.615 3.615
+region         whole block 0 15 0 15 0 15
+create_box     2 whole
+Created orthogonal box = (0 0 0) to (54.225 54.225 54.225)
+  1 by 1 by 1 MPI processor grid
+lattice         fcc ${latparam} orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+lattice         fcc 3.615 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+Lattice spacing in x,y,z = 3.615 3.615 3.615
+create_atoms   1 region whole
+Created 13500 atoms
+  create_atoms CPU = 0.00100088 secs
+set            region whole type/fraction 2 0.50 23984
+  6688 settings made for type/fraction
+
+#-----------------------FORCE FIELDS-------------------------
+pair_style      eam/fs
+pair_coeff      * * Cu-Zr_2.eam.fs Cu Zr
+
+#-----------------------SETTINGS--------------------------------
+neighbor 0.5 bin
+neigh_modify every 5 delay 0 check yes
+
+#-----------------------HEATING,QUENCHING,EQUILIBRATION----------
+reset_timestep 0
+timestep 0.001
+thermo 5000
+
+min_style cg
+minimize 1.0e-15 1.0e-15 100 100
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:178)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8.1
+  ghost atom cutoff = 8.1
+  binsize = 4.05, bins = 14 14 14
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair eam/fs, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 13.83 | 13.83 | 13.83 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0            0   -48319.119            0   -48319.119    896451.49 
+      58            0   -50252.525            0   -50252.525    924618.05 
+Loop time of 5.78448 on 1 procs for 58 steps with 13500 atoms
+
+83.2% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = max force evaluations
+  Energy initial, next-to-last, final = 
+        -48319.1193069     -50252.5179582     -50252.5254809
+  Force two-norm initial, final = 231.968 0.561177
+  Force max component initial, final = 4.71038 0.158347
+  Final line search alpha, max atom move = 0.422554 0.0669103
+  Iterations, force evaluations = 58 101
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 5.6016     | 5.6016     | 5.6016     |   0.0 | 96.84
+Neigh   | 0.13601    | 0.13601    | 0.13601    |   0.0 |  2.35
+Comm    | 0.014825   | 0.014825   | 0.014825   |   0.0 |  0.26
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.03199    |            |       |  0.55
+
+Nlocal:    13500 ave 13500 max 13500 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    16160 ave 16160 max 16160 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    1.27499e+06 ave 1.27499e+06 max 1.27499e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 1274986
+Ave neighs/atom = 94.4434
+Neighbor list builds = 6
+Dangerous builds = 0
+
+velocity all create ${ftemp} 825577 dist gaussian
+velocity all create 2000 825577 dist gaussian
+
+dump 1 all custom 50000 Cu50Zr50_*.lammps id type x y z
+dump_modify 1 format line "%d %d %g %g %g"
+
+compute Rdf all rdf 200 * * cutoff 5.0
+fix frdf all ave/time 1 1 50000 c_Rdf[*] file Cu50Zr50_rdf.txt mode vector
+
+compute Rdfij all rdf 200 1 1 2 2 1 2 cutoff 5.0
+fix frdfij all ave/time 1 1 50000 c_Rdfij[*] file Cu50Zr50_rdfij.txt mode vector
+
+# fix 1 all nvt temp ${ftemp} ${ftemp} 1.0 drag 0.2
+# run 10000
+# unfix 1
+
+# fix 1 all npt temp ${ftemp} ${ltemp} 4.00 iso 0 0 1 drag 0.2
+# run 30000
+# unfix 1
+
+fix 1 all npt temp ${ltemp} ${ltemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 ${ltemp} 1.0 iso 0 0 1 drag 0.2
+fix 1 all npt temp 2000 2000 1.0 iso 0 0 1 drag 0.2
+run 2000000
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+WARNING: Compute rdf cutoff less than neighbor cutoff - forcing a needless neighbor list build (../compute_rdf.cpp:177)
+Neighbor list info ...
+  update every 5 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8.1
+  ghost atom cutoff = 8.1
+  binsize = 4.05, bins = 14 14 14
+  3 neighbor lists, perpetual/occasional/extra = 1 2 0
+  (1) pair eam/fs, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+  (2) compute rdf, occasional
+      attributes: half, newton on, cut 5.5
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+  (3) compute rdf, occasional
+      attributes: half, newton on, cut 5.5
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 14.21 | 14.21 | 14.21 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+      58         2000   -50252.525            0    -46762.76    947996.55    159440.51 
+    5000    1087.9934   -63380.487            0   -61482.066    538.33041    244235.16 
+   10000    1481.8016   -62369.273            0   -59783.703    842.17158    248938.67 
+   15000    1799.5456   -61491.938            0   -58351.942    220.56191    253451.15 
+   20000    1988.0396   -61067.421            0   -57598.525   -1208.7179     256142.3 
+   25000     1984.718   -61028.023            0   -57564.923    682.57207     256007.6 
+   30000    1987.1019   -61013.895            0   -57546.635   -840.92916     256431.4 
+   35000    1976.0068   -60948.659            0   -57500.759    429.58222    256463.49 
+   40000    2022.4159   -61042.493            0   -57513.615   -2319.9386    256705.95 
+   45000    1994.4654   -61044.333            0   -57564.225   -173.38517    255931.92 
+   50000    1989.8593   -61008.334            0   -57536.263    1606.4034    255712.02 
+   55000     2010.549   -60995.469            0   -57487.297    924.05241    255916.45 
+   60000    2034.0973   -61011.366            0   -57462.105    763.73711    256061.53 
+   65000    1983.6692   -61015.704            0   -57554.434    499.79336    256117.07 
+   70000    1992.8793   -60989.065            0   -57511.724    1085.2473    256027.16 
+   75000    2016.9035   -61032.263            0   -57513.002   -489.26728    256471.08 
+   80000    1985.0141     -61024.6            0   -57560.983   -984.88454    256348.24 
+   85000     1995.461   -61009.775            0    -57527.93    990.28808    255966.36 
+   90000    2001.8646    -61033.93            0   -57540.911    -166.0463    256238.54 

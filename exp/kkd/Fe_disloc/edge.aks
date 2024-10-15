@@ -1,0 +1,8 @@
+#SPaMD_atomkit_save
+#region_plane Slice1 1.000000 0.000000 0.000000 16.500000 13.000000
+#region_plane Slice3 0.000000 1.000000 0.000000 17.000000 11.000000
+#region_and And1 Slice1 Slice3
+#region_not Not2 And1
+#step_delete Not2
+#step_tensile 0 0.080000 0
+#END

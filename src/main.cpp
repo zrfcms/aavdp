@@ -329,6 +329,7 @@ int main(int argc, char* argv[])
         double width=3;
         double height=3;
         char   background='w';
+        double ref_I=-1.0;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -394,6 +395,12 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-b")){
                 i++;
                 background=(argv[i++])[0];
+            }else if(0==strcmp(argv[i], "-ref")){
+                i++;
+                ref_I=be_double(argv[i++]);
+            }else{
+                i++;
+                continue;
             }
         }
         if(0==strcmp(ext, ".restart")){
@@ -408,7 +415,7 @@ int main(int argc, char* argv[])
                 int_to_str(uvw[1], zaxs[0]); int_to_str(uvw[2], zaxs[1]); int_to_str(uvw[3], zaxs[2]);
                 strcpy(img_path, name); merge_path(img_path, uvw, 4); strcat(img_path, ".kkd.png");
                 KKD kkd(input_path, zaxs, threshold, dist, width, height, dpi);
-                kkd.img(img_path, background);
+                kkd.img(img_path, ref_I, background);
             }
         }else{
             char   restart_path[PATH_CHAR_NUMBER];
@@ -425,12 +432,15 @@ int main(int argc, char* argv[])
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         for(int i=0;i<TYPE_INPUT_NUMBER;i++) DWs[i]=1.0e-6;
+        int    xaxs[3]={1, 0, 0};
+        int    yaxs[3]={0, 1, 0};
         int    zone[3]={0, 0, 1};
         int    fnorm[3]={0, 0, 1};
         double thickness=10.0;
         double dmin=0.1;
         double voltage=200.0;
-        double c1=4.0, c2=8.0, c3=50.0, c_sg=0.2;
+        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
+        double threshold=0.001;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -445,6 +455,18 @@ int main(int argc, char* argv[])
                 while(i<argc&&is_parameter(argv[i])){
                     DWs[count++]=be_double(argv[i++]);
                 }
+                continue;
+            }else if(0==strcmp(argv[i], "-x")){
+                i++;
+                xaxs[0]=(int)be_double(argv[i++]);
+                xaxs[1]=(int)be_double(argv[i++]);
+                xaxs[2]=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-y")){
+                i++;
+                yaxs[0]=(int)be_double(argv[i++]);
+                yaxs[1]=(int)be_double(argv[i++]);
+                yaxs[2]=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
@@ -461,9 +483,11 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-t")){
                 i++;
                 thickness=be_double(argv[i++]);
+                continue;
             }else if(0==strcmp(argv[i], "-d")){
                 i++;
                 dmin=be_double(argv[i++]);
+                continue;
             }else if(0==strcmp(argv[i], "-v")){
                 i++;
                 voltage=be_double(argv[i++]);
@@ -474,20 +498,27 @@ int main(int argc, char* argv[])
                 c2=be_double(argv[i++]);
                 c3=be_double(argv[i++]);
                 c_sg=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-thr")){
+                i++;
+                threshold=be_double(argv[i++]);
+                continue;
             }else{
                 i++;
                 continue;
             }
         }
         char   ded_path[PATH_CHAR_NUMBER]; strcpy(ded_path, name);
+        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name);
         char uvw[4][EXT_CHAR_NUMBER]; strcpy(uvw[0], ".");
         int_to_str(uvw[1], zone[0]); int_to_str(uvw[2], zone[1]); int_to_str(uvw[3], zone[2]);
-        strcpy(ded_path, name); merge_path(ded_path, uvw, 4); strcat(ded_path, ".ded");
+        merge_path(ded_path, uvw, 4); strcat(ded_path, ".ded");
+        merge_path(png_path, uvw, 4); strcat(png_path, ".png");
         CELL cell(input_path, types, DWs);
         DED_BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
         DED ded(&cell, &bethe, zone, fnorm, voltage, thickness, dmin);
-        ded.ded(ded_path);
+        ded.ded(&cell, ded_path, png_path, xaxs, yaxs, threshold);
     }else if(0==strcmp(argv[i], "--dkd")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
@@ -608,7 +639,8 @@ int main(int argc, char* argv[])
         double qmax=5.0;
         int    nbin=200;
         bool   is_partial=false;
-        char   ssf_path[PATH_CHAR_NUMBER]; strcpy(ssf_path, name); 
+        char   ssf_path[PATH_CHAR_NUMBER]; strcpy(ssf_path, name);
+        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name); 
         while(i<argc){
             if(0==strcmp(argv[i], "-q")){
                 i++;
@@ -628,8 +660,9 @@ int main(int argc, char* argv[])
             }
         }
         strcat(ssf_path, ".ssf");
-        SSF ssf(input_path, qmax, nbin, is_partial);
-        ssf.ssf(ssf_path);
+        RDF rdf(input_path, 7.5, 150, is_partial);
+        SSF ssf(&rdf, qmax, nbin, is_partial);
+        ssf.ssf(ssf_path, png_path);
     }else{
         printf("[ERROR] Unrecognized command %s.\n", argv[i]);
     }

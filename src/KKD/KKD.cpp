@@ -190,22 +190,24 @@ void KKD::compute_Kikuchi_intensity_projection(double threshold, double screenD,
     printf("[INFO] Range of intensity on the kinematic Kikuchi pattern: %.8f %.8f\n", intensity_min, intensity_max);
 }
 
-void KKD::img(const char* img_path, char mode)
+void KKD::img(const char* img_path, double ref_I, char mode)
 {
     double *wdata;
     unreshape_2d(&wdata, screenI, numpy, numpx);
     unsigned char *pixels;
     int num=numpx*numpy;
     mallocate(&pixels, 3*num);
-    double diff=intensity_max-intensity_min;
+    double diff=intensity_max-0.0;
+    if(ref_I>0.0) diff=ref_I;
     double Iref;
     switch(mode)
     {
     case 'w':
         Iref=intensity_max;
+        if(ref_I>0.0) Iref=ref_I;
         break;
     case 'b':
-        Iref=intensity_min;
+        Iref=0.0;
         break;
     default:
         printf("[ERROR] Unrecognized mode %d.", mode);

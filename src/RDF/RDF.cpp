@@ -9,7 +9,8 @@ RDF::RDF(const char *model_path, double rmax, int nbin, bool is_partial)
 
 	set_volume(QB.mat);
 	numrbin=nbin;
-	double rbin=rmax/(double)nbin; 
+	double rbin=rmax/(double)nbin;
+	dr=rbin;
 	mallocate(&rij, numrbin);
 	for(int i=0;i<numrbin;i++){
 		rij[i]=((double)i+0.5)*rbin;

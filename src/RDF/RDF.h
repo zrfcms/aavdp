@@ -12,6 +12,7 @@ public:
     double *rij=nullptr;
     int    **ij=nullptr;
     double **gij=nullptr;
+    double dr=0.0;
     RDF(const char *model_path, double rmax, int nbin, bool is_partial=false);
     ~RDF();
     void rdf(const char *rdf_path);
