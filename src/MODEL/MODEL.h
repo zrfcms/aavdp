@@ -5,13 +5,14 @@
 #include <cstring>
 #include <cmath>
 #include <complex>
-#include "CONST.h"
+#include "CONST_XRD.h"
+#include "CONST_NED.h"
+#include "CONST_KED.h"
+#include "../MATH/MATH.h"
 #include "../QSPG/spglib/pointgroup.h"
 #include "../QSPG/spglib/spg_database.h"
 #include "../QB/QB.h"
 #include "../QSPG/QSPG.h"
-#include "../MATH/MATH.h"
-// #include "../HDF5/HDF5.h"
 
 #define SYMPREC 0.001
 #define SYMPREC2 0.000001
@@ -27,10 +28,6 @@
 #define ELECTRON_CHARGE 1.602176634e-19 //Coulomb
 #define ELECTRON_REST_MASS 9.1093837090e-31 //kg
 #define LIGHT_VELOCITY 299792458.0 //m/s
-
-#define XLAMBDA 1.54180
-#define NLAMBDA 1.54180
-#define ELAMBDA 0.02510
 
 using namespace std;
 
@@ -96,23 +93,24 @@ public:
     double *apos_DW=nullptr;
     double *apos_occupation=nullptr;
 
+    int    ntype=0;
+    char   **type_name=nullptr;
+
     double ave_M, ave_Z, density;
-    CELL(const char *cell_path, const char types[][10], const double DWs[]);
-    // CELL(const char *hdf5_path);
+    CELL(const char *cell_path, const char types[][10], const double DWs[], double voltage);
     ~CELL();
     void   logging();
-    // void   hdf5(const char* hdf5_path);
-    double dot(double v1[3], double v2[3], char space='r');
-    double length(double v[3], char space='r');
-    double angle(double v1[3], double v2[3], char space='r');
-    void   normalize(double n_v[3], double v[3], char space='r');
+    double dot(double v1[3], double v2[3], char space);
+    void   cross(double c_v[3], double v1[3], double v2[3], char space);
+    double length(double v[3], char space);
+    double angle(double v1[3], double v2[3], char space);
+    void   normalize(double n_v[3], double v[3], char space);
     void   reciprocal_to_cartesian(double c_v[3], double v[3]);//from reciprocal
     void   cartesian_to_reciprocal(double r_v[3], double v[3]);//from cartesian
     void   direct_to_reciprocal(double r_v[3], double v[3]);
     void   direct_to_cartesian(double c_v[3], double v[3]);
     void   compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequiv, double g[3], char space='r');
-    void   apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int nump);
-    void   compute_shortest_reciprocal_vectors(double g1[3], double g2[3], double k[3]);
+    void   apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int hemisphere, int impx, int impy);
 
     int    HKL[3];
     FOURIER0 fouri0;
@@ -150,22 +148,32 @@ private:
 class MODEL
 {
 public:
-    double dimension[3];
-    double dimensionK[3];
-    bool   is_periodic[3];
     int    natom=0;
     double **atom_pos=nullptr;
     int    *atom_type=nullptr;
     double *atom_DW=nullptr;
+    int    *atom_Z=nullptr;
+    double *atom_occupation=nullptr;
     int    ntype=0;
     int    *type_index=nullptr;
-    double lambda;
+    char   **type_name=nullptr;
+    double vol;
+
+    double dimension[3];
+    double dimensionK[3];
+    bool   is_periodic[3];
     bool   is_orthogonal=true;
-    MODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda);
+
+    char   radiation[10];
+    double lambda;
+    MODEL(const char *model_path, const char types[][10], const double DWs[]);
     ~MODEL();
-    double get_reciprocal_vector_length(double g[3]);
     void   reciprocal_to_cartesian(double c_g[3], double r_g[3]);
+    void   direct_to_reciprocal(double r_g[3], double d_g[3]);
+    double get_reciprocal_vector_length(double g[3]);
     void   compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3]);
+    virtual double get_diffraction_intensity(double theta, double g[3]);
+    virtual double get_diffraction_intensity(double G, double g[3], bool is_zero);
 private:
     double dsm[3][3], rsm[3][3];//direct and reciprocal space matrix
     double dmt[3][3], rmt[3][3];//direct and reciprocal metric tensor
@@ -175,12 +183,14 @@ private:
 class XMODEL:public MODEL
 {
 public:
-    XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=XLAMBDA);
+    XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda);
     ~XMODEL();
-    double get_diffraction_intensity(double theta, double g[3], int lp_type);
+    void   update_lorentzP_type(int lp_type);
+    double get_diffraction_intensity(double theta, double g[3]);
+    double get_diffraction_intensity(double G, double g[3], bool is_zero);
 private:
+    int    lorentzP_type=3;
     double get_Debye_Waller_factor(double S, double DW);
-    //complex<double> get_atomic_scattering_factor(double S, int type);
     double get_atomic_scattering_factor(double S, const double A[4], const double B[4], const double C);
     complex<double> get_atomic_structure_factor(double theta, double g[3]);
 };
@@ -188,10 +198,13 @@ private:
 class NMODEL:public MODEL
 {
 public:
-    NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=NLAMBDA);
+    NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda);
     ~NMODEL();
-    double get_diffraction_intensity(double theta, double g[3], int lp_type);
+    void   update_lorentzP_type(int lp_type);
+    double get_diffraction_intensity(double theta, double g[3]);
+    double get_diffraction_intensity(double G, double g[3], bool is_zero);
 private:
+    int    lorentzP_type=2;
     double get_Debye_Waller_factor(double S, double DW);
     complex<double> get_atomic_structure_factor(double theta, double g[3]);
 };
@@ -199,12 +212,39 @@ private:
 class EMODEL:public MODEL
 {
 public:
-    EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda=ELAMBDA);
+    EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda);
     ~EMODEL();
     double get_diffraction_intensity(double theta, double g[3]);
+    double get_diffraction_intensity(double G, double g[3], bool is_zero);
 private:
     double get_atomic_scattering_factor(double S, const double A[5], const double B[5]);
     complex<double> get_atomic_structure_factor(double theta, double g[3]);
+};
+
+#define VG_TO_WK 6.283185307179586 //TWO_PI
+#define VDW_TO_WK 0.012665147955292222 //1.0/(8.0*pow(PI, 2))
+#define VPRE_CONST_V 47.87801
+
+class VMODEL:public MODEL
+{
+public:
+    VMODEL(const char *model_path, const char types[][10], const double DWs[], double mvoltage);
+    ~VMODEL();
+    double get_diffraction_intensity(double theta, double g[3]);
+    double get_diffraction_intensity(double G, double g[3], bool is_zero);
+private:
+    double voltage;//in kV
+    void   set_wavelength();
+    double get_Debye_Waller_factor(double G, double U);
+    double get_electron_scattering_factor(double G, const double A[4], const double B[4]);
+    double get_core_excitation_factor(double G, int Z, double V);//Image formation by inelastically scattered electrons in electron microscopy, 1976, H. Rose, p139-158
+    double get_absorptive_form_factor(double G, double U, const double A[4], const double B[4]);
+    complex<double> get_scattering_amplitude(double G, double U, int Z, double V);
+    double EI(double X);
+    double IH1(double X1, double X2, double X3);
+    double IH2(double X);
+    double I1(double BI, double BJ, double G);
+    double I2(double BI, double BJ, double G, double U);
 };
 
 #endif

@@ -1,11 +1,22 @@
 #include "MODEL.h"
 
-CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
+CELL::CELL(const char *cell_path, const char types[][10], const double DWs[], double voltage)
 {
     QB_tools QB;
     QB_init(&QB);
-    QB_read_lmp(&QB, cell_path);
+    QB_read_file(&QB, cell_path);
     QSPG_refined(&QB, &QB, SYMPREC);
+    ntype=QB.TypeNumber;
+    callocate_2d(&type_name, ntype, 10, '\0');
+    if(types[0]!=nullptr&&types[0][0]!='\0'){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], types[i]);
+        }
+    }else if(QB.ele.n==ntype){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], QB.ele.t[i].name);
+        }
+    }
     QSPGDataset *QD;
     SpacegroupType SG;
     Pointgroup PG;
@@ -38,10 +49,10 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
         int typei=apos_type[i]-1;
         npos+=apos_multi[i];
         apos_DW[i]=DWs[typei];
-        for(int j=0;j<TYPE_NUMBER;j++){
-            if(0==strcmp(types[typei], ATOM_SYMBOL[j])){
+        for(int j=0;j<E_TYPE_NUMBER;j++){
+            if(0==strcmp(type_name[typei], E_TYPE[j])){
                 apos_Z[i]=j+1;
-                apos_M[i]=ATOM_MASS[j];
+                apos_M[i]=E_MASS[j];
                 break;
             }
         }
@@ -49,6 +60,7 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[])
     compute_atomic_density();
     QSPGDataset_free_dataset(QD);
     QB_free_atom(&QB);
+    update_Fourier_coefficient0(voltage);
     logging();
 }
 
@@ -244,193 +256,6 @@ void CELL::compute_atomic_density()
     ave_M/=num_M; ave_Z/=num_Z;
 }
 
-// CELL::CELL(const char *hdf5_path)
-// {
-//     double *lat;
-//     double **dm, **rm, **ds, **rs;
-//     int ***rot;
-//     double **tra, ***dmat, ***rmat, ***pos;
-//     char center[2];
-//     int trigonal, hexagonal, usehex;
-//     size_t size1, size2, size3;
-//     HDF5 hdf;
-//     hdf.open(hdf5_path);
-//     hdf.read("/CrystalStructure/CrystalSystem", crystal_system);
-//     hdf.read("/CrystalStructure/CenteringVector", center);
-//     hdf.read("/CrystalStructure/HallNumber", hall_number);
-//     hdf.read("/CrystalStructure/SpaceGroupNumber", space_group);
-//     hdf.read("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-//     hdf.read("/CrystalStructure/PointGroupNumber", point_group);
-//     hdf.read("/CrystalStructure/PointGroupSymbol", point_group_symbol);
-//     hdf.read("/CrystalStructure/SamplingType", sampling_type);
-//     hdf.read("/CrystalStructure/IsTrigonal", trigonal);
-//     hdf.read("/CrystalStructure/IsHexagonal", hexagonal);
-//     hdf.read("/CrystalStructure/UseHexagonal", usehex);
-//     hdf.read("/CrystalStructure/Volume", vol);
-//     hdf.read_array("/CrystalStructure/Lattice", &lat, size1);
-//     hdf.read_array_2d("/CrystalStructure/DirectSpaceMatrix", &ds, size1, size2);
-//     hdf.read_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", &rs, size1, size2);
-//     hdf.read_array_2d("/CrystalStructure/DirectMetricTensor", &dm, size1, size2);
-//     hdf.read_array_2d("/CrystalStructure/ReciprocalMetricTensor", &rm, size1, size2);
-//     hdf.read("/CrystalStructure/PointSymmetryNumber", npointsym);
-//     hdf.read("/CrystalStructure/SymmetryNumber", nsymmetry);
-//     hdf.read_array_3d("/CrystalStructure/SymmetryRotations", &rot, size1, size2, size3);
-//     hdf.read_array_2d("/CrystalStructure/SymmetryTranslations", &tra, size1, size2);
-//     hdf.read_array_3d("/CrystalStructure/PointSymmetryDmatrices", &dmat, size1, size2, size3);
-//     hdf.read_array_3d("/CrystalStructure/PointSymmetryRmatrices", &rmat, size1, size2, size3);
-//     hdf.read("/CrystalStructure/AsymmetricNumber", napos);
-//     hdf.read("/CrystalStructure/PositionNumber", npos);
-//     hdf.read_array("/CrystalStructure/AsymmetricType", &apos_type, size1);
-//     hdf.read_array("/CrystalStructure/AsymmetricMultiplicity", &apos_multi, size1);
-//     hdf.read_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", &pos, size1, size2, size3);
-//     hdf.read_array("/CrystalStructure/AsymmetricAtomicNumber", &apos_Z, size1);
-//     hdf.read_array("/CrystalStructure/AsymmetricAtomicMass", &apos_M, size1);
-//     hdf.read_array("/CrystalStructure/AsymmetricDebyeWallerFactor", &apos_DW, size1);
-//     hdf.read_array("/CrystalStructure/AsymmetricSiteOccupation", &apos_occupation, size1);
-//     hdf.read("/CrystalStructure/AveragedAtomicMass", ave_M);
-//     hdf.read("/CrystalStructure/AveragedAtomicNumber", ave_Z);
-//     hdf.read("/CrystalStructure/Density", density);
-//     hdf.close();
-//     callocate_3d(&apos_pos, napos, nsymmetry, 3, 0.0);
-//     a0=lat[0]; b0=lat[1]; c0=lat[2]; alpha=lat[3]; beta=lat[4]; gamma=lat[5];
-//     for(int i=0;i<3;i++){
-//         for(int j=0;j<3;j++){
-//             dmt[i][j]=dm[i][j]; rmt[i][j]=rm[i][j];
-//             dsm[i][j]=ds[i][j]; rsm[i][j]=rs[i][j];
-//         }
-//     }
-//     for(int i=0;i<192;i++){
-//         for(int j=0;j<3;j++){
-//             sym_translations[i][j]=tra[i][j];
-//             for(int k=0;k<3;k++){
-//                 sym_rotations[i][j][k]=rot[j][k][i];
-//             }
-//         }
-//     }
-//     for(int i=0;i<48;i++){
-//         for(int j=0;j<3;j++){
-//             for(int k=0;k<3;k++){
-//                 point_dmats[i][j][k]=dmat[j][k][i];
-//                 point_rmats[i][j][k]=rmat[j][k][i];
-//             }
-//         }
-//     }
-//     for(int i=0;i<napos;i++){
-//         for(int j=0;j<nsymmetry;j++){
-//             for(int k=0;k<3;k++){
-//                 apos_pos[i][j][k]=pos[j][k][i];
-//             }
-//         }
-//     }
-//     deallocate(lat);
-//     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
-//     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
-//     deallocate_3d(rot, 3, 3);
-//     deallocate_2d(tra, 192);
-//     deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
-//     deallocate_3d(pos, nsymmetry, 3);
-//     centering=center[0];
-//     is_trigonal=trigonal==1?true:false;
-//     is_hexagonal=hexagonal==1?true:false;
-//     use_hexagonal=usehex==1?true:false;
-//     logging();
-// }
-
-// void CELL::hdf5(const char* hdf5_path)
-// {
-//     double *lat;
-//     double **dm, **rm, **ds, **rs;
-//     callocate(&lat, 6, 0.0);
-//     callocate_2d(&dm, 3, 3, 0.0); 
-//     callocate_2d(&rm, 3, 3, 0.0);
-//     callocate_2d(&ds, 3, 3, 0.0); 
-//     callocate_2d(&rs, 3, 3, 0.0);
-//     int ***rot; 
-//     double **tra, ***dmat, ***rmat, ***pos;
-//     callocate_3d(&rot, 3, 3, 192, 0);
-//     callocate_2d(&tra, 192, 3, 0.0);
-//     callocate_3d(&dmat, 3, 3, 48, 0.0); 
-//     callocate_3d(&rmat, 3, 3, 48, 0.0);
-//     callocate_3d(&pos, nsymmetry, 3, napos, 0.0);
-//     lat[0]=a0; lat[1]=b0; lat[2]=c0; lat[3]=alpha; lat[4]=beta; lat[5]=gamma;
-//     for(int i=0;i<3;i++){
-//         for(int j=0;j<3;j++){
-//             dm[i][j]=dmt[i][j]; rm[i][j]=rmt[i][j];
-//             ds[i][j]=dsm[i][j]; rs[i][j]=rsm[i][j];
-//         }
-//     }
-//     for(int i=0;i<192;i++){
-//         for(int j=0;j<3;j++){
-//             tra[i][j]=sym_translations[i][j];
-//             for(int k=0;k<3;k++){
-//                 rot[j][k][i]=sym_rotations[i][j][k];
-//             }
-//         }
-//     }
-//     for(int i=0;i<48;i++){
-//         for(int j=0;j<3;j++){
-//             for(int k=0;k<3;k++){
-//                 dmat[j][k][i]=point_dmats[i][j][k];
-//                 rmat[j][k][i]=point_rmats[i][j][k];
-//             }
-//         }
-//     }
-//     for(int i=0;i<napos;i++){
-//         for(int j=0;j<nsymmetry;j++){
-//             for(int k=0;k<3;k++){
-//                 pos[j][k][i]=apos_pos[i][j][k];
-//             }
-//         }
-//     }
-//     char center[]={centering, '\0'};
-//     HDF5 hdf;
-//     hdf.open(hdf5_path);
-//     hdf.write_group("/CrystalStructure");
-//     hdf.write("/CrystalStructure/CrystalSystem", crystal_system);
-//     hdf.write("/CrystalStructure/CenteringVector", center);
-//     hdf.write("/CrystalStructure/HallNumber", hall_number);
-//     hdf.write("/CrystalStructure/SpaceGroupNumber", space_group);
-//     hdf.write("/CrystalStructure/SpaceGroupSymbol", space_group_symbol);
-//     hdf.write("/CrystalStructure/PointGroupNumber", point_group);
-//     hdf.write("/CrystalStructure/PointGroupSymbol", point_group_symbol);
-//     hdf.write("/CrystalStructure/SamplingType", sampling_type);
-//     hdf.write("/CrystalStructure/IsTrigonal", is_trigonal);
-//     hdf.write("/CrystalStructure/IsHexagonal", is_hexagonal);
-//     hdf.write("/CrystalStructure/UseHexagonal", use_hexagonal);
-//     hdf.write("/CrystalStructure/Volume", vol);
-//     hdf.write_array("/CrystalStructure/Lattice", lat, 6);
-//     hdf.write_array_2d("/CrystalStructure/DirectSpaceMatrix", ds, 3, 3);
-//     hdf.write_array_2d("/CrystalStructure/ReciprocalSpaceMatrix", rs, 3, 3);
-//     hdf.write_array_2d("/CrystalStructure/DirectMetricTensor", dm, 3, 3);
-//     hdf.write_array_2d("/CrystalStructure/ReciprocalMetricTensor", rm, 3, 3);
-//     hdf.write("/CrystalStructure/SymmetryNumber", nsymmetry);
-//     hdf.write("/CrystalStructure/PointSymmetryNumber", npointsym);
-//     hdf.write_array_3d("/CrystalStructure/SymmetryRotations", rot, 3, 3, 192);
-//     hdf.write_array_2d("/CrystalStructure/SymmetryTranslations", tra, 192, 3);
-//     hdf.write_array_3d("/CrystalStructure/PointSymmetryDmatrices", dmat, 3, 3, 48);
-//     hdf.write_array_3d("/CrystalStructure/PointSymmetryRmatrices", rmat, 3, 3, 48);
-//     hdf.write("/CrystalStructure/AsymmetricNumber", napos);
-//     hdf.write("/CrystalStructure/PositionNumber", npos);
-//     hdf.write_array("/CrystalStructure/AsymmetricType", apos_type, napos);
-//     hdf.write_array("/CrystalStructure/AsymmetricMultiplicity", apos_multi, napos);
-//     hdf.write_array_3d("/CrystalStructure/AsymmetricEquivalentPositions", pos, nsymmetry, 3, napos);
-//     hdf.write_array("/CrystalStructure/AsymmetricAtomicNumber", apos_Z, napos);
-//     hdf.write_array("/CrystalStructure/AsymmetricAtomicMass", apos_M, napos);
-//     hdf.write_array("/CrystalStructure/AsymmetricDebyeWallerFactor", apos_DW, napos);
-//     hdf.write_array("/CrystalStructure/AsymmetricSiteOccupation", apos_occupation, napos);
-//     hdf.write("/CrystalStructure/AveragedAtomicMass", ave_M);
-//     hdf.write("/CrystalStructure/AveragedAtomicNumber", ave_Z);
-//     hdf.write("/CrystalStructure/Density", density);
-//     hdf.close();
-//     deallocate(lat);
-//     deallocate_2d(dm, 3); deallocate_2d(rm, 3);
-//     deallocate_2d(ds, 3); deallocate_2d(rs, 3);
-//     deallocate_3d(rot, 3, 3);
-//     deallocate_2d(tra, 192);
-//     deallocate_3d(dmat, 3, 3); deallocate_3d(rmat, 3, 3);
-//     deallocate_3d(pos, nsymmetry, 3);
-// }
-
 void CELL::logging()
 {
     printf("[INFO] LATTICE INFORMATION\n");
@@ -463,6 +288,14 @@ void CELL::logging()
     }
     printf("[INFO] Number of atomic positions: %d\n", npos);
     printf("[INFO] Density [in g/cm^3], atomic number averaged, atomic mass averaged [g/mol] = %.5f, %.5f, %.5f\n", density, ave_Z, ave_M);
+    printf("[INFO] FOURIER INFORMATION\n");
+    printf("[INFO] Mean inner potential [V]:                %.5f\n", fouri0.Vmod);
+    //printf("[INFO] Wavelength corrected for refraction\n");
+    printf("[INFO] Relativistic correction factor [V]:      %.5f\n", fouri0.gamma);
+    printf("[INFO] Relativistic Accelerating Potential [V]: %.5f\n", fouri0.voltage);
+    printf("[INFO] Electron Wavelength [nm]:                %.5f\n", fouri0.lambda);
+    printf("[INFO] Interaction constant [V nm^-1]:          %.5f\n", fouri0.sigma);
+    printf("[INFO] Normal absorption length [nm]:           %.5f\n", fouri0.sigp);
 }
 
 CELL::~CELL()
@@ -476,6 +309,7 @@ CELL::~CELL()
         deallocate(apos_DW);
         deallocate(apos_occupation);
     }
+    if(ntype!=0) deallocate_2d(type_name, ntype);
 }
 
 double CELL::dot(double v1[3], double v2[3], char space)
@@ -495,6 +329,25 @@ double CELL::dot(double v1[3], double v2[3], char space)
         exit(1);
     }
     return res;
+}
+
+void CELL::cross(double c_v[3], double v1[3], double v2[3], char space)
+{
+    double temp[3], res;
+    switch(space)
+    {
+    case 'r':
+        vector_cross(c_v, v1, v2);
+        vector_transform(c_v, c_v, dmt);
+        break;
+    case 'd':
+        vector_cross(c_v, v1, v2);
+        vector_transform(c_v, c_v, rmt);
+        break;
+    default:
+        printf("[ERROR] Unrecognized space %c in cross computation", space);
+        exit(1);
+    }
 }
 
 double CELL::length(double v[3], char space)
@@ -579,16 +432,16 @@ void CELL::compute_equivalent_reciprocal_vectors(double equiv[48][3], int &nequi
     }
 }
 
-void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int pz, int imp)
+void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int py, int hemisphere, int impx, int impy)
 {
-    double xy[2]={double(px)/double(imp), double(py)/double(imp)};
+    double xy[2]={double(px)/double(impx), double(py)/double(impy)};
     double xyz[3]; int ierr;
     if(use_hexagonal){
         compute_sphere_from_hexagonal_Lambert(xyz, ierr, xy);
     }else{
         compute_sphere_from_square_Lambert(xyz, ierr, xy);
     }
-    if(pz<0) xyz[2]=-xyz[2];
+    if(hemisphere<0) xyz[2]=-xyz[2];
     vector_normalize(xyz, xyz);
     double kstar[3];
     cartesian_to_reciprocal(kstar, xyz);
@@ -660,128 +513,15 @@ void CELL::apply_point_group_symmetry(int equiv[48][3], int &nequiv, int px, int
         }else{
             compute_square_Lambert(xy, ierr, xyz);
         }
-        xy[0]*=double(imp); xy[1]*=double(imp);
+        xy[0]*=double(impx); xy[1]*=double(impy);
         equiv[i][0]=int(round(xy[0])); equiv[i][1]=int(round(xy[1]));
     }
     nequiv=iequiv;
 }
 
-void CELL::compute_shortest_reciprocal_vectors(double g1[3], double g2[3], double k[3])
-{
-    double zeros[3]={0.0};
-    int nzero=0;
-    for(int i=0;i<3;i++){
-        if(0.0==k[i]){
-            nzero++;
-            zeros[i]=1.0;
-        }
-    }
-    double ga[3]={0.0}, gb[3]={0.0};
-    double u=k[0], v=k[1], w=k[2];
-    switch(nzero)
-    {
-    case 0:
-        ga[0]=v; ga[1]=-u;
-        gb[0]=w; gb[2]=-u;
-        break;
-    case 1:{
-        double ones[3]={1.0, 1.0, 1.0}, temp[3]={0.0};
-        vector_copy(ga, zeros);
-        vector_difference(gb, ones, zeros);
-        if(1==int(zeros[0])){
-            temp[1]=w; temp[2]=-v;
-        }else if(1==int(zeros[1])){
-            temp[0]=w; temp[2]=-u;
-        }else if(1==int(zeros[2])){
-            temp[0]=v; temp[1]=-u;
-        }
-        vector_multiply(gb, gb, temp);
-        }
-        break;
-    case 2:
-        if(1==int(zeros[0])&&1==int(zeros[1])){
-            ga[0]=1.0; gb[1]=1.0;
-        }else if(1==int(zeros[0])&&1==int(zeros[2])){
-            ga[2]=1.0; gb[0]=1.0;
-        }else if(1==int(zeros[1])&&1==int(zeros[2])){
-            ga[1]=1.0; gb[2]=1.0;
-        }
-        break;
-    default:
-        printf("[ERROR] Invalid incident beam direction-[%.2f %.2f %.2f].", u, v, w);
-        exit(1);
-    }
-
-    int num=10;
-    int mb=0, ma=0, nb=0, na=0;
-    double min_sum=50.0;
-    for(int ia=-num;ia<=num;ia++){
-        for(int ib=-num;ib<=num;ib++){
-            for(int ja=-num;ja<=num;ja++){
-                for(int jb=-num;jb<=num;jb++){
-                    double gi[3], gj[3];
-                    double t1[3], t2[3];
-                    vector_constant(t1, double(ib), ga);
-                    vector_constant(t2, double(ia), gb);
-                    vector_difference(gi, t1, t2);
-                    vector_constant(t1, double(ja), gb);
-                    vector_constant(t2, double(jb), ga);
-                    vector_difference(gj, t1, t2);
-                    int denom=ja*ib-jb*ia;
-                    if(0!=denom){
-                        double ic=1.0/double(denom);
-                        vector_constant(gi, ic, gi);
-                        vector_constant(gj, ic, gj);
-                        bool is_int=true;
-                        for(int i=0;i<3;i++){
-                            if((fabs(gi[i]-double(int(gi[i])))!=0.0)||(fabs(gj[i]-double(int(gj[i])))!=0.0)){
-                                is_int=false;
-                                break;
-                            }
-                        }
-                        if(is_int){
-                            double isum=vector_dot(gi, gi)+vector_dot(gj, gj);
-                            if(isum<min_sum){
-                                min_sum=isum;
-                                mb=ib; ma=ia; nb=jb; na=ja; 
-                            }
-                        }
-                    }        
-                }
-            }
-        }
-    }
-    double c=1.0/double(na*mb-nb*ma);
-    double t1[3], t2[3];
-    double gi[3], gj[3];
-    vector_constant(t1, double(mb), ga);
-    vector_constant(t2, double(ma), gb);
-    vector_difference(gi, t1, t2);
-    vector_constant(t1, double(nb), ga);
-    vector_constant(t2, double(na), gb);
-    vector_difference(gj, t1, t2);
-    vector_constant(gi, c, gi);
-    vector_constant(gj, c, gj);
-
-    double gp[3]; 
-    vector_cross(gp, gi, gj);
-    direct_to_reciprocal(gp, gp);
-    double gz[3]={u, v, w};
-    if(dot(gp, gz, 'r')<0){
-        vector_copy(g1, gj); vector_copy(g2, gi);
-    }else{
-        vector_copy(g1, gi); vector_copy(g2, gj);
-    }
-    for(int i=0;i<3;i++){
-        if(fabs(g1[i])<1.0e-6) g1[i]=0.0;
-        if(fabs(g2[i])<1.0e-6) g2[i]=0.0;
-    }
-// !isym
-}
-
 double CELL::get_interplanar_spacing(double g[3])
 {
-    double dotgg=dot(g, g);
+    double dotgg=dot(g, g, 'r');
     if(dotgg<=0.0){
         printf("[ERROR] Zero reciprocal vector in interplanar spacing compution.");
         exit(1);
@@ -807,8 +547,8 @@ double CELL::get_excitation_error(double g[3], double k[3], double fn[3])
 {
     double kpg[3]={k[0]+g[0], k[1]+g[1], k[2]+g[2]};
     double tkpg[3]={2.0*k[0]+g[0], 2.0*k[1]+g[1], 2.0*k[2]+g[2]};
-    double q1=length(kpg), q2=angle(kpg, fn);
-    double res=-1.0*dot(g, tkpg)/(2.0*q1*cos(q2));
+    double q1=length(kpg, 'r'), q2=angle(kpg, fn, 'r');
+    double res=-1.0*dot(g, tkpg, 'r')/(2.0*q1*cos(q2));
     return res;
 }
 
@@ -860,7 +600,6 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
     if(is_initial){
         callocate_4d(&LUTSgh, napos, imh*2+1, imk*2+1, iml*2+1, complex<double>(0.0, 0.0));
     }
-    printf("[INFO] Generating Bloch wave coefficient lookup table ... ");
     for(int ih=-imh;ih<=imh;ih++){
         for(int ik=-imk;ik<=imk;ik++){
             for(int il=-iml;il<=iml;il++){
@@ -869,7 +608,7 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
                     int ix=ih+imh, iy=ik+imk, iz=il+iml;
                     for(int i=0;i<napos;i++){
                         LUTSgh[i][ix][iy][iz]=complex<double>(0.0, 0.0);
-                        double DBWF=pow(apos_Z[i], 2)*apos_occupation[i]*exp(-0.25*apos_DW[i]*dot(g, g));
+                        double DBWF=pow(apos_Z[i], 2)*apos_occupation[i]*exp(-0.25*apos_DW[i]*dot(g, g, 'r'));
                         for(int j=0;j<apos_multi[i];j++){
                             double q=TWO_PI*(g[0]*apos_pos[i][j][0]+g[1]*apos_pos[i][j][1]+g[2]*apos_pos[i][j][2]);
                             complex<double> F(cos(q), sin(q));
@@ -880,21 +619,10 @@ void CELL::compute_Bloch_wave_coefficients(bool is_initial)
             }
         }
     }
-    printf("Done!\n");
 }
 
 void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
 {
-    printf("[INFO] -->Fourier Coefficients Information<--\n");
-    update_Fourier_coefficient0(voltage);
-    printf("[INFO] Mean inner potential in [V] %.5f\n", fouri0.Vmod);
-    printf("[INFO] Wavelength corrected for refraction\n");
-    printf("[INFO] Relativistic correction factor [gamma] in [V] %.5f\n", fouri0.gamma);
-    printf("[INFO] Relativistic Accelerating Potential [V] %.5f\n", fouri0.voltage);
-    printf("[INFO] Electron Wavelength [nm] %.5f\n", fouri0.lambda);
-    printf("[INFO] Interaction constant [V nm^-1] %.5f\n", fouri0.sigma);
-    printf("[INFO] Normal absorption length [nm] = %.5f\n", fouri0.sigp);
-
     int imh=2*HKL[0], imk=2*HKL[1], iml=2*HKL[2];
     if(is_initial){
         int size1=imh*2+1, size2=imk*2+1, size3=iml*2+1;
@@ -905,7 +633,6 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
     LUTUg[imh][imk][iml]=fouri0.Ug; LUTqg[imh][imk][iml]=fouri0.qg;
 
     double g[3];
-    printf("[INFO] Generating Fourier coefficient lookup table ... ");
     for(int ih=-imh;ih<=imh;ih++){
         for(int ik=-imk;ik<=imk;ik++){
             for(int il=-iml;il<=iml;il++){
@@ -921,7 +648,6 @@ void CELL::compute_Fourier_coefficients(double voltage, bool is_initial)
             }
         }
     }
-    printf("Done!\n");
 }
 
 void CELL::update_Fourier_coefficient0(double voltage)
@@ -947,7 +673,7 @@ void CELL::update_Fourier_coefficient(double voltage, double g[3], bool is_shift
     if(0.0==(g[0]*g[0]+g[1]*g[1]+g[2]*g[2])){
         GWK=0.0;
     }else{
-        GWK=length(g)*G_TO_WK;
+        GWK=length(g, 'r')*G_TO_WK;
     }
     for(int i=0;i<napos;i++){//loop over atoms in the asymmetric unit
         double UWK=sqrt(apos_DW[i]*DW_TO_WK);//root-mean-square value of the atomic vibration amplitude or thermal displacement in [nm]
@@ -960,6 +686,7 @@ void CELL::update_Fourier_coefficient(double voltage, double g[3], bool is_shift
             Fpos+=jFpos;
         }
         FV+=Fscat.real()*Fpos; FVp+=Fscat.imag()*Fpos;
+
     }
     double constV=PRE_CONST_V/vol/FOUR_PI, constU=PRE_CONST_U;
     fouri.Vmod=constV*abs(FV); fouri.Vang=arg(FV);
@@ -994,7 +721,7 @@ complex<double> CELL::get_scattering_amplitude(double G, double U, int Z, double
     double GAMMA=(V+511.0)/511.0;
     double K0=0.5068*sqrt(1022.0*V+V*V);
     double DWF=get_Debye_Waller_factor(G, U);//Debye-Waller amplitude is included
-    const double *A=AA[Z-1], *B=BB[Z-1];
+    const double *A=E_WK_AA[Z-1], *B=E_WK_BB[Z-1];
     FR=FOUR_PI*DWF*get_electron_scattering_factor(G, A, B);//Elastic part
     FI=DWF*get_core_excitation_factor(G, Z, V)+get_absorptive_form_factor(G, U, A, B);//Inelastic part
     FR=FR*GAMMA; FI=FI*GAMMA*GAMMA/K0;//acceleration voltage (relativistic scattering) is included
@@ -1189,9 +916,8 @@ double CELL::I2(double BI, double BJ, double G, double U)
     return RI2;
 }
 
-MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda)
+MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[])
 {
-    lambda=mlambda;
     QB_tools QB;
     QB_init(&QB);
     QB_read_file(&QB, model_path);
@@ -1199,9 +925,9 @@ MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[],
     is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
     ntype=QB.TypeNumber;
     natom=QB.TotalNumber;
+    mallocate_2d(&atom_pos, natom, 3);
     mallocate(&atom_type, natom);
     mallocate(&atom_DW, natom);
-    mallocate_2d(&atom_pos, natom, 3);
     for(int i=0;i<natom;i++){
         atom_pos[i][0]=QB.atom[i].x; 
         atom_pos[i][1]=QB.atom[i].y; 
@@ -1209,28 +935,38 @@ MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[],
         atom_type[i]=QB.atom[i].type;
         atom_DW[i]=DWs[atom_type[i]-1];
     }
+    callocate(&atom_Z, natom, -1);
+    callocate(&atom_occupation, natom, 1.0);
+    callocate(&type_index, ntype, -1);
+    callocate_2d(&type_name, ntype, 10, '\0');
+    if(QB.ele.n==ntype){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], QB.ele.t[i].name);
+        }
+    }
     QB_free_atom(&QB);
 }
 
 void MODEL::set_lattice(double mat[3][3])
 {
     double lx=mat[0][0], ly=mat[1][1], lz=mat[2][2];
-    double xy=mat[1][0], xz=mat[2][0], yz=mat[2][1];
-    if(fabs(xy)<1.0e-6&&fabs(xz)<1.0e-6&&fabs(yz)<1.0e-6){
+    double a[3]={mat[0][0], mat[0][1], mat[0][2]}, b[3]={mat[1][0], mat[1][1], mat[1][2]}, c[3]={mat[2][0], mat[2][1], mat[2][2]};
+    double la=vector_length(a), lb=vector_length(b), lc=vector_length(c);
+    if(fabs(lx-la)<1.0e-6&&fabs(ly-lb)<1.0e-6&&fabs(lz-lc)<1.0e-6){
         is_orthogonal=true;
-        double mat[3][3]={{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-        matrix_copy(dsm, mat); matrix_copy(rsm, mat);
-        matrix_copy(dmt, mat); matrix_copy(rmt, mat);
+        vol=lx*ly*lz;
+        double E[3][3]={{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+        matrix_copy(dsm, E); matrix_copy(rsm, E);
+        matrix_copy(dmt, E); matrix_copy(rmt, E);
         dimension[0]=lx; dimension[1]=ly; dimension[2]=lz;
         dimensionK[0]=1.0/lx; dimensionK[1]=1.0/ly; dimensionK[2]=1.0/lz;
     }else{
         is_orthogonal=false;
-        double a[3]={lx, 0.0, 0.0}, b[3]={xy, ly, 0.0}, c[3]={xz, yz, lz};
         double bc[3], ca[3], ab[3];
         vector_cross(bc, b, c);
         vector_cross(ca, c, a);
         vector_cross(ab, a, b);
-        double vol=vector_dot(a, bc);
+        vol=vector_dot(a, bc);
         vector_constant(bc, 1.0/vol, bc);
         vector_constant(ca, 1.0/vol, ca);
         vector_constant(ab, 1.0/vol, ab);
@@ -1251,7 +987,7 @@ void MODEL::set_lattice(double mat[3][3])
         matrix_multiply(dmt, dsm, t_mat);
         matrix_transpose(t_mat, rsm);
         matrix_multiply(rmt, t_mat, rsm);
-        dimension[0]=lx; dimension[1]=sqrt(xy*xy+ly*ly); dimension[2]=sqrt(xz*xz+yz*yz+lz*lz);
+        dimension[0]=la; dimension[1]=lb; dimension[2]=lc;
         dimensionK[0]=vector_length(bc); dimensionK[1]=vector_length(ca); dimensionK[2]=vector_length(ab);
     }
 }
@@ -1262,7 +998,23 @@ MODEL::~MODEL()
         deallocate_2d(atom_pos, natom);
         deallocate(atom_type);
         deallocate(atom_DW);
+        deallocate(atom_Z);
+        deallocate(atom_occupation);
     }
+    if(ntype>0){
+        deallocate(type_index);
+        deallocate_2d(type_name, ntype);
+    }
+}
+
+void MODEL::reciprocal_to_cartesian(double c_g[3], double r_g[3])
+{
+    vector_rotate(c_g, rsm, r_g);
+}
+
+void MODEL::direct_to_reciprocal(double r_g[3], double d_g[3])
+{
+    vector_transform(r_g, d_g, dmt);
 }
 
 double MODEL::get_reciprocal_vector_length(double g[3])
@@ -1271,11 +1023,6 @@ double MODEL::get_reciprocal_vector_length(double g[3])
     vector_rotate(r_g, rmt, g);
     double dot=vector_dot(g, r_g);
     return sqrt(dot);
-}
-
-void MODEL::reciprocal_to_cartesian(double c_g[3], double r_g[3])
-{
-    vector_rotate(c_g, rsm, r_g);
 }
 
 void MODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3])
@@ -1305,26 +1052,43 @@ void MODEL::compute_reciprocal_spacing(double spacing[3], double spacing_ratio[3
     }
 }
 
-XMODEL::XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
+double MODEL::get_diffraction_intensity(double theta, double g[3])
 {
-    callocate(&type_index, ntype, -1);
+    return -1.0;
+}
+
+double MODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
+{
+    return -1.0;
+}
+
+XMODEL::XMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs)
+{
+    lambda=mlambda;
+    strcpy(radiation, "X-ray");
+    if(types[0]!=nullptr&&types[0][0]!='\0'){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], types[i]);
+        }
+    }
     for(int i=0;i<ntype;i++){
         int j;
         for(j=0;j<X_TYPE_NUMBER;j++){
-            if(0==strcmp(types[i], X_TYPE[j])){
+            if(0==strcmp(type_name[i], X_TYPE[j])){
                 type_index[i]=j;
                 break;
             }
         }
-        if(j==X_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for x-ray diffraction", types[i]);
+        if(j==X_TYPE_NUMBER){
+            printf("[ERROR] Unrecognized type %s for x-ray diffraction", type_name[i]);
+            exit(1);
+        }
     }
 }
 
 XMODEL::~XMODEL()
 {
-    if(ntype>0){
-        deallocate(type_index);
-    }
+
 }
 
 double XMODEL::get_Debye_Waller_factor(double S, double DW)
@@ -1342,24 +1106,29 @@ double XMODEL::get_atomic_scattering_factor(double S, const double A[4], const d
     return res;
 }
 
-complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])//xrd
+complex<double> XMODEL::get_atomic_structure_factor(double theta, double g[3])
 {
     complex<double> res(0.0, 0.0);
     double S=sin(theta)/lambda;
     for(int i=0;i<natom;++i){
         int    t=type_index[atom_type[i]-1];
         const double *A=X_A[t], *B=X_B[t], C=X_C[t];
-        double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+        double q=TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
         res+=get_Debye_Waller_factor(S, atom_DW[i])*get_atomic_scattering_factor(S, A, B, C)*complex<double>(cos(q), sin(q));
     }
     return res;
 }
 
-double XMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
+void XMODEL::update_lorentzP_type(int lp_type)
+{
+    lorentzP_type=lp_type;
+}
+
+double XMODEL::get_diffraction_intensity(double theta, double g[3])
 {
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    switch(lp_type)
+    switch(lorentzP_type)
     {
     case 0:
         break;
@@ -1373,32 +1142,44 @@ double XMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
         res*=((1+cos(2*theta)*cos(2*theta))/(sin(theta)*sin(theta)*cos(theta)));
         break;
     default:
-        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
+        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lorentzP_type);
         exit(1);
     }
     return res;
 }
 
-NMODEL::NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
+double XMODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
 {
-    callocate(&type_index, ntype, -1);
+    return -1.0;
+}
+
+NMODEL::NMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs)
+{
+    lambda=mlambda;
+    strcpy(radiation, "neutron");
+    if(types[0]!=nullptr&&types[0][0]!='\0'){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], types[i]);
+        }
+    }
     for(int i=0;i<ntype;i++){
         int j;
         for(j=0;j<N_TYPE_NUMBER;j++){
-            if(0==strcmp(types[i], N_TYPE[j])){
+            if(0==strcmp(type_name[i], N_TYPE[j])){
                 type_index[i]=j;
                 break;
             }
         }
-        if(j==N_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for neutron diffraction", types[i]);
+        if(j==N_TYPE_NUMBER){
+            printf("[ERROR] Unrecognized type %s for neutron diffraction", type_name[i]);
+            exit(1);
+        }
     }
 }
 
 NMODEL::~NMODEL()
 {
-    if(ntype>0){
-        deallocate(type_index);
-    }
+
 }
 
 double NMODEL::get_Debye_Waller_factor(double S, double DW)
@@ -1412,17 +1193,22 @@ complex<double> NMODEL::get_atomic_structure_factor(double theta, double g[3])//
     double S=sin(theta)/lambda;
     for(int i=0;i<natom;i++){
         int    t=type_index[atom_type[i]-1];
-        double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+        double q=TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
         res+=get_Debye_Waller_factor(S, atom_DW[i])*N_N[t]*complex<double>(cos(q), sin(q));
     }
     return res;
 }
 
-double NMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
+void NMODEL::update_lorentzP_type(int lp_type)
+{
+    lorentzP_type=lp_type;
+}
+
+double NMODEL::get_diffraction_intensity(double theta, double g[3])
 {
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
-    switch(lp_type)
+    switch(lorentzP_type)
     {
     case 0:
         break;
@@ -1433,32 +1219,48 @@ double NMODEL::get_diffraction_intensity(double theta, double g[3], int lp_type)
         res*=(1.0/(sin(theta)*sin(theta)*cos(theta)));
         break;
     default:
-        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lp_type);
+        printf("[ERROR] Unrecognized type %d of lorentz polarization factor", lorentzP_type);
         exit(1);
     }
     return res;
 }
 
-EMODEL::EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs, mlambda)
+double NMODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
 {
-    callocate(&type_index, ntype, -1);
+    return -1.0;
+}
+
+EMODEL::EMODEL(const char *model_path, const char types[][10], const double DWs[], double mlambda):MODEL(model_path, types, DWs)
+{
+    lambda=mlambda;
+    strcpy(radiation, "electron");
+    if(types[0]!=nullptr&&types[0][0]!='\0'){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], types[i]);
+        }
+    }
     for(int i=0;i<ntype;i++){
         int j;
         for(j=0;j<E_TYPE_NUMBER;j++){
-            if(0==strcmp(types[i], E_TYPE[j])){
+            if(0==strcmp(type_name[i], E_TYPE[j])){
                 type_index[i]=j;
                 break;
             }
         }
-        if(j==E_TYPE_NUMBER) printf("[ERROR] Unrecognized type %s for electron diffraction", types[i]);
+        if(j==E_TYPE_NUMBER){
+            printf("[ERROR] Unrecognized type %s for electron diffraction", type_name[i]);
+            exit(1);
+        }
+    }
+    for(int i=0;i<natom;i++){
+        int index=type_index[atom_type[i]-1];
+        atom_Z[i]=index+1;
     }
 }
 
 EMODEL::~EMODEL()
 {
-    if(ntype>0){
-        deallocate(type_index);
-    }
+
 }
 
 double EMODEL::get_atomic_scattering_factor(double S, const double A[5], const double B[5])//sed
@@ -1477,15 +1279,15 @@ complex<double> EMODEL::get_atomic_structure_factor(double theta, double g[3])//
     if(0.0<=S<=2.0){
         for(int i=0;i<natom;i++){
             int    t=type_index[atom_type[i]-1];
-            const double *A=E_A1[t], *B=E_B1[t];
-            double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+            const double *A=E_GP_A1[t], *B=E_GP_B1[t];
+            double q=TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
             res+=get_atomic_scattering_factor(S, A, B)*complex<double>(cos(q), sin(q));
         }
     }else if(2.0<S<=6.0){
         for(int i=0;i<natom;i++){
             int    t=type_index[atom_type[i]-1];
-            const double *A=E_A1[t], *B=E_B1[t];
-            double q=2*PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+            const double *A=E_GP_A2[t], *B=E_GP_B2[t];
+            double q=TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
             res+=get_atomic_scattering_factor(S, A, B)*complex<double>(cos(q), sin(q));
         }
     }else{
@@ -1499,4 +1301,285 @@ double EMODEL::get_diffraction_intensity(double theta, double g[3])
     complex<double> F=get_atomic_structure_factor(theta, g);
     double res=(F.real()*F.real()+F.imag()*F.imag())/natom;
     return res;
+}
+
+double EMODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
+{
+    double theta=asin(0.5*lambda*G);
+    return get_diffraction_intensity(theta, g);
+}
+
+VMODEL::VMODEL(const char *model_path, const char types[][10], const double DWs[], double mvoltage):MODEL(model_path, types, DWs)
+{
+    voltage=mvoltage;
+    strcpy(radiation, "electron");
+    if(types[0]!=nullptr&&types[0][0]!='\0'){
+        for(int i=0;i<ntype;i++){
+            strcpy(type_name[i], types[i]);
+        }
+    }
+    for(int i=0;i<ntype;i++){
+        int j;
+        for(j=0;j<E_TYPE_NUMBER;j++){
+            if(0==strcmp(type_name[i], E_TYPE[j])){
+                type_index[i]=j;
+                break;
+            }
+        }
+        if(j==E_TYPE_NUMBER){
+            printf("[ERROR] Unrecognized type %s for electron diffraction", type_name[i]);
+            exit(1);
+        }
+    }
+    for(int i=0;i<natom;i++){
+        int index=type_index[atom_type[i]-1];
+        atom_Z[i]=index+1;
+    }
+    set_wavelength();
+}
+
+VMODEL::~VMODEL()
+{
+
+}
+
+double VMODEL::get_Debye_Waller_factor(double G, double U)
+{
+    return exp(-0.5*U*U*G*G);
+}
+
+double VMODEL::get_electron_scattering_factor(double G, const double A[4], const double B[4])
+{
+    double F=0.0;
+    double S2=G*G/FOUR_PI/FOUR_PI;//S: scattering vector
+    for(int i=0;i<4;i++){
+        double TEMP=B[i]*S2;
+        if(TEMP<0.1){
+            F+=A[i]*B[i]*(1.0-0.5*TEMP);
+        }else if(TEMP>20.0){
+            F+=A[i]/S2;
+        }else{
+            F+=A[i]*(1.0-exp(-TEMP))/S2;
+        }
+    }
+    return F;
+}
+
+double VMODEL::get_core_excitation_factor(double G, int Z, double V)
+{
+    double F, A0=0.5289;
+    double K0=0.5068*sqrt(1022.0*V+V*V);
+    double DE=6*Z*1.0e-3;//Energy loss
+    double THETAB=G/(2.0*K0); //Bragg angle
+    double THETAE=DE/(2.0*V)*(2.0*V+1022.0)/(V+1022.0);//Angle corresponding to energy loss
+    double THETAN=1.0/(K0*0.885*A0/pow(Z, 0.333333));
+
+    double OMEGA=2.0*THETAB/THETAN;
+    double KAPPA=THETAE/THETAN;
+    double O2=OMEGA*OMEGA;
+    double K2=KAPPA*KAPPA;
+    double X1=OMEGA/((1.0+O2)*sqrt(O2+4.0*K2))*log((OMEGA+sqrt(O2+4.0*K2))/(2.0*KAPPA));
+    double X2=1.0/sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2)*log((1.0+2.0*K2+O2+sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2))/(2.0*KAPPA*sqrt(1.0+K2)));
+    double X3;
+    if(OMEGA>1e-2){
+        X3=1.0/(OMEGA*sqrt(O2+4.0*(1.0+K2)))*log((OMEGA+sqrt(O2+4.0*(1.0+K2)))/(2.0*sqrt(1.0+K2)));
+    }else{
+        X3=1.0/(4.0*(1.0+K2));
+    }
+    F=4.0/(A0*A0)*TWO_PI/(K0*K0)*2*Z/(THETAN*THETAN)*(-X1+X2-X3);
+    return F;
+}
+
+double VMODEL::get_absorptive_form_factor(double G, double U, const double A[4], const double B[4])
+{
+    double F=0.0;
+    double AF[4], BF[4];
+    double FP2=FOUR_PI*FOUR_PI;
+    double DWF=get_Debye_Waller_factor(G, U);
+    for(int i=0;i<4;i++){
+        AF[i]=A[i]*FP2; BF[i]=B[i]/FP2;
+    }
+    for(int j=0;j<4;j++){
+        F+=AF[j]*AF[j]*(DWF*I1(BF[j], BF[j], G)-I2(BF[j], BF[j], G, U));
+        for(int i=0;i<j;i++){
+            F+=2.0*AF[j]*AF[i]*(DWF*I1(BF[i], BF[j], G)-I2(BF[i], BF[j], G, U));
+        }
+    }
+    return F;
+}
+
+complex<double> VMODEL::get_scattering_amplitude(double G, double U, int Z, double V)
+{
+    complex<double> F(0.0, 0.0);
+    double FR, FI;
+    double GAMMA=(V+511.0)/511.0;
+    double K0=0.5068*sqrt(1022.0*V+V*V);
+    double DWF=get_Debye_Waller_factor(G, U);//Debye-Waller amplitude is included
+    const double *A=E_WK_AA[Z-1], *B=E_WK_BB[Z-1];
+    FR=FOUR_PI*DWF*get_electron_scattering_factor(G, A, B);//Elastic part
+    FI=DWF*get_core_excitation_factor(G, Z, V)+get_absorptive_form_factor(G, U, A, B);//Inelastic part
+    FR=FR*GAMMA; FI=FI*GAMMA*GAMMA/K0;//acceleration voltage (relativistic scattering) is included
+    F.real(FR); F.imag(FI);
+    return F;
+}
+
+double VMODEL::EI(double X)
+{
+    double A1=8.57332, A2=18.05901, A3=8.63476, A4=0.26777, B1=9.57332, B2=25.63295, B3=21.09965, B4=3.95849;
+    if(X>60.0){
+        printf("[ERROR] The input X of the function EI exceeds 60.0");
+        exit(1);
+    }
+    if(X<-60.0) return 0.0;
+    double ABSX=fabs(X);
+    if(X<-1.0){
+        return -(A4+ABSX*(A3+ABSX*(A2+ABSX*(A1+ABSX))))/(B4+ABSX*(B3+ABSX*(B2+ABSX*(B1+ABSX))))*exp(-ABSX)/ABSX;
+    }else{
+        double REI=0.577216+log(ABSX);
+        int I=1;
+        double SI=X;
+        double SUMS=SI;
+        while(fabs(SI/X)>1.0e-6){
+            SI=SI*X*I/((I+1)*(I+1));
+            SUMS+=SI;
+            I++;
+        };
+        REI+=SUMS;
+        return REI;
+    }
+}
+
+double VMODEL::IH1(double X1, double X2, double X3)
+{
+    double RIH1;
+    if(X2<=20.0&&X3<=20.0){
+        RIH1=exp(-X1)*(EI(X2)-EI(X3));
+        return RIH1;
+    }
+    if(X2>20.0){
+        RIH1=exp(X2-X1)*IH2(X2)/X2;
+    }else{
+        RIH1=exp(-X1)*EI(X2);
+    }
+    if(X3>20.0){
+        RIH1-=exp(X3-X1)*IH2(X3)/X3;
+    }else{
+        RIH1-=exp(-X1)*EI(X3);
+    }
+    return RIH1;
+}
+
+double VMODEL::IH2(double X)
+{
+    double INVX=1.0/X;
+    int    I=int(200.0*INVX);
+    if(I<0||I>DURCH_NUMBER-1){
+        printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
+        exit(1);
+    }
+    double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];
+    double RIH2=D1+200.0*(D2-D1)*(INVX-0.5e-3*I);
+    return RIH2;
+}
+
+double VMODEL::I1(double BI, double BJ, double G)
+{
+    double RI1;
+    double G2=G*G;
+    double EPS=fmax(BI, BJ)*G2;
+    if(EPS<=0.1){
+        double RI1=PI*(BI*log((BI+BJ)/BI)+BJ*log((BI+BJ)/BJ));
+        if(fabs(G)<ZERO){
+            return RI1;
+        }
+        double BI2=BI*BI, BJ2=BJ*BJ;
+        double TEMP=0.5*BI2*log(BI/(BI+BJ))+0.5*BJ2*log(BJ/(BI+BJ));
+        TEMP+=0.75*(BI2+BJ2)-0.25*(BI+BJ)*(BI+BJ);
+        TEMP+=-0.5*(BI-BJ)*(BI-BJ);
+        RI1+=PI*G2*TEMP;
+        return RI1;
+    }
+    double BIG2=BI*G2, BJG2=BJ*G2;
+    RI1=2.0*PRE_CONST_RI1+log(BIG2)+log(BJG2)-2.0*EI(-BI*BJ*G2/(BI+BJ));
+    RI1+=IH1(BIG2, BIG2*BI/(BI+BJ), BIG2);
+    RI1+=IH1(BJG2, BJG2*BJ/(BI+BJ), BJG2);
+    RI1=RI1*PI/G2;
+    return RI1;
+}
+
+double VMODEL::I2(double BI, double BJ, double G, double U)
+{
+    double RI2;
+    double U2=U*U, G2=G*G;
+    double HALFU2=0.5*U2, QUARTERU2=0.25*U2;
+    double BIUH=BI+HALFU2, BJUH=BJ+HALFU2;
+    double BIU=BI+U2, BJU=BJ+U2;
+    double EPS=fmax(fmax(BI, BJ), U2)*G2;
+
+    if(EPS<=0.1){
+        double TEMP1=(BI+U2)*log((BI+BJ+U2)/(BI+U2));
+        TEMP1+=BJ*log((BI+BJ+U2)/(BJ+U2));
+        TEMP1+=U2*log(U2/(BJ+U2));
+        if(G==0.0){
+            RI2=PI*TEMP1;
+        }else{
+            double TEMP2=0.5*HALFU2*HALFU2*log( BIU*BJU/(U2*U2));
+            TEMP2+=0.5*BIUH*BIUH*log(BIU/(BIUH+BJUH));
+            TEMP2+=0.5*BJUH*BJUH*log(BJU/(BIUH+BJUH));
+            TEMP2+=0.25*BIU*BIU+0.5*BI*BI;
+            TEMP2+=0.25*BJU*BJU+0.5*BJ*BJ;
+            TEMP2+=-0.25*(BIUH+BJUH)*(BIUH+BJUH);
+            TEMP2+=-0.5*pow((BI*BIU-BJ*BJU)/(BIUH+BJUH), 2);
+            TEMP2+=-HALFU2*HALFU2;
+            RI2=PI*(TEMP1+G2*TEMP2);
+        }
+    }else{
+        RI2=EI(-HALFU2*G2*BIUH/BIU)+EI(-HALFU2*G2*BJUH/BJU);
+        RI2=2.0*(RI2-EI(-BIUH*BJUH*G2/(BIUH+BJUH))-EI(-QUARTERU2*G2));
+        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BIU);
+        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BJU);
+        RI2+=IH1(BIUH*G2, BIUH*BIUH*G2/(BIUH+BJUH), BIUH*BIUH*G2/BIU);
+        RI2+=IH1(BJUH*G2, BJUH*BJUH*G2/(BIUH+BJUH), BJUH*BJUH*G2/BJU);
+        RI2=RI2*PI/G2;
+    }
+    return RI2;
+}
+
+void VMODEL::set_wavelength()
+{
+    double g[3]={0.0};
+    get_diffraction_intensity(0.0, g, true);
+}
+
+double VMODEL::get_diffraction_intensity(double theta, double g[3])
+{
+    return -1.0;
+}
+
+double VMODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
+{
+    complex<double> FV(0.0, 0.0), FVp(0.0, 0.0);
+    double GWK;
+    if(is_zero){
+        GWK=0.0;
+        g[0]=g[1]=g[2]=0.0;
+    }else{
+        GWK=G*VG_TO_WK;
+    }
+    for(int i=0;i<natom;i++){
+        double UWK=sqrt(atom_DW[i]*VDW_TO_WK)+1.0e-6;//avoiding UWK=0.0
+        int    Z=atom_Z[i];
+        complex<double> Fscat=get_scattering_amplitude(GWK, UWK, Z, voltage)*complex<double>(atom_occupation[i], 0.0);
+        double q=-1.0*TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
+        complex<double> Fpos(cos(q), sin(q));
+        FV+=Fscat.real()*Fpos; FVp+=Fscat.imag()*Fpos;
+    }
+    double constV=VPRE_CONST_V/vol/FOUR_PI;
+    if(is_zero){
+        double temp=1000.0*ELECTRON_CHARGE*voltage/ELECTRON_REST_MASS/pow(LIGHT_VELOCITY, 2.0);
+        double mvoltage=1000.0*voltage*(1.0+0.5*temp)+constV*abs(FV)*(1.0+temp);
+        lambda=1.0e10*PLANK_CONSTANT/sqrt(2.0*ELECTRON_REST_MASS*ELECTRON_CHARGE*mvoltage);
+    }
+    complex<double> Vg(constV*(FV.real()-FVp.imag()), constV*(FV.imag()+FVp.real()));
+    return abs(Vg)*abs(Vg);
 }

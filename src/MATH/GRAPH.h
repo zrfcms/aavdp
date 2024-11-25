@@ -7,11 +7,6 @@
 #include "MATH.h"
 #include "../include/png.h"
 
-#define SCHERRER_CONST 0.90
-
-extern void pseudo_Voigt(double *y, double *x, int num, double eta, double x0, double w);
-extern void convolve(double *res, double *values, double *weights, int vnum, int wnum, int anchor);
-
 extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
 template <typename T>
 extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);

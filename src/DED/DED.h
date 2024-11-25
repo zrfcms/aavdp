@@ -11,11 +11,15 @@
 #include "../MATH/MATH.h"
 #include "../MATH/GRAPH.h"
 #include "../MODEL/MODEL.h"
+#include "DED_MC.h"
+
+#define KMAGNITUDE_LIMIT 1.0e-3
+#define DED_INTENSITY_LIMIT 1.0e-8
 
 using namespace std;
 
-struct DED_BETHE{
-    double c1=4.0, c2=8.0, c3=50.0;
+struct BETHE{
+    double c1=4.0, c2=8.0, c3=50.0; // rg
     double c_sg=1.0;
 };
 
@@ -23,7 +27,6 @@ struct DED_GNODE{
     double hkl[3];//Miller indices
     complex<double> Ug, qg;
     double sg;//excitation error
-    double xg;// extinction distance
     bool   is_double_diffrac;
     bool   is_weak, is_strong;
     DED_GNODE *next=nullptr;
@@ -34,7 +37,7 @@ struct DED_GNODE{
 class DED_GVECTOR
 {
 public:
-    DED_GVECTOR(CELL *cell, DED_BETHE *bethe, double kz[3], double fn[3], double cutoff);
+    DED_GVECTOR(CELL *cell, BETHE *bethe, double kk[3], double fn[3], double kn, double dmin);
     ~DED_GVECTOR();
     int    numg=0;
     int    nstrong=0, nweak=0;
@@ -45,26 +48,80 @@ private:
     void   add_g_node(double hkl[3], complex<double> Ug, complex<double> qg, double sg, bool is_double_diffrac);
 };
 
-struct DED_INODE{
+struct DED_KNODE{
     double hkl[3];
+    double K[3];
+    double Kmagnitude;
     double intensity;
-    DED_INODE *next=nullptr;
+    DED_KNODE *next=nullptr;
 };
 
 class DED
 {
 public:
-    DED(CELL *cell, DED_BETHE *bethe, int zone[3], int fnorm[3], double voltage, double thickness, double dmin);
-    ~DED();
-    int    numi=0;
-    DED_INODE  *ihead=nullptr;
-    DED_INODE  *itail=nullptr;
-    void   ded(CELL *cell, const char *ded_path, char *png_path, int xaxis[3], int yaxis[3], double threshold);
-private:
+    int    numk=0;
+    DED_KNODE  *khead=nullptr;
+    DED_KNODE  *ktail=nullptr;
     double intensity_min=1.0e8, intensity_max=0.0;
+    DED_KNODE *knearest_1=nullptr, *knearest_2=nullptr;
+    DED(CELL *cell, BETHE *bethe, int zone[3], int fnorm[3], double fthick, double voltage, double dmin, double threshold);
+    ~DED();
+    void   rotate(CELL *cell, int x[3], int y[3]);
+    void   ded(char *ded_path);
+private:
+    double uvw[3][3]={0};
+    double axes[3][3]={0.0};
     void   compute_dynamic_matrix(complex<double> **dmat, CELL *cell, DED_GVECTOR *gvec);
     void   compute_diffraction_intensity(double *INTENS, complex<double> **DMAT, double Z, double KN, int NS);
-    void   add_intensity_node(double hkl[3], double intensity);
+    void   add_k_node(CELL *cell, double hkl[3], double intensity);
+    void   copy_knode_data(DED_KNODE *knode1, DED_KNODE *knode2);
+    void   swap_knode_data(DED_KNODE *knode1, DED_KNODE *knode2);
+    void   quick_sort(DED_KNODE *kstart, DED_KNODE *kend);
+    void   filter(DED_KNODE *kstart, double threshold);
+    void   img(char *png_path, double *x, double *y, double *value, int num);
+};
+
+struct DKD_KNODE{
+    double k[3];
+    double kn;
+    int    i, j;
+    int    hemisphere;//Northern = 1, Southern = -1
+    double intensity=0.0;
+    DKD_KNODE *next=nullptr;
+};
+
+class DKD_KVECTOR
+{
+public:
+    DKD_KVECTOR(CELL *cell, int impx, int impy);//Rosca-Lambert
+    ~DKD_KVECTOR();
+    int    numk=0;
+    DKD_KNODE *khead=nullptr;
+    DKD_KNODE *ktail=nullptr;
+    double intensity_min=1.0e8, intensity_max=0.0;
+    void   add_k_intensity(DKD_KNODE *knode, complex<double> **Lgh, complex<double> ***Sgh, int nstrong, int napos, int npos);
+private:
+    double deltax, deltay;
+    void   add_k_node(CELL *cell, int i, int j, double kn, bool southern_flag=false);
+};
+
+class DKD
+{
+public:
+    int    numpx=0, numpy=0;
+    int    impx, impy;
+    double **mLPNH=nullptr, **mLPSH=nullptr; //The modified Lambert Projection Northern/Southern Hemisphere
+    double **mSPNH=nullptr, **mSPSH=nullptr; //The master Stereographic Projection Northern/Southern Hemisphere
+    DKD(CELL *cell, DED_MC *mc, BETHE *bethe, double voltage, double dmin, int nump);
+    //DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double dmin);
+    ~DKD();
+    void   img(char *LPNH_path, char *LPSH_path, char *SPNH_path, char *SPSH_path, double dimension, int resolution);
+private:
+    void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DED_GVECTOR *gvec);
+    void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DED_GVECTOR *gvec);
+    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
+    void   compute_Lambert_projection(CELL *cell, DKD_KVECTOR *kvec);
+    void   compute_stereographic_projection(bool use_hexagonal);
 };
 
 #endif

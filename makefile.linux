@@ -9,7 +9,7 @@ OBJ=$(patsubst %.cpp, %.o, $(SRC))
 ./bin/AAVDP_linux: $(OBJ)
 	@echo "Start building AAVDP..."
 	$(CXX) $(OBJ) -o $@ \
-	-g $(INC) $(LIB)
+	-g -static $(INC) $(LIB)
 	@echo "End building AAVDP."
 
 %.o: %.cpp

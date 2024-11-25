@@ -4,12 +4,10 @@
 #include <cmath>
 #include <cstring>
 
-#define PATH_CHAR_NUMBER 100
-#define EXT_CHAR_NUMBER 20
-
 #define ZERO_LIMIT 1.0e-4
 
 #define PI 3.141592653589793
+#define HALF_PI 1.5707963267948966
 #define TWO_PI 6.283185307179586
 #define FOUR_PI 12.566370614359172
 #define DEG_TO_RAD 0.017453292519943295 //PI/180
@@ -44,6 +42,9 @@ T m_min(T a, T b)
 	return (a<b?a:b);
 }
 
+#define PATH_CHAR_NUMBER 100
+#define EXT_CHAR_NUMBER 20
+
 extern void int_to_str(char str[], int num);
 extern void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num);
 extern void split_path(char name[], char ext[], char file_path[]);
@@ -66,6 +67,8 @@ template <typename T>
 extern void vector_difference(T v[3], T v1[3], T v2[3]);
 template <typename T>
 extern void vector_multiply(T v[3], T v1[3], T v2[3]);
+template <typename T>
+extern double vector_angle(T v1[3], T v2[3]);
 template <typename T>
 extern void vector_rotate(T r_v[3], T R[3][3], T v[3]);
 extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
@@ -122,6 +125,11 @@ template <typename T>
 void vector_multiply(T v[3], T v1[3], T v2[3])
 {
     v[0]=v1[0]*v2[0]; v[1]=v1[1]*v2[1]; v[2]=v1[2]*v2[2];
+}
+template <typename T>
+double vector_angle(T v1[3], T v2[3])
+{
+    return acos(vector_dot(v1, v2)/vector_length(v1)/vector_length(v2));
 }
 template <typename T>
 void vector_rotate(T r_v[3], T R[3][3], T v[3])

@@ -1,36 +1,5 @@
 #include "GRAPH.h"
 
-void pseudo_Voigt(double *y, double *x, int num, double eta, double x0, double w)
-{
-    if(eta<0.0||eta>1.0){
-        printf("Unrecognized mixing parameter for pseudo-Voigt formula\n");
-        exit(1);
-    }
-    double c0=4, c1=4.0*log(2.0);
-    double constl=eta*sqrt(c0)/(PI*w), constg=(1.0-eta)*sqrt(c1)/(sqrt(PI)*w);
-    for(int i=0;i<num;i++){
-        double xk=2.0*(x[i]-x0)/w;
-        y[i]=constl/(1.0+c0*xk*xk)+constg*exp(-c1*xk*xk);
-    }
-}
-
-void convolve(double *res, double *values, double *weights, int vnum, int wnum, int anchor)
-{
-    double *c_values=nullptr; mallocate(&c_values, vnum);
-    for(int i=0;i<vnum;i++){
-        c_values[i]=values[i];
-    }
-    for(int i=0;i<vnum;i++){
-        res[i]=0.0;
-        int start_j=(anchor-i)>0?(anchor-i):0, end_j=(vnum-anchor+i)>wnum?(wnum+anchor-i):vnum;
-        int start_k=(anchor-i)>0?0:(i-anchor), end_k=(vnum-anchor+i)>wnum?wnum:(vnum-1-anchor+i);
-        for(int j=start_j, k=start_k;j<end_j&&k<end_k;j++, k++){
-            res[i]+=c_values[j]*weights[k];
-        }
-    }
-    deallocate(c_values);
-}
-
 void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy)
 {	
     png_structp png_ptr;  

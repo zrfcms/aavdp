@@ -27,7 +27,7 @@ EMEBSDmaster: Output from EMEBSDmaster follows next....
 Number of command line arguments detected:           1
  -> completed reading Monte Carlo data from C:\code\cygwin\home\15743\aavdp\examples\Fe_dkd\ref\Fe.h5
 
- --> total number of BSE electrons in MC data set       20000
+ --> total number of BSE electrons in DED_MC data set       20000
 ReadDataHDF: There is no Source data set in this structure file
 
 
