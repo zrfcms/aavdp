@@ -1,44 +1,13 @@
 #include "MATH.h"
 
-void int_to_str(char str[], int num)
+void gaussian(double **value, double *x, double *y, int num, double v0, double x0, double y0, double sigma)
 {
-    int i=0;
-    if(num<0){
-        num=-num;
-        str[i++]='-';
-    } 
-    do{
-        str[i++]=num%10+48;//0-9: 48-57
-        num/=10;
-    }while(num);
-    str[i]='\0';
-    int j=0;
-    if(str[0]=='-'){
-        j=1;
-        i++;
-    } 
-    for(;j<i/2;j++){
-        str[j]=str[j]+str[i-1-j];
-        str[i-1-j]=str[j]-str[i-1-j];
-        str[j]=str[j]-str[i-1-j];
-    } 
-}
-
-void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num)
-{
+    double c0=1.0/(2*PI*sigma*sigma), c1=1.0/(2*sigma*sigma);
     for(int i=0;i<num;i++){
-        strcat(file_path, exts[i]);
-    }
-}
-
-void split_path(char name[], char ext[], char file_path[])
-{
-    char *ch=strrchr(file_path,'.');
-    strcpy(name, file_path);
-    strcpy(ext, ch);
-    if(ch!=nullptr){
-        int pos=ch-file_path;
-        name[pos]='\0';
+        for(int j=0;j<num;j++){
+            value[i][j]=c0*exp(-c1*((y[i]-y0)*(y[i]-y0)+(x[j]-x0)*(x[j]-x0)));
+            value[i][j]*=v0;
+        }
     }
 }
 
@@ -220,7 +189,7 @@ void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2
     }
 }
 
-void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius)
+void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2])
 {
     ierr=0;
     xyz[0]=0.0; xyz[1]=0.0; xyz[2]=0.0;
@@ -228,12 +197,25 @@ void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, doub
         xyz[2]=1.0; 
     }else{
         double sum_q2=xy[0]*xy[0]+xy[1]*xy[1];
-        if(sum_q2>radius*radius){
+        if(sum_q2>1.0){
             ierr=1;
         }else{
             xyz[0]=2.0*xy[0]; xyz[1]=2.0*xy[1]; xyz[2]=1.0-sum_q2;
-            vector_constant(xyz, 1.0/(radius*radius+sum_q2), xyz);
+            vector_constant(xyz, 1.0/(1.0+sum_q2), xyz);
         }
+    }
+}
+
+void compute_sphere_from_orthographic_projection(double xyz[3], int &ierr, double xy[2])
+{
+    ierr=0;
+    xyz[0]=0.0; xyz[1]=0.0; xyz[2]=0.0;
+    if(fmax(fabs(xy[0]), fabs(xy[1]))<1.0e-8){
+        xyz[2]=1.0; 
+    }else{
+        double sum_q2=xy[0]*xy[0]+xy[1]*xy[1];
+        xyz[0]=xy[0]; xyz[1]=xy[1]; xyz[2]=1.0;
+        vector_normalize(xyz, xyz);
     }
 }
 

@@ -58,9 +58,11 @@ XRD::XRD(MODEL *model, double min2Theta, double max2Theta, double threshold, dou
     minTheta=min2Theta*DEG_TO_RAD_HALF; 
     maxTheta=max2Theta*DEG_TO_RAD_HALF;
     compute_diffraction_intensity(model, spacing, is_spacing_auto);
-    filter_diffraction_intensity(threshold);
     printf("[INFO] Number of diffraction intensity: %d\n", numk);
     printf("[INFO] Range of diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
+    filter_diffraction_intensity(threshold);
+    printf("[INFO] Number of filtered diffraction intensity: %d\n", numk);
+    printf("[INFO] Range of filtered diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
     unique_diffraction_intensity();
     printf("[INFO] Number of unique diffraction intensity: %d\n", numk);
     printf("[INFO] Range of unique diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
@@ -232,6 +234,7 @@ void XRD::img(char *png_path, double *x, double *y, int num, double xmin, double
         default:
             graph.hist(x, y, num);
             printf("[WARNING] Unrecognized image mode '%c'", mode);
+            exit(1);
     }
     graph.draw(png_path);
 }
@@ -254,7 +257,7 @@ void XRD::xrd(char *xrd_path)
     fclose(fp);
     printf("[INFO] Information for diffraction pattern stored in %s\n", xrd_path);
 
-    char png_path[PATH_CHAR_NUMBER];
+    char *png_path;
     strcpy(png_path, xrd_path); strcat(png_path, ".png");
     img(png_path, theta, intensity, numk, minTheta*RAD_TO_DEG_TWO, maxTheta*RAD_TO_DEG_TWO, 'h');
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);
@@ -307,7 +310,7 @@ void XRD::xrd(char *xrd_path, double mixing_param, double scherrer_lambda, doubl
     fclose(fp);
     printf("[INFO] Information for diffraction pattern stored in %s\n", xrd_path);
 
-    char png_path[PATH_CHAR_NUMBER];
+    char *png_path;
     strcpy(png_path, xrd_path); strcat(png_path, ".png");
     img(png_path, theta, intensity, nbin, minTheta*RAD_TO_DEG_TWO, maxTheta*RAD_TO_DEG_TWO, 'l');
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);
@@ -358,7 +361,7 @@ void XRD::xrd(char *xrd_path, double mixing_param, double FWHM, double bin2Theta
     fclose(fp);
     printf("[INFO] Information for diffraction pattern stored in %s\n", xrd_path);
 
-    char png_path[PATH_CHAR_NUMBER];
+    char *png_path;
     strcpy(png_path, xrd_path); strcat(png_path, ".png");
     img(png_path, theta, intensity, nbin, minTheta*RAD_TO_DEG_TWO, maxTheta*RAD_TO_DEG_TWO, 'l');
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);

@@ -1,1 +1,1 @@
-..\..\..\AAVDP.exe --ked ./Fe_twin.lmp -e Fe -auto -z 0 1 0 -x 0 0 1 -thr 1
+..\..\..\AAVDP.exe --ked ./Fe112_twin.lmp -e Fe -z 0 1 0 -o ./Fe112_twin.ked --gauss 0.02 --rotate -x 0 0 1 -y 1 0 0

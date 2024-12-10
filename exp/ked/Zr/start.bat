@@ -1,1 +1,0 @@
-..\..\..\AAVDP.exe --ked ./Zr_Ort.lmp -e Zr -auto -z 0 0 1 -x 1 0 0 -y 0 1 0

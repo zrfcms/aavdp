@@ -1,5 +1,207 @@
 #include "MODEL.h"
 
+double WK_get_Debye_Waller_factor(double G, double U)
+{
+    return exp(-0.5*U*U*G*G);
+}
+
+double WK_get_electron_scattering_factor(double G, const double A[4], const double B[4])
+{
+    double F=0.0;
+    double S2=G*G/FOUR_PI/FOUR_PI;//S: scattering vector
+    for(int i=0;i<4;i++){
+        double TEMP=B[i]*S2;
+        if(TEMP<0.1){
+            F+=A[i]*B[i]*(1.0-0.5*TEMP);
+        }else if(TEMP>20.0){
+            F+=A[i]/S2;
+        }else{
+            F+=A[i]*(1.0-exp(-TEMP))/S2;
+        }
+    }
+    return F;
+}
+
+double WK_get_core_excitation_factor(double G, int Z, double V)
+{
+    double F, A0=0.5289;
+    double K0=0.5068*sqrt(1022.0*V+V*V);
+    double DE=6*Z*1.0e-3;//Energy loss
+    double THETAB=G/(2.0*K0); //Bragg angle
+    double THETAE=DE/(2.0*V)*(2.0*V+1022.0)/(V+1022.0);//Angle corresponding to energy loss
+    double THETAN=1.0/(K0*0.885*A0/pow(Z, 0.333333));
+
+    double OMEGA=2.0*THETAB/THETAN;
+    double KAPPA=THETAE/THETAN;
+    double O2=OMEGA*OMEGA;
+    double K2=KAPPA*KAPPA;
+    double X1=OMEGA/((1.0+O2)*sqrt(O2+4.0*K2))*log((OMEGA+sqrt(O2+4.0*K2))/(2.0*KAPPA));
+    double X2=1.0/sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2)*log((1.0+2.0*K2+O2+sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2))/(2.0*KAPPA*sqrt(1.0+K2)));
+    double X3;
+    if(OMEGA>1e-2){
+        X3=1.0/(OMEGA*sqrt(O2+4.0*(1.0+K2)))*log((OMEGA+sqrt(O2+4.0*(1.0+K2)))/(2.0*sqrt(1.0+K2)));
+    }else{
+        X3=1.0/(4.0*(1.0+K2));
+    }
+    F=4.0/(A0*A0)*TWO_PI/(K0*K0)*2*Z/(THETAN*THETAN)*(-X1+X2-X3);
+    return F;
+}
+
+double WK_EI(double X)
+{
+    double A1=8.57332, A2=18.05901, A3=8.63476, A4=0.26777, B1=9.57332, B2=25.63295, B3=21.09965, B4=3.95849;
+    if(X>60.0){
+        printf("[ERROR] The input X of the function EI exceeds 60.0");
+        exit(1);
+    }
+    if(X<-60.0) return 0.0;
+    double ABSX=fabs(X);
+    if(X<-1.0){
+        return -(A4+ABSX*(A3+ABSX*(A2+ABSX*(A1+ABSX))))/(B4+ABSX*(B3+ABSX*(B2+ABSX*(B1+ABSX))))*exp(-ABSX)/ABSX;
+    }else{
+        double REI=0.577216+log(ABSX);
+        int I=1;
+        double SI=X;
+        double SUMS=SI;
+        while(fabs(SI/X)>1.0e-6){
+            SI=SI*X*I/((I+1)*(I+1));
+            SUMS+=SI;
+            I++;
+        };
+        REI+=SUMS;
+        return REI;
+    }
+}
+
+double WK_IH2(double X)
+{
+    double INVX=1.0/X;
+    int    I=int(200.0*INVX);
+    if(I<0||I>DURCH_NUMBER-1){
+        printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
+        exit(1);
+    }
+    double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];
+    double RIH2=D1+200.0*(D2-D1)*(INVX-0.5e-3*I);
+    return RIH2;
+}
+
+double WK_IH1(double X1, double X2, double X3)
+{
+    double RIH1;
+    if(X2<=20.0&&X3<=20.0){
+        RIH1=exp(-X1)*(WK_EI(X2)-WK_EI(X3));
+        return RIH1;
+    }
+    if(X2>20.0){
+        RIH1=exp(X2-X1)*WK_IH2(X2)/X2;
+    }else{
+        RIH1=exp(-X1)*WK_EI(X2);
+    }
+    if(X3>20.0){
+        RIH1-=exp(X3-X1)*WK_IH2(X3)/X3;
+    }else{
+        RIH1-=exp(-X1)*WK_EI(X3);
+    }
+    return RIH1;
+}
+
+double WK_I1(double BI, double BJ, double G)
+{
+    double RI1;
+    double G2=G*G;
+    double EPS=fmax(BI, BJ)*G2;
+    if(EPS<=0.1){
+        double RI1=PI*(BI*log((BI+BJ)/BI)+BJ*log((BI+BJ)/BJ));
+        if(fabs(G)<1.0e-12){
+            return RI1;
+        }
+        double BI2=BI*BI, BJ2=BJ*BJ;
+        double TEMP=0.5*BI2*log(BI/(BI+BJ))+0.5*BJ2*log(BJ/(BI+BJ));
+        TEMP+=0.75*(BI2+BJ2)-0.25*(BI+BJ)*(BI+BJ);
+        TEMP+=-0.5*(BI-BJ)*(BI-BJ);
+        RI1+=PI*G2*TEMP;
+        return RI1;
+    }
+    double BIG2=BI*G2, BJG2=BJ*G2;
+    RI1=2.0*PRE_CONST_RI1+log(BIG2)+log(BJG2)-2.0*WK_EI(-BI*BJ*G2/(BI+BJ));
+    RI1+=WK_IH1(BIG2, BIG2*BI/(BI+BJ), BIG2);
+    RI1+=WK_IH1(BJG2, BJG2*BJ/(BI+BJ), BJG2);
+    RI1=RI1*PI/G2;
+    return RI1;
+}
+
+double WK_I2(double BI, double BJ, double G, double U)
+{
+    double RI2;
+    double U2=U*U, G2=G*G;
+    double HALFU2=0.5*U2, QUARTERU2=0.25*U2;
+    double BIUH=BI+HALFU2, BJUH=BJ+HALFU2;
+    double BIU=BI+U2, BJU=BJ+U2;
+    double EPS=fmax(fmax(BI, BJ), U2)*G2;
+
+    if(EPS<=0.1){
+        double TEMP1=(BI+U2)*log((BI+BJ+U2)/(BI+U2));
+        TEMP1+=BJ*log((BI+BJ+U2)/(BJ+U2));
+        TEMP1+=U2*log(U2/(BJ+U2));
+        if(G==0.0){
+            RI2=PI*TEMP1;
+        }else{
+            double TEMP2=0.5*HALFU2*HALFU2*log( BIU*BJU/(U2*U2));
+            TEMP2+=0.5*BIUH*BIUH*log(BIU/(BIUH+BJUH));
+            TEMP2+=0.5*BJUH*BJUH*log(BJU/(BIUH+BJUH));
+            TEMP2+=0.25*BIU*BIU+0.5*BI*BI;
+            TEMP2+=0.25*BJU*BJU+0.5*BJ*BJ;
+            TEMP2+=-0.25*(BIUH+BJUH)*(BIUH+BJUH);
+            TEMP2+=-0.5*pow((BI*BIU-BJ*BJU)/(BIUH+BJUH), 2);
+            TEMP2+=-HALFU2*HALFU2;
+            RI2=PI*(TEMP1+G2*TEMP2);
+        }
+    }else{
+        RI2=WK_EI(-HALFU2*G2*BIUH/BIU)+WK_EI(-HALFU2*G2*BJUH/BJU);
+        RI2=2.0*(RI2-WK_EI(-BIUH*BJUH*G2/(BIUH+BJUH))-WK_EI(-QUARTERU2*G2));
+        RI2+=WK_IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BIU);
+        RI2+=WK_IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BJU);
+        RI2+=WK_IH1(BIUH*G2, BIUH*BIUH*G2/(BIUH+BJUH), BIUH*BIUH*G2/BIU);
+        RI2+=WK_IH1(BJUH*G2, BJUH*BJUH*G2/(BIUH+BJUH), BJUH*BJUH*G2/BJU);
+        RI2=RI2*PI/G2;
+    }
+    return RI2;
+}
+
+double WK_get_absorptive_form_factor(double G, double U, const double A[4], const double B[4])
+{
+    double F=0.0;
+    double AF[4], BF[4];
+    double FP2=FOUR_PI*FOUR_PI;
+    double DWF=WK_get_Debye_Waller_factor(G, U);
+    for(int i=0;i<4;i++){
+        AF[i]=A[i]*FP2; BF[i]=B[i]/FP2;
+    }
+    for(int j=0;j<4;j++){
+        F+=AF[j]*AF[j]*(DWF*WK_I1(BF[j], BF[j], G)-WK_I2(BF[j], BF[j], G, U));
+        for(int i=0;i<j;i++){
+            F+=2.0*AF[j]*AF[i]*(DWF*WK_I1(BF[i], BF[j], G)-WK_I2(BF[i], BF[j], G, U));
+        }
+    }
+    return F;
+}
+
+complex<double> WK_get_scattering_amplitude(double G, double U, int Z, double V)
+{
+    complex<double> F(0.0, 0.0);
+    double FR, FI;
+    double GAMMA=(V+511.0)/511.0;
+    double K0=0.5068*sqrt(1022.0*V+V*V);
+    double DWF=WK_get_Debye_Waller_factor(G, U);//Debye-Waller amplitude is included
+    const double *A=E_WK_AA[Z-1], *B=E_WK_BB[Z-1];
+    FR=FOUR_PI*DWF*WK_get_electron_scattering_factor(G, A, B);//Elastic part
+    FI=DWF*WK_get_core_excitation_factor(G, Z, V)+WK_get_absorptive_form_factor(G, U, A, B);//Inelastic part
+    FR=FR*GAMMA; FI=FI*GAMMA*GAMMA/K0;//acceleration voltage (relativistic scattering) is included
+    F.real(FR); F.imag(FI);
+    return F;
+}
+
 CELL::CELL(const char *cell_path, const char types[][10], const double DWs[], double voltage)
 {
     QB_tools QB;
@@ -290,7 +492,6 @@ void CELL::logging()
     printf("[INFO] Density [in g/cm^3], atomic number averaged, atomic mass averaged [g/mol] = %.5f, %.5f, %.5f\n", density, ave_Z, ave_M);
     printf("[INFO] FOURIER INFORMATION\n");
     printf("[INFO] Mean inner potential [V]:                %.5f\n", fouri0.Vmod);
-    //printf("[INFO] Wavelength corrected for refraction\n");
     printf("[INFO] Relativistic correction factor [V]:      %.5f\n", fouri0.gamma);
     printf("[INFO] Relativistic Accelerating Potential [V]: %.5f\n", fouri0.voltage);
     printf("[INFO] Electron Wavelength [nm]:                %.5f\n", fouri0.lambda);
@@ -676,9 +877,9 @@ void CELL::update_Fourier_coefficient(double voltage, double g[3], bool is_shift
         GWK=length(g, 'r')*G_TO_WK;
     }
     for(int i=0;i<napos;i++){//loop over atoms in the asymmetric unit
-        double UWK=sqrt(apos_DW[i]*DW_TO_WK);//root-mean-square value of the atomic vibration amplitude or thermal displacement in [nm]
+        double UWK=sqrt(apos_DW[i]*DW_TO_WK)+1.0e-12;//root-mean-square value of the atomic vibration amplitude or thermal displacement in [nm]
         int    Z=apos_Z[i];
-        complex<double> Fscat=get_scattering_amplitude(GWK, UWK, Z, voltage)*complex<double>(apos_occupation[i], 0.0);
+        complex<double> Fscat=WK_get_scattering_amplitude(GWK, UWK, Z, voltage)*complex<double>(apos_occupation[i], 0.0);
         complex<double> Fpos(0.0, 0.0);
         for(int j=0;j<apos_multi[i];j++){//loop over atoms in orbit
             double q=-1.0*TWO_PI*(g[0]*apos_pos[i][j][0]+g[1]*apos_pos[i][j][1]+g[2]*apos_pos[i][j][2]);
@@ -712,208 +913,6 @@ void CELL::update_Fourier_coefficient(double voltage, double g[3], bool is_shift
         fouri.qg.real(1.0/fouri.sig-sin(betag)/fouri.sigp); 
         fouri.qg.imag(cos(betag)/fouri.sigp);
     }
-}
-
-complex<double> CELL::get_scattering_amplitude(double G, double U, int Z, double V)
-{
-    complex<double> F(0.0, 0.0);
-    double FR, FI;
-    double GAMMA=(V+511.0)/511.0;
-    double K0=0.5068*sqrt(1022.0*V+V*V);
-    double DWF=get_Debye_Waller_factor(G, U);//Debye-Waller amplitude is included
-    const double *A=E_WK_AA[Z-1], *B=E_WK_BB[Z-1];
-    FR=FOUR_PI*DWF*get_electron_scattering_factor(G, A, B);//Elastic part
-    FI=DWF*get_core_excitation_factor(G, Z, V)+get_absorptive_form_factor(G, U, A, B);//Inelastic part
-    FR=FR*GAMMA; FI=FI*GAMMA*GAMMA/K0;//acceleration voltage (relativistic scattering) is included
-    F.real(FR); F.imag(FI);
-    return F;
-}
-
-double CELL::get_Debye_Waller_factor(double G, double U)
-{
-    return exp(-0.5*U*U*G*G);
-}
-
-double CELL::get_electron_scattering_factor(double G, const double A[4], const double B[4])
-{
-    double F=0.0;
-    double S2=G*G/FOUR_PI/FOUR_PI;//S: scattering vector
-    for(int i=0;i<4;i++){
-        double TEMP=B[i]*S2;
-        if(TEMP<0.1){
-            F+=A[i]*B[i]*(1.0-0.5*TEMP);
-        }else if(TEMP>20){
-            F+=A[i]/S2;
-        }else{
-            F+=A[i]*(1.0-exp(-TEMP))/S2;
-        }
-    }
-    return F;
-}
-
-double CELL::get_core_excitation_factor(double G, int Z, double V)
-{
-    double F, A0=0.5289;
-    double K0=0.5068*sqrt(1022.0*V+V*V);
-    double DE=6*Z*1.0e-3;//Energy loss
-    double THETAB=G/(2.0*K0); //Bragg angle
-    double THETAE=DE/(2.0*V)*(2.0*V+1022.0)/(V+1022.0);//Angle corresponding to energy loss
-    double THETAN=1.0/(K0*0.885*A0/pow(Z, 0.333333));
-
-    double OMEGA=2.0*THETAB/THETAN;
-    double KAPPA=THETAE/THETAN;
-    double O2=OMEGA*OMEGA;
-    double K2=KAPPA*KAPPA;
-    double X1=OMEGA/((1.0+O2)*sqrt(O2+4.0*K2))*log((OMEGA+sqrt(O2+4.0*K2))/(2.0*KAPPA));
-    double X2=1.0/sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2)*log((1.0+2.0*K2+O2+sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2))/(2.0*KAPPA*sqrt(1.0+K2)));
-    double X3;
-    if(OMEGA>1e-2){
-        X3=1.0/(OMEGA*sqrt(O2+4.0*(1.0+K2)))*log((OMEGA+sqrt(O2+4.0*(1.0+K2)))/(2.0*sqrt(1.0+K2)));
-    }else{
-        X3=1.0/(4.0*(1.0+K2));
-    }
-    F=4.0/(A0*A0)*TWO_PI/(K0*K0)*2*Z/(THETAN*THETAN)*(-X1+X2-X3);
-    return F;
-}
-
-double CELL::get_absorptive_form_factor(double G, double U, const double A[4], const double B[4])
-{
-    double F=0.0;
-    double AF[4], BF[4];
-    double FP2=FOUR_PI*FOUR_PI;
-    double DWF=exp(-0.5*U*U*G*G);
-    for(int i=0;i<4;i++){
-        AF[i]=A[i]*FP2; BF[i]=B[i]/FP2;
-    }
-    for(int j=0;j<4;j++){
-        F+=AF[j]*AF[j]*(DWF*I1(BF[j], BF[j], G)-I2(BF[j], BF[j], G, U));
-        for(int i=0;i<j;i++){
-            F+=2.0*AF[j]*AF[i]*(DWF*I1(BF[i], BF[j], G)-I2(BF[i], BF[j], G, U));
-        }
-    }
-    return F;
-}
-
-double CELL::EI(double X)
-{
-    double A1=8.57332, A2=18.05901, A3=8.63476, A4=0.26777, B1=9.57332, B2=25.63295, B3=21.09965, B4=3.95849;
-    if(X>60.0){
-        printf("[ERROR] the input of the function EI X > 60.");
-        exit(1);
-    }
-    if(X<-60.0) return 0.0;
-    double ABSX=abs(X);
-    if(X<-1.0){
-        return -(A4+ABSX*(A3+ABSX*(A2+ABSX*(A1+ABSX))))/(B4+ABSX*(B3+ABSX*(B2+ABSX*(B1+ABSX))))*exp(-ABSX)/ABSX;
-    }else{
-        double REI=0.577216+log(ABSX);
-        int I=1;
-        double SI=X;
-        double SUMS=SI;
-        while(abs(SI/X)>1.0e-6){
-            SI=SI*X*I/((I+1)*(I+1));
-            SUMS+=SI;
-            I++;
-        };
-        REI+=SUMS;
-        return REI;
-    }
-}
-
-double CELL::IH1(double X1, double X2, double X3)
-{
-    double RIH1;
-    if(X2<=20.0&&X3<=20.0){
-        RIH1=exp(-X1)*(EI(X2)-EI(X3));
-        return RIH1;
-    }
-    if(X2>20.0){
-        RIH1=exp(X2-X1)*IH2(X2)/X2;
-    }else{
-        RIH1=exp(-X1)*EI(X2);
-    }
-    if(X3>20.0){
-        RIH1-=exp(X3-X1)*IH2(X3)/X3;
-    }else{
-        RIH1-=exp(-X1)*EI(X3);
-    }
-    return RIH1;
-}
-
-double CELL::IH2(double X)
-{
-    double INVX=1.0/X;
-    int    I=int(200.0*INVX);
-    if(I<0||I>DURCH_NUMBER-1){
-        printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
-        exit(1);
-    }
-    double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];
-    double RIH2=D1+200.0*(D2-D1)*(INVX-0.5e-3*I);
-    return RIH2;
-}
-
-double CELL::I1(double BI, double BJ, double G)
-{
-    double RI1;
-    double G2=G*G;
-    double EPS=fmax(BI, BJ)*G2;
-    if(EPS<=0.1){
-        double RI1=PI*(BI*log((BI+BJ)/BI)+BJ*log((BI+BJ)/BJ));
-        if(fabs(G)<ZERO){
-            return RI1;
-        }
-        double BI2=BI*BI, BJ2=BJ*BJ;
-        double TEMP=0.5*BI2*log(BI/(BI+BJ))+0.5*BJ2*log(BJ/(BI+BJ));
-        TEMP+=0.75*(BI2+BJ2)-0.25*(BI+BJ)*(BI+BJ);
-        TEMP+=-0.5*(BI-BJ)*(BI-BJ);
-        RI1+=PI*G2*TEMP;
-        return RI1;
-    }
-    double BIG2=BI*G2, BJG2=BJ*G2;
-    RI1=2.0*PRE_CONST_RI1+log(BIG2)+log(BJG2)-2.0*EI(-BI*BJ*G2/(BI+BJ));
-    RI1+=IH1(BIG2, BIG2*BI/(BI+BJ), BIG2);
-    RI1+=IH1(BJG2, BJG2*BJ/(BI+BJ), BJG2);
-    RI1=RI1*PI/G2;
-    return RI1;
-}
-
-double CELL::I2(double BI, double BJ, double G, double U)
-{
-    double RI2;
-    double U2=U*U, G2=G*G;
-    double HALFU2=0.5*U2, QUARTERU2=0.25*U2;
-    double BIUH=BI+HALFU2, BJUH=BJ+HALFU2;
-    double BIU=BI+U2, BJU=BJ+U2;
-    double EPS=fmax(fmax(BI, BJ), U2)*G2;
-
-    if(EPS<=0.1){
-        double TEMP1=(BI+U2)*log((BI+BJ+U2)/(BI+U2));
-        TEMP1+=BJ*log((BI+BJ+U2)/(BJ+U2));
-        TEMP1+=U2*log(U2/(BJ+U2));
-        if(G==0.0){
-            RI2=PI*TEMP1;
-        }else{
-            double TEMP2=0.5*HALFU2*HALFU2*log( BIU*BJU/(U2*U2));
-            TEMP2+=0.5*BIUH*BIUH*log(BIU/(BIUH+BJUH));
-            TEMP2+=0.5*BJUH*BJUH*log(BJU/(BIUH+BJUH));
-            TEMP2+=0.25*BIU*BIU+0.5*BI*BI;
-            TEMP2+=0.25*BJU*BJU+0.5*BJ*BJ;
-            TEMP2+=-0.25*(BIUH+BJUH)*(BIUH+BJUH);
-            TEMP2+=-0.5*pow((BI*BIU-BJ*BJU)/(BIUH+BJUH), 2);
-            TEMP2+=-HALFU2*HALFU2;
-            RI2=PI*(TEMP1+G2*TEMP2);
-        }
-    }else{
-        RI2=EI(-HALFU2*G2*BIUH/BIU)+EI(-HALFU2*G2*BJUH/BJU);
-        RI2=2.0*(RI2-EI(-BIUH*BJUH*G2/(BIUH+BJUH))-EI(-QUARTERU2*G2));
-        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BIU);
-        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BJU);
-        RI2+=IH1(BIUH*G2, BIUH*BIUH*G2/(BIUH+BJUH), BIUH*BIUH*G2/BIU);
-        RI2+=IH1(BJUH*G2, BJUH*BJUH*G2/(BIUH+BJUH), BJUH*BJUH*G2/BJU);
-        RI2=RI2*PI/G2;
-    }
-    return RI2;
 }
 
 MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[])
@@ -1343,208 +1342,6 @@ VMODEL::~VMODEL()
 
 }
 
-double VMODEL::get_Debye_Waller_factor(double G, double U)
-{
-    return exp(-0.5*U*U*G*G);
-}
-
-double VMODEL::get_electron_scattering_factor(double G, const double A[4], const double B[4])
-{
-    double F=0.0;
-    double S2=G*G/FOUR_PI/FOUR_PI;//S: scattering vector
-    for(int i=0;i<4;i++){
-        double TEMP=B[i]*S2;
-        if(TEMP<0.1){
-            F+=A[i]*B[i]*(1.0-0.5*TEMP);
-        }else if(TEMP>20.0){
-            F+=A[i]/S2;
-        }else{
-            F+=A[i]*(1.0-exp(-TEMP))/S2;
-        }
-    }
-    return F;
-}
-
-double VMODEL::get_core_excitation_factor(double G, int Z, double V)
-{
-    double F, A0=0.5289;
-    double K0=0.5068*sqrt(1022.0*V+V*V);
-    double DE=6*Z*1.0e-3;//Energy loss
-    double THETAB=G/(2.0*K0); //Bragg angle
-    double THETAE=DE/(2.0*V)*(2.0*V+1022.0)/(V+1022.0);//Angle corresponding to energy loss
-    double THETAN=1.0/(K0*0.885*A0/pow(Z, 0.333333));
-
-    double OMEGA=2.0*THETAB/THETAN;
-    double KAPPA=THETAE/THETAN;
-    double O2=OMEGA*OMEGA;
-    double K2=KAPPA*KAPPA;
-    double X1=OMEGA/((1.0+O2)*sqrt(O2+4.0*K2))*log((OMEGA+sqrt(O2+4.0*K2))/(2.0*KAPPA));
-    double X2=1.0/sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2)*log((1.0+2.0*K2+O2+sqrt((1.0+O2)*(1.0+O2)+4.0*K2*O2))/(2.0*KAPPA*sqrt(1.0+K2)));
-    double X3;
-    if(OMEGA>1e-2){
-        X3=1.0/(OMEGA*sqrt(O2+4.0*(1.0+K2)))*log((OMEGA+sqrt(O2+4.0*(1.0+K2)))/(2.0*sqrt(1.0+K2)));
-    }else{
-        X3=1.0/(4.0*(1.0+K2));
-    }
-    F=4.0/(A0*A0)*TWO_PI/(K0*K0)*2*Z/(THETAN*THETAN)*(-X1+X2-X3);
-    return F;
-}
-
-double VMODEL::get_absorptive_form_factor(double G, double U, const double A[4], const double B[4])
-{
-    double F=0.0;
-    double AF[4], BF[4];
-    double FP2=FOUR_PI*FOUR_PI;
-    double DWF=get_Debye_Waller_factor(G, U);
-    for(int i=0;i<4;i++){
-        AF[i]=A[i]*FP2; BF[i]=B[i]/FP2;
-    }
-    for(int j=0;j<4;j++){
-        F+=AF[j]*AF[j]*(DWF*I1(BF[j], BF[j], G)-I2(BF[j], BF[j], G, U));
-        for(int i=0;i<j;i++){
-            F+=2.0*AF[j]*AF[i]*(DWF*I1(BF[i], BF[j], G)-I2(BF[i], BF[j], G, U));
-        }
-    }
-    return F;
-}
-
-complex<double> VMODEL::get_scattering_amplitude(double G, double U, int Z, double V)
-{
-    complex<double> F(0.0, 0.0);
-    double FR, FI;
-    double GAMMA=(V+511.0)/511.0;
-    double K0=0.5068*sqrt(1022.0*V+V*V);
-    double DWF=get_Debye_Waller_factor(G, U);//Debye-Waller amplitude is included
-    const double *A=E_WK_AA[Z-1], *B=E_WK_BB[Z-1];
-    FR=FOUR_PI*DWF*get_electron_scattering_factor(G, A, B);//Elastic part
-    FI=DWF*get_core_excitation_factor(G, Z, V)+get_absorptive_form_factor(G, U, A, B);//Inelastic part
-    FR=FR*GAMMA; FI=FI*GAMMA*GAMMA/K0;//acceleration voltage (relativistic scattering) is included
-    F.real(FR); F.imag(FI);
-    return F;
-}
-
-double VMODEL::EI(double X)
-{
-    double A1=8.57332, A2=18.05901, A3=8.63476, A4=0.26777, B1=9.57332, B2=25.63295, B3=21.09965, B4=3.95849;
-    if(X>60.0){
-        printf("[ERROR] The input X of the function EI exceeds 60.0");
-        exit(1);
-    }
-    if(X<-60.0) return 0.0;
-    double ABSX=fabs(X);
-    if(X<-1.0){
-        return -(A4+ABSX*(A3+ABSX*(A2+ABSX*(A1+ABSX))))/(B4+ABSX*(B3+ABSX*(B2+ABSX*(B1+ABSX))))*exp(-ABSX)/ABSX;
-    }else{
-        double REI=0.577216+log(ABSX);
-        int I=1;
-        double SI=X;
-        double SUMS=SI;
-        while(fabs(SI/X)>1.0e-6){
-            SI=SI*X*I/((I+1)*(I+1));
-            SUMS+=SI;
-            I++;
-        };
-        REI+=SUMS;
-        return REI;
-    }
-}
-
-double VMODEL::IH1(double X1, double X2, double X3)
-{
-    double RIH1;
-    if(X2<=20.0&&X3<=20.0){
-        RIH1=exp(-X1)*(EI(X2)-EI(X3));
-        return RIH1;
-    }
-    if(X2>20.0){
-        RIH1=exp(X2-X1)*IH2(X2)/X2;
-    }else{
-        RIH1=exp(-X1)*EI(X2);
-    }
-    if(X3>20.0){
-        RIH1-=exp(X3-X1)*IH2(X3)/X3;
-    }else{
-        RIH1-=exp(-X1)*EI(X3);
-    }
-    return RIH1;
-}
-
-double VMODEL::IH2(double X)
-{
-    double INVX=1.0/X;
-    int    I=int(200.0*INVX);
-    if(I<0||I>DURCH_NUMBER-1){
-        printf("[ERROR] Unrecognized index %d in searching durch table.\n", I);
-        exit(1);
-    }
-    double D1=DURCH_TABLE[I], D2=DURCH_TABLE[I+1];
-    double RIH2=D1+200.0*(D2-D1)*(INVX-0.5e-3*I);
-    return RIH2;
-}
-
-double VMODEL::I1(double BI, double BJ, double G)
-{
-    double RI1;
-    double G2=G*G;
-    double EPS=fmax(BI, BJ)*G2;
-    if(EPS<=0.1){
-        double RI1=PI*(BI*log((BI+BJ)/BI)+BJ*log((BI+BJ)/BJ));
-        if(fabs(G)<ZERO){
-            return RI1;
-        }
-        double BI2=BI*BI, BJ2=BJ*BJ;
-        double TEMP=0.5*BI2*log(BI/(BI+BJ))+0.5*BJ2*log(BJ/(BI+BJ));
-        TEMP+=0.75*(BI2+BJ2)-0.25*(BI+BJ)*(BI+BJ);
-        TEMP+=-0.5*(BI-BJ)*(BI-BJ);
-        RI1+=PI*G2*TEMP;
-        return RI1;
-    }
-    double BIG2=BI*G2, BJG2=BJ*G2;
-    RI1=2.0*PRE_CONST_RI1+log(BIG2)+log(BJG2)-2.0*EI(-BI*BJ*G2/(BI+BJ));
-    RI1+=IH1(BIG2, BIG2*BI/(BI+BJ), BIG2);
-    RI1+=IH1(BJG2, BJG2*BJ/(BI+BJ), BJG2);
-    RI1=RI1*PI/G2;
-    return RI1;
-}
-
-double VMODEL::I2(double BI, double BJ, double G, double U)
-{
-    double RI2;
-    double U2=U*U, G2=G*G;
-    double HALFU2=0.5*U2, QUARTERU2=0.25*U2;
-    double BIUH=BI+HALFU2, BJUH=BJ+HALFU2;
-    double BIU=BI+U2, BJU=BJ+U2;
-    double EPS=fmax(fmax(BI, BJ), U2)*G2;
-
-    if(EPS<=0.1){
-        double TEMP1=(BI+U2)*log((BI+BJ+U2)/(BI+U2));
-        TEMP1+=BJ*log((BI+BJ+U2)/(BJ+U2));
-        TEMP1+=U2*log(U2/(BJ+U2));
-        if(G==0.0){
-            RI2=PI*TEMP1;
-        }else{
-            double TEMP2=0.5*HALFU2*HALFU2*log( BIU*BJU/(U2*U2));
-            TEMP2+=0.5*BIUH*BIUH*log(BIU/(BIUH+BJUH));
-            TEMP2+=0.5*BJUH*BJUH*log(BJU/(BIUH+BJUH));
-            TEMP2+=0.25*BIU*BIU+0.5*BI*BI;
-            TEMP2+=0.25*BJU*BJU+0.5*BJ*BJ;
-            TEMP2+=-0.25*(BIUH+BJUH)*(BIUH+BJUH);
-            TEMP2+=-0.5*pow((BI*BIU-BJ*BJU)/(BIUH+BJUH), 2);
-            TEMP2+=-HALFU2*HALFU2;
-            RI2=PI*(TEMP1+G2*TEMP2);
-        }
-    }else{
-        RI2=EI(-HALFU2*G2*BIUH/BIU)+EI(-HALFU2*G2*BJUH/BJU);
-        RI2=2.0*(RI2-EI(-BIUH*BJUH*G2/(BIUH+BJUH))-EI(-QUARTERU2*G2));
-        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BIU);
-        RI2+=IH1(HALFU2*G2, QUARTERU2*G2, QUARTERU2*U2*G2/BJU);
-        RI2+=IH1(BIUH*G2, BIUH*BIUH*G2/(BIUH+BJUH), BIUH*BIUH*G2/BIU);
-        RI2+=IH1(BJUH*G2, BJUH*BJUH*G2/(BIUH+BJUH), BJUH*BJUH*G2/BJU);
-        RI2=RI2*PI/G2;
-    }
-    return RI2;
-}
-
 void VMODEL::set_wavelength()
 {
     double g[3]={0.0};
@@ -1567,9 +1364,9 @@ double VMODEL::get_diffraction_intensity(double G, double g[3], bool is_zero)
         GWK=G*VG_TO_WK;
     }
     for(int i=0;i<natom;i++){
-        double UWK=sqrt(atom_DW[i]*VDW_TO_WK)+1.0e-6;//avoiding UWK=0.0
+        double UWK=sqrt(atom_DW[i]*VDW_TO_WK)+1.0e-12;//avoiding UWK=0.0
         int    Z=atom_Z[i];
-        complex<double> Fscat=get_scattering_amplitude(GWK, UWK, Z, voltage)*complex<double>(atom_occupation[i], 0.0);
+        complex<double> Fscat=WK_get_scattering_amplitude(GWK, UWK, Z, voltage)*complex<double>(atom_occupation[i], 0.0);
         double q=-1.0*TWO_PI*(g[0]*atom_pos[i][0]+g[1]*atom_pos[i][1]+g[2]*atom_pos[i][2]);
         complex<double> Fpos(cos(q), sin(q));
         FV+=Fscat.real()*Fpos; FVp+=Fscat.imag()*Fpos;

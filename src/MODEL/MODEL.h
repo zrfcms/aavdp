@@ -13,6 +13,26 @@
 #include "../QSPG/spglib/spg_database.h"
 #include "../QB/QB.h"
 #include "../QSPG/QSPG.h"
+using namespace std;
+
+#define PRE_CONST_RI1 0.5772157
+#define DURCH_NUMBER 21
+const double DURCH_TABLE[DURCH_NUMBER]={
+1.000000,1.005051,1.010206,1.015472,1.020852,
+1.026355,1.031985,1.037751,1.043662,1.049726,
+1.055956,1.062364,1.068965,1.075780,1.082830,
+1.090140,1.097737,1.105647,1.113894,1.122497,
+1.131470};
+double WK_get_Debye_Waller_factor(double G, double U);
+double WK_get_electron_scattering_factor(double G, const double A[4], const double B[4]);
+double WK_get_core_excitation_factor(double G, int Z, double V);
+double WK_EI(double X);
+double WK_IH2(double X);
+double WK_IH1(double X1, double X2, double X3);
+double WK_I1(double BI, double BJ, double G);
+double WK_I2(double BI, double BJ, double G, double U);
+double WK_get_absorptive_form_factor(double G, double U, const double A[4], const double B[4]);
+complex<double> WK_get_scattering_amplitude(double G, double U, int Z, double V);
 
 #define SYMPREC 0.001
 #define SYMPREC2 0.000001
@@ -21,15 +41,12 @@
 #define DW_TO_WK 1.2665147955292222 //100.0/(8.0*pow(PI, 2))
 #define PRE_CONST_V 0.04787801
 #define PRE_CONST_U 0.664840340614319 //2.0*m0*e/h**2*1.0E-18
-#define PRE_CONST_RI1 0.5772157
 
 #define AVOGADRO_CONSTANT 6.02214076e23
 #define PLANK_CONSTANT 6.62607015e-34 //J·s
 #define ELECTRON_CHARGE 1.602176634e-19 //Coulomb
 #define ELECTRON_REST_MASS 9.1093837090e-31 //kg
 #define LIGHT_VELOCITY 299792458.0 //m/s
-
-using namespace std;
 
 struct FOURIER
 {
@@ -132,17 +149,6 @@ private:
     void   compute_symmetry_matrices(int sgnum, int (*rots)[3][3], double (*trans)[3], int noperation);
     void   compute_asymmetric_atomic_positions(double (*atom_pos)[3], int *atom_type, int natom);
     void   compute_atomic_density();
-
-    complex<double> get_scattering_amplitude(double G, double U, int Z, double V);
-    double get_Debye_Waller_factor(double G, double U);
-    double get_electron_scattering_factor(double G, const double A[4], const double B[4]);
-    double get_core_excitation_factor(double G, int Z, double V);//Image formation by inelastically scattered electrons in electron microscopy, 1976, H. Rose, p139-158
-    double get_absorptive_form_factor(double G, double U, const double A[4], const double B[4]);
-    double EI(double X);
-    double IH1(double X1, double X2, double X3);
-    double IH2(double X);
-    double I1(double BI, double BJ, double G);
-    double I2(double BI, double BJ, double G, double U);
 };
 
 class MODEL
@@ -235,16 +241,6 @@ public:
 private:
     double voltage;//in kV
     void   set_wavelength();
-    double get_Debye_Waller_factor(double G, double U);
-    double get_electron_scattering_factor(double G, const double A[4], const double B[4]);
-    double get_core_excitation_factor(double G, int Z, double V);//Image formation by inelastically scattered electrons in electron microscopy, 1976, H. Rose, p139-158
-    double get_absorptive_form_factor(double G, double U, const double A[4], const double B[4]);
-    complex<double> get_scattering_amplitude(double G, double U, int Z, double V);
-    double EI(double X);
-    double IH1(double X1, double X2, double X3);
-    double IH2(double X);
-    double I1(double BI, double BJ, double G);
-    double I2(double BI, double BJ, double G, double U);
 };
 
 #endif

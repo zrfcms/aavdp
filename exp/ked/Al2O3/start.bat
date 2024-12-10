@@ -1,2 +1,2 @@
-..\..\..\AAVDP.exe --ked ./Al2O3.lmp -e Al O -auto -z 0 0 1
-..\..\..\AAVDP.exe --ked ./Al2O3_Ort.lmp -e Al O -auto -z 1 0 0 -x 0 0 1
+..\..\..\AAVDP.exe --ked ./Al2O3.lmp -e Al O -q 0.8 -o ./Al2O3.001.ked --gauss 
+..\..\..\AAVDP.exe --ked ./Al2O3.lmp -e Al O -z 2 1 0 -fn 2 1 0 -q 0.8 -o ./Al2O3.210.ked --gauss --rotate -x 0 0 1 -y -0.44721360 0.89442719 0

@@ -1,0 +1,2 @@
+--kkd ./exp/Fe_kkd/Fe.ked3 -z 1 1 3 -x 0 3 -1 -y 10 -1 -3 -ty 50 -tx 35 -dpi 50
+--kkd ./exp/Fe_kkd/Fe.ked3 -z 1 1 3 -x 0 3 -1 -y 10 -1 -3 -ty 50 -tx 35 -dpi 50

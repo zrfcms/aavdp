@@ -29,10 +29,6 @@
 
 #define SQRT_HALF_3 0.866025403780 //sqrt(3)/2
 
-#define ZERO 1e-12
-#define ONE 0.99999
-#define CONST_IN_AREA_INV 1.5273987E19 //1.0/(5.21E-21*(4*PI))
-
 template <typename T>
 extern T m_min(T a, T b);
 
@@ -42,13 +38,10 @@ T m_min(T a, T b)
 	return (a<b?a:b);
 }
 
-#define PATH_CHAR_NUMBER 100
-#define EXT_CHAR_NUMBER 20
+extern void gaussian(double **value, double *x, double *y, int num, double v0, double x0, double y0, double sigma); 
 
-extern void int_to_str(char str[], int num);
-extern void merge_path(char file_path[], char exts[][EXT_CHAR_NUMBER], int num);
-extern void split_path(char name[], char ext[], char file_path[]);
-
+template <typename T>
+extern void vector_zero(T c_v[3], T v[3], double zero_limit=1.0e-6);
 template <typename T>
 extern void vector_copy(T c_v[3], T v[3]);
 template <typename T>
@@ -74,6 +67,17 @@ extern void vector_rotate(T r_v[3], T R[3][3], T v[3]);
 extern void vector_rotate(double r_v[3], int R[3][3], double v[3]);
 template <typename T>
 extern void vector_transform(T t_v[3], T v[3], T R[3][3]);
+template <typename T>
+void vector_zero(T c_v[3], T v[3], double zero_limit)
+{
+    for(int i=0;i<3;i++){
+        if(fabs(v[i])<zero_limit){
+            c_v[i]=0.0;
+        }else{
+            c_v[i]=v[i];
+        }
+    }
+}
 template <typename T>
 void vector_copy(T c_v[3], T v[3])
 {
@@ -211,7 +215,8 @@ extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double 
 extern  int get_sextant(double x, double y);
 extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
 extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
-extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2], double radius=1.0);
+extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_orthographic_projection(double xyz[3], int &ierr, double xy[2]);
 
 template <typename T>
 extern void mallocate(T **data, int size);
