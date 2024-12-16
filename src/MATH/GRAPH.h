@@ -7,6 +7,31 @@
 #include "MATH.h"
 #include "../include/png.h"
 
+#define PI_SQRT_HALF 0.886226925452758 //sqrt(PI)/2
+#define PI_HALF_SQRT 1.253314137315500 //sqrt(PI/2)
+#define PI_INVERSE 0.318309886183791 //1/PI
+#define SQRT_3_INVERSE 0.577350269190 //1/sqrt(3)
+
+#define PI_PREE 0.7598356856515930 //3^(-1/4)
+#define PI_PREF 1.3819765978853420 //sqrt(6/PI)
+#define PI_PREA 0.5250375679043320 //3^(1/4)/sqrt(2*PI)
+#define PI_PREG 1.55512030155621410 //2*sqrt(PI)/3^(3/4)
+#define PI_PREC 0.9068996821171090 //PI/2*sqrt(3)
+#define PI_PREB 1.0500751358086640 //3^(1/4)*sqrt(2/PI)
+#define PI_PRED 2.0943951023931950 //2*PI/3
+#define SQRT_3 1.732050807568877 //sqrt(3)
+
+#define SQRT_HALF_3 0.866025403780 //sqrt(3)/2
+
+// extern void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]);
+extern void compute_square_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_sphere_from_square_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern  int get_sextant(double x, double y);
+extern void compute_hexagonal_Lambert(double xy[2], int &ierr, double xyz[3]);
+extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2]);
+extern void compute_sphere_from_orthographic_projection(double xyz[3], int &ierr, double xy[2]);
+
 extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
 template <typename T>
 extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);

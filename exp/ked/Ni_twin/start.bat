@@ -1,1 +1,0 @@
-..\..\..\AAVDP.exe --ked ./Ni_twin.lmp -e Ni -auto -z 0 1 0 -x 0 0 1 -thr 10

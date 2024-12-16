@@ -60,7 +60,7 @@ void quick_sort(KED_KNODE *kstart)
 
 KED::KED(MODEL *model, double Kmag_max, double threshold, double spacing[3], bool is_spacing_auto)
 {
-    printf("[INFO] Starting computation of kinematical electron diffraction...\n");
+    printf("[INFO] Starting computation of kinematic electron diffraction...\n");
     printf("[INFO] Electron wavelength [Angstrom]: %.8f\n", model->lambda);
     lambda=model->lambda;
     Kmagnitude_max=Kmag_max;
@@ -72,12 +72,12 @@ KED::KED(MODEL *model, double Kmag_max, double threshold, double spacing[3], boo
     quick_sort(khead, ktail);
     printf("[INFO] Number of filtered diffraction intensity (including intensity at the transmission spot): %d\n", numk);
     printf("[INFO] Range of filtered diffraction intensity: %.8f %.8f\n", intensity_min, intensity_max);
-    printf("[INFO] Ending computation of kinematical electron diffraction\n");
+    printf("[INFO] Ending computation of kinematic electron diffraction\n");
 }
 
 KED::KED(MODEL *model, int zone[3], double thickness, double Kmag_max, double threshold, double spacing[3], bool is_spacing_auto)
 {
-    printf("[INFO] Starting computation of kinematical electron diffraction...\n");
+    printf("[INFO] Starting computation of kinematic electron diffraction...\n");
     printf("[INFO] Electron wavelength [Angstrom]: %.8f\n", model->lambda);
     lambda=model->lambda;
     Kmagnitude_max=Kmag_max;
@@ -97,7 +97,7 @@ KED::KED(MODEL *model, int zone[3], double thickness, double Kmag_max, double th
         knearest_1->K[0], knearest_1->K[1], knearest_1->K[2], knearest_2->K[0], knearest_2->K[1], knearest_2->K[2], knearest_2->Kmagnitude/knearest_1->Kmagnitude, vector_angle(knearest_2->K, knearest_1->K)*RAD_TO_DEG);
     }
     rotate_by_first_knearest(zone);
-    printf("[INFO] Ending computation of kinematical electron diffraction\n");
+    printf("[INFO] Ending computation of kinematic electron diffraction\n");
 }
 
 KED::~KED()
@@ -401,7 +401,7 @@ void KED::ked(char *ked_path, double sigma, double dx)
 
     char png_path[strlen(ked_path)+5];
     strcpy(png_path, ked_path); strcat(png_path, ".png");
-    img(png_path, intensity, nbin);
+    img(png_path, intensity, nbin, nbin, imax, imin);
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);
 }
 
@@ -424,9 +424,45 @@ void KED::img(char *png_path, double *x, double *y, double *value, int num, doub
     graph.draw(png_path);
 }
 
-void KED::img(char *png_path, double **value, int nump)
+void KED::img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background)
 {
-    image_array(png_path, value, nump, nump, 6.0, 6.0, 300, false);
+    double *wdata;
+    unreshape_2d(&wdata, value, numpy, numpx);
+    unsigned char *pixels;
+    int num=numpx*numpy;
+    mallocate(&pixels, 3*num);
+
+    double vdiff=vmax-vmin;
+    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
+    switch(background)
+    {
+    case 'b':
+        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
+        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
+        break;
+    case 'w':
+        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
+        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
+        break;
+    default:
+        printf("[ERROR] Unrecognized background %s\n", background);
+        exit(1);
+    }
+    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
+    unsigned char rgb[3];
+    for(int i=0;i<num;i++){
+        if(wdata[i]>=vmax){
+            vector_copy(rgb, rgb_max);
+        }else if(wdata[i]<=vmin){
+            vector_copy(rgb, rgb_min);
+        }else{
+            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
+            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
+            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
+        }
+        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
+    }
+    image_pixels(png_path, pixels, numpx, numpy);
 }
 
 KED::KED(char *ked3_path)
@@ -531,12 +567,12 @@ void KED::ked3(char *ked3_path)
 //     }
 //     deallocate_3d(data, dimension[0], dimension[1]);
 //     fclose(fp);
-//     printf("[INFO] Visualized data for three-dimensional kinematical electron pattern stored in %s.\n", vtk_path);
+//     printf("[INFO] Visualized data for three-dimensional kinematic electron pattern stored in %s.\n", vtk_path);
 // }
 
-KKD::KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double threshold, double ratiox, double ratioy, int npx, int npy, bool is_stereo_proj)
+KKD::KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double threshold, double ratiox, double ratioy, int npx, int npy, char *mode)
 {
-    printf("[INFO] Starting computation of kinematical Kikuchi diffraction...\n");
+    printf("[INFO] Starting computation of kinematic Kikuchi diffraction...\n");
     KED ked(ked3_path);
     double kn=1.0/ked.lambda;
     printf("[INFO] Electron wavelength [Angstrom]: %.8f\n", ked.lambda);
@@ -545,7 +581,7 @@ KKD::KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], dou
     ked.filter_diffraction_intensity(threshold);
     printf("[INFO] Number of filtered diffraction intensity: %d\n", ked.numk);
     printf("[INFO] Range of filtered diffraction intensity: %.8f %.8f\n", ked.intensity_min, ked.intensity_max);
-    compute_Kikuchi_sphere_projection(xaxis, yaxis, zaxis, kn, ratiox, ratioy, npx, npy, is_stereo_proj);
+    compute_Kikuchi_sphere_projection(xaxis, yaxis, zaxis, kn, ratiox, ratioy, npx, npy, mode);
     printf("[INFO] Kikuchi pattern has %d pixels along x-[%.8f %.8f %.8f] and %d pixels along y-[%.8f %.8f %.8f] under zone-[%.8f %.8f %.8f]\n", 
             numpx, axes[0][0], axes[0][1], axes[0][2], numpy, axes[1][0], axes[1][1], axes[1][2], axes[2][0], axes[2][1], axes[2][2]);
     printf("[INFO] Kikuchi pattern has %.8f distance [degree] along x axis and %.8f distance [degree] along y axis\n", thetax*RAD_TO_DEG, thetay*RAD_TO_DEG);
@@ -559,7 +595,7 @@ KKD::KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], dou
         int(ktemp->hkl[0]), int(ktemp->hkl[1]), int(ktemp->hkl[2]), ktemp->K[0], ktemp->K[1], ktemp->K[2], ktemp->Kwidth, ktemp->intensity1, ktemp->intensity2);
         ktemp=ktemp->next;
     }
-    printf("[INFO] Ending computation of kinematical Kikuchi diffraction\n");
+    printf("[INFO] Ending computation of kinematic Kikuchi diffraction\n");
 }
 
 KKD::~KKD()
@@ -576,7 +612,7 @@ KKD::~KKD()
     }
 }
 
-void KKD::compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], double zaxis[3], double kn, double ratiox, double ratioy, int npx, int npy, bool is_stereo_proj)
+void KKD::compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], double zaxis[3], double kn, double ratiox, double ratioy, int npx, int npy, char *mode)
 {
     vector_copy(axes[0], xaxis);
     vector_normalize(axes[0], axes[0]);
@@ -599,7 +635,7 @@ void KKD::compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], do
     callocate_3d(&screenK0, numpy, numpx, 3, 0.0);
     int impx=numpx/2, impy=numpy/2;
     int err;
-    if(is_stereo_proj){
+    if(0==strcmp(mode, "stereo")){
         for(int i=0;i<numpy;i++){
             for(int j=0;j<numpx;j++){
                 double xy[2]={double(i-impy)/double(impy)*ratioy, double(j-impx)/double(impx)*ratiox};
@@ -611,7 +647,7 @@ void KKD::compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], do
                 }
             }
         }
-    }else{
+    }else if(0==strcmp(mode, "ortho")){
         for(int i=0;i<numpy;i++){
             for(int j=0;j<numpx;j++){
                 double xy[2]={double(i-impy)/double(impy)*ratioy, double(j-impx)/double(impx)*ratiox};
@@ -623,6 +659,9 @@ void KKD::compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], do
                 }
             }
         }
+    }else{
+        printf("[ERROR] Unrecognized projection mode %s\n", mode);
+        exit(1);
     }
     thetax=acos(vector_dot(screenK0[impy][0], screenK0[impy][numpx-1]));
     thetay=acos(vector_dot(screenK0[0][impx], screenK0[numpy-1][impx]));
@@ -676,18 +715,18 @@ void KKD::compute_Kikuchi_intensity_projection(KED *ked, double thickness, doubl
     int count=0;
     bool is_count=false;
     for(int i=0;i<ked->numk&&ktemp!=nullptr;i++){
-        // double upper_bound=sqrt(kn*kn+ktemp->Kmagnitude*thickness/2.0);
-        // double lower_bound=sqrt(kn*kn-ktemp->Kmagnitude*thickness/2.0);
-        double upper_bound=ktemp->Kmagnitude+thickness/2.0;
-        double lower_bound=ktemp->Kmagnitude-thickness/2.0;
+        double upper_bound=sqrt(kn*kn+ktemp->Kmagnitude*thickness/2.0);
+        double lower_bound=sqrt(kn*kn-ktemp->Kmagnitude*thickness/2.0);
+        // double upper_bound=ktemp->Kmagnitude/2.0+thickness/2.0;
+        // double lower_bound=ktemp->Kmagnitude/2.0-thickness/2.0;
         double hkl[3]; vector_copy(hkl, ktemp->hkl);
         double intensity=ktemp->intensity;
         for(int j=0;j<numpy;j++){
             for(int k=0;k<numpx;k++){
-                // double d[3];
-                // vector_difference(d, screenK0[j][k], ktemp->K);
-                // double proj=vector_length(d);
-                double proj=vector_dot(screenK0[j][k], ktemp->K)/ktemp->Kmagnitude;
+                double d[3];
+                vector_difference(d, screenK0[j][k], ktemp->K);
+                double proj=vector_length(d);
+                // double proj=vector_dot(screenK0[j][k], ktemp->K)/ktemp->Kmagnitude;
                 if(proj<=upper_bound&&proj>=lower_bound&&intensity>screenI[j][k]){
                     screenI[j][k]=intensity;
                     is_count=true;
@@ -699,10 +738,10 @@ void KKD::compute_Kikuchi_intensity_projection(KED *ked, double thickness, doubl
             if((0==int(hkl[0])+int(ktemp->hkl[0]))&&(0==int(hkl[1])+int(ktemp->hkl[1]))&&(0==int(hkl[2])+int(ktemp->hkl[2]))){
                 for(int j=0;j<numpy;j++){
                     for(int k=0;k<numpx;k++){
-                        // double d[3];
-                        // vector_difference(d, screenK0[j][k], ktemp->K);
-                        // double proj=vector_length(d);
-                        double proj=vector_dot(screenK0[j][k], ktemp->K)/ktemp->Kmagnitude;
+                        double d[3];
+                        vector_difference(d, screenK0[j][k], ktemp->K);
+                        double proj=vector_length(d);
+                        // double proj=vector_dot(screenK0[j][k], ktemp->K)/ktemp->Kmagnitude;
                         if(proj<=upper_bound&&proj>=lower_bound&&ktemp->intensity>screenI[j][k]){
                             screenI[j][k]=ktemp->intensity;
                         }

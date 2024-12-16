@@ -1,1 +1,0 @@
-..\..\..\AAVDP.exe --xrd ./ZnO.vasp -e Zn O -2t 0 80 --smear -m 0.5 -d 294 -o ./ZnO.xrd

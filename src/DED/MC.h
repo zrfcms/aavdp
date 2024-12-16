@@ -7,12 +7,10 @@
 #include "../MATH/MATH.h"
 #include "../MATH/GRAPH.h"
 #include "../MODEL/MODEL.h"
-
 #define SCATTERING_EVENT_NUMBER 300 //Number of scattering events along one trajectory
 #define CONST_IN_AREA_INV 1.5273987E19 //1.0/(5.21E-21*(4*PI))
 
 using namespace std;
-extern void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]);
 
 class RNG 
 {
@@ -32,14 +30,14 @@ private:
 class MC
 {
 public:
-    int    numzbin;//int(depthmax/depthstep)+1
-    int    numpz;
-    int    nump;
+    int    numpE=0;
     int    **accum_E=nullptr;//Energy accumulator array in the modified Lambert projection
+    int    numzbin=0, numpz=0;//int(depthmax/depthstep)+1
     int    ***accum_z=nullptr;//Depth accumulator array in the modified Lambert projection
 
     int    izmax=0;
     double dz, z;
+    double EkeV;
     double *weight=nullptr;
     MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double depthmax, double depthstep, int nume, int nump);
     ~MC();

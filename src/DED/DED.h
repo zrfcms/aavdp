@@ -83,64 +83,53 @@ private:
     void   find_first_and_second_knearests();
     void   rotate_by_first_knearest(CELL *cell, int zone[3]);
     void   img(char *png_path, double *x, double *y, double *value, int num, double limit);
-    void   img(char *png_path, double **value, int nump);
+    void   img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background='w');
 };
 
 struct DKD_KNODE{
     double k[3];
     double kn;
-    int    i, j;
-    int    hemisphere;//Northern = 1, Southern = -1
-    double intensity=0.0;
+    double intensity;
+    int i, j;
+    int hemisphere;//Northern = 1, Southern = -1
     DKD_KNODE *next=nullptr;
 };
 
 class DKD_KVECTOR
 {
 public:
-    DKD_KVECTOR(CELL *cell, int impx, int impy);//Rosca-Lambert
+    DKD_KVECTOR(CELL *cell, int npx, int npy);//Rosca-Lambert
     ~DKD_KVECTOR();
     int    numk=0;
     DKD_KNODE *khead=nullptr;
     DKD_KNODE *ktail=nullptr;
-    double intensity_min=1.0e8, intensity_max=0.0;
-    void   add_k_intensity(DKD_KNODE *knode, complex<double> **Lgh, complex<double> ***Sgh, int nstrong, int napos, int npos);
 private:
-    double deltax, deltay;
-    void   add_k_node(CELL *cell, int i, int j, double kn, bool southern_flag=false);
+    void   add_k_node(CELL *cell, double xy[2], double kn, int i=0, int j=0, bool southern_flag=false);
 };
 
 class DKD
 {
 public:
-    int    numpx=0, numpy=0;//ncol, nrow
+    int    numpx=0, numpy=0;
     double ***screenK0=nullptr;
     double **screenI=nullptr;
-    double **mLPNH=nullptr, **mLPSH=nullptr;
-    double **mSPNH=nullptr, **mSPSH=nullptr;
     double thetax=0.0, thetay=0.0;
     double intensity_min=1.0e8, intensity_max=0.0;
-    DKD(CELL *cell, BETHE *bethe, double dirs[3][3], double ratio[2], int nump[2], double fthick, double voltage, double Kmag_max, bool is_stereo_proj);
-    DKD(CELL *cell, MC *mc, BETHE *bethe, double dirs[3][3], double ratio[2], int nump[2], double voltage, double Kmag_max, bool is_stereo_proj);
-    DKD(CELL *cell, MC *mc, BETHE *bethe, int nump, double voltage, double Kmag_max);
+    double **screenNI=nullptr, **screenSI=nullptr;
+    double intensity_maxN=0.0, intensity_minN=1.0e8;
+    double intensity_maxS=0.0, intensity_minS=1.0e8;
+    DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection);
+    DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double Kmag_max, int nump, char *projection);
     ~DKD();
-    void   dkd(char* kkd_path, char background='b');
-    void   dkd(char* dkd_path, double **data, char background);
+    void   dkd(char* dkd_path, char background);
     void   dkd(char* dkd_path, double vmax, double vmin, char background);
-    void   img(char* png_path, double vmax, double vmin, char background='b');
-    void   img(char* png_path, double **data, char background);
 private:
-    double axes[3][3]={0.0};
-    void   compute_Kikuchi_sphere_projection(double dirs[3][3], double ratio[2], int nump[2], double kn, bool is_stereo_proj);
-    void   compute_Kikuchi_intensity_projection(CELL *cell, BETHE *bethe, double ft, double kn, double dmin);
-    void   compute_Kikuchi_intensity_projection(CELL *cell, MC *mc, BETHE *bethe, double kn, double dmin);
-    void   compute_Kikuchi_intensity_projection(CELL *cell, MC *mc, DKD_KVECTOR *kvec, BETHE *bethe, double kn, double dmin);
     void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DED_GVECTOR *gvec);
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DED_GVECTOR *gvec);
-    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
-    void   compute_Lambert_projection(CELL *cell, DKD_KVECTOR *kvec);
-    void   compute_stereographic_projection(bool use_hexagonal);
+    void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
+    void   compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projection, bool use_hexagonal);
+    void   img(char* png_path, double vmax, double vmin, char background);
 };
 
 #endif

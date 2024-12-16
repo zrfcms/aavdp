@@ -9,6 +9,7 @@
 #include "CONST_NED.h"
 #include "CONST_KED.h"
 #include "../MATH/MATH.h"
+#include "../MATH/GRAPH.h"
 #include "../QSPG/spglib/pointgroup.h"
 #include "../QSPG/spglib/spg_database.h"
 #include "../QB/QB.h"

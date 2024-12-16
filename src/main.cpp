@@ -331,7 +331,7 @@ int main(int argc, char* argv[])
         double ratiox=1.0, ratioy=1.0;
         double thickness=0.2;
         int    npx=500, npy=500;
-        bool   is_stereo_proj=true;
+        char   mode[10];
 
         double vmax=1.0e6, vmin=0.0;
         char   background='b';
@@ -433,13 +433,9 @@ int main(int argc, char* argv[])
                     i++;
                     npy=(int)be_double(argv[i++]);
                     continue;
-                }else if(0==strcmp(argv[i], "-stereo")){
+                }else if(0==strcmp(argv[i], "-proj")){
                     i++;
-                    is_stereo_proj=true;
-                    continue;
-                }else if(0==strcmp(argv[i], "-ortho")){
-                    i++;
-                    is_stereo_proj=false;
+                    strcpy(mode, argv[i++]);
                     continue;
                 }else if(0==strcmp(argv[i], "-background")){
                     i++;
@@ -485,7 +481,7 @@ int main(int argc, char* argv[])
             }else{
                 strcpy(kkd_path, output_path);
             }
-            KKD kkd(input_path, xaxis, yaxis, zaxis, thickness, threshold, ratiox, ratioy, npx, npy, is_stereo_proj);
+            KKD kkd(input_path, xaxis, yaxis, zaxis, thickness, threshold, ratiox, ratioy, npx, npy, mode);
             if(is_scale){
                 kkd.kkd(kkd_path, vmax, vmin, background);
             }else{
@@ -643,21 +639,18 @@ int main(int argc, char* argv[])
 
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
+        
         double voltage=200.0;
-        double fthick=100.0;
         double Kmax=1.0;
-        double c1=8.0, c2=50.0, c3=100.0, c_sg=1.0;
-
-        double dirs[3][3]={{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-        double ratio[2]={1.0, 1.0};
-        int    nump[2]={500, 500};
-        bool   is_stereo_proj=true;
+        double fthick=100.0;
+        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
+        int    nump=500;
+        char   mode[10];
 
         double omega=0.0, sigma=75.7;
         double Eexit=voltage-1.0;
-        double dthick=1.0;
+        double dthick=10.0;
         int    nume=20000;
-        int    numpx=500;
         bool   is_monte=false;
 
         double vmax=1.0e6, vmin=0.0;
@@ -687,47 +680,9 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-q")){
                 i++;
                 Kmax=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-x")){
+            }else if(0==strcmp(argv[i], "-p")){
                 i++;
-                dirs[0][0]=be_double(argv[i++]);
-                dirs[0][1]=be_double(argv[i++]);
-                dirs[0][2]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-y")){
-                i++;
-                dirs[1][0]=be_double(argv[i++]);
-                dirs[1][1]=be_double(argv[i++]);
-                dirs[1][2]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-z")){
-                i++;
-                dirs[2][0]=be_double(argv[i++]);
-                dirs[2][1]=be_double(argv[i++]);
-                dirs[2][2]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-rx")){
-                i++;
-                ratio[0]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-ry")){
-                i++;
-                ratio[1]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-px")){
-                i++;
-                nump[0]=(int)be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-py")){
-                i++;
-                nump[1]=(int)be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-stereo")){
-                i++;
-                is_stereo_proj=true;
-                continue;
-            }else if(0==strcmp(argv[i], "-ortho")){
-                i++;
-                is_stereo_proj=false;
+                nump=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-bethe")){
                 i++;
@@ -735,6 +690,10 @@ int main(int argc, char* argv[])
                 c2=be_double(argv[i++]);
                 c3=be_double(argv[i++]);
                 c_sg=be_double(argv[i++]);
+            }else if(0==strcmp(argv[i], "-proj")){
+                i++;
+                strcpy(mode, argv[i++]);
+                continue;
             }else if(0==strcmp(argv[i], "-background")){
                 i++;
                 background=(argv[i++])[0];
@@ -774,13 +733,17 @@ int main(int argc, char* argv[])
                         i++;
                         dthick=be_double(argv[i++]);
                         continue;
+                    }else if(0==strcmp(argv[i], "-ome")){
+                        i++;
+                        omega=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-sig")){
+                        i++;
+                        sigma=be_double(argv[i++]);
+                        continue;
                     }else if(0==strcmp(argv[i], "-ne")){
                         i++;
                         nume=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-np")){
-                        i++;
-                        numpx=be_double(argv[i++]);
                         continue;
                     }else if(is_mode(argv[i])){
                         break;
@@ -798,26 +761,23 @@ int main(int argc, char* argv[])
         }
         char   dkd_path[PATH_CHAR_NUMBER];
         if(0==strcmp(output_path, "")){
-            strcpy(dkd_path, "./AAVDP.ded");
+            strcpy(dkd_path, "./AAVDP.dkd");
         }else{
             strcpy(dkd_path, output_path);
         }
         CELL cell(input_path, types, DWs, voltage);
         BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
-        
         if(is_monte){
-            MC mc(&cell, omega, sigma, voltage, Eexit, fthick, dthick, nume, numpx);
-            DKD dkd(&cell, &mc, &bethe, numpx, voltage, Kmax);
-            dkd.dkd(dkd_path, dkd.mLPNH, background);
-            // DKD dkd(&cell, &mc, &bethe, dirs, ratio, nump, voltage, Kmax, is_stereo_proj);
-            // if(is_scale){
-            //     dkd.dkd(dkd_path, vmax, vmin, background);
-            // }else{
-            //     dkd.dkd(dkd_path, background);
-            // }
+            MC mc(&cell, omega, sigma, voltage, Eexit, fthick, dthick, nume, nump);
+            DKD dkd(&cell, &mc, &bethe, Kmax, mode);
+            if(is_scale){
+                dkd.dkd(dkd_path, vmax, vmin, background);
+            }else{
+                dkd.dkd(dkd_path, background);
+            }
         }else{
-            DKD dkd(&cell, &bethe, dirs, ratio, nump, fthick, voltage, Kmax, is_stereo_proj);
+            DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, mode);
             if(is_scale){
                 dkd.dkd(dkd_path, vmax, vmin, background);
             }else{
@@ -827,12 +787,12 @@ int main(int argc, char* argv[])
     }else if(0==strcmp(argv[i], "--rdf")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
-        char   name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
-        split_path(name, ext, input_path);
+        char   output_path[PATH_CHAR_NUMBER]; strcpy(output_path, "");
+        is_path_accessible(input_path);
+
         double rmax=5.0;
-        int    nbin=200;
+        int    nbin=100;
         bool   is_partial=false;
-        char   rdf_path[PATH_CHAR_NUMBER]; strcpy(rdf_path, name);
         while(i<argc){
             if(0==strcmp(argv[i], "-r")){
                 i++;
@@ -846,24 +806,36 @@ int main(int argc, char* argv[])
                 i++;
                 is_partial=true;
                 continue;
-            }else{
+            }else if(0==strcmp(argv[i], "-o")){
                 i++;
-                continue;
+                strcpy(output_path, argv[i++]);
+            }else{
+                printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                printf("Try 'AAVDP -h rdf' for more information");
+                exit(1);
             }
         }
-        strcat(rdf_path, ".rdf");
+        char   rdf_path[PATH_CHAR_NUMBER];
+        if(0==strcmp(output_path, "")){
+            strcpy(rdf_path, "./AAVDP.rdf");
+        }else{
+            strcpy(rdf_path, output_path);
+        }
         RDF rdf(input_path, rmax, nbin, is_partial);
         rdf.rdf(rdf_path);
     }else if(0==strcmp(argv[i], "--ssf")){
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
-        char   name[PATH_CHAR_NUMBER], ext[EXT_CHAR_NUMBER];
-        split_path(name, ext, input_path);
+        char   output_path[PATH_CHAR_NUMBER]; strcpy(output_path, "");
+        is_path_accessible(input_path);
+
         double qmax=5.0;
-        int    nbin=200;
+        int    nqbin=100;
         bool   is_partial=false;
-        char   ssf_path[PATH_CHAR_NUMBER]; strcpy(ssf_path, name);
-        char   png_path[PATH_CHAR_NUMBER]; strcpy(png_path, name); 
+
+        double rmax=5.0;
+        int    nrbin=100;
+        bool   is_rdf=false;
         while(i<argc){
             if(0==strcmp(argv[i], "-q")){
                 i++;
@@ -871,21 +843,55 @@ int main(int argc, char* argv[])
                 continue;
             }else if(0==strcmp(argv[i], "-n")){
                 i++;
-                nbin=(int)be_double(argv[i++]);
+                nqbin=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-partial")){
                 i++;
                 is_partial=true;
                 continue;
-            }else{
+            }else if(0==strcmp(argv[i], "-o")){
                 i++;
-                continue;
+                strcpy(output_path, argv[i++]);
+            }else if(0==strcmp(argv[i], "--rdf")){
+                i++;
+                is_rdf=true;
+                while(i<argc){
+                    if(0==strcmp(argv[i], "-r")){
+                        i++;
+                        rmax=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-n")){
+                        i++;
+                        nrbin=(int)be_double(argv[i++]);
+                        continue;
+                    }else if(is_mode(argv[i])){
+                        break;
+                    }else{
+                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                        printf("Try 'AAVDP -h ssf' for more information");
+                        exit(1);
+                    }
+                }
+            }else{
+                printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                printf("Try 'AAVDP -h ssf' for more information");
+                exit(1);
             }
         }
-        strcat(ssf_path, ".ssf");
-        RDF rdf(input_path, 7.5, 150, is_partial);
-        SSF ssf(&rdf, qmax, nbin, is_partial);
-        ssf.ssf(ssf_path, png_path);
+        char   ssf_path[PATH_CHAR_NUMBER];
+        if(0==strcmp(output_path, "")){
+            strcpy(ssf_path, "./AAVDP.ssf");
+        }else{
+            strcpy(ssf_path, output_path);
+        }
+        if(is_rdf){
+            RDF rdf(input_path, rmax, nrbin, is_partial);
+            SSF ssf(&rdf, qmax, nqbin, is_partial);
+            ssf.ssf(ssf_path);
+        }else{
+            SSF ssf(input_path, qmax, nqbin, is_partial);
+            ssf.ssf(ssf_path);
+        }
     }else if(0==strcmp(argv[i], "-h")||0==strcmp(argv[i], "--help")){
         i++;
         if(i==argc){
@@ -893,9 +899,9 @@ int main(int argc, char* argv[])
             printf("    AAVDP <--mode> (inputfile) <-parameter> [value]   \n");
             printf("    AAVDP --xrd     # X-ray diffraction               \n");
             printf("    AAVDP --ned     # Neutron diffraction             \n");
-            printf("    AAVDP --ked     # Kinematical electron diffraction\n");
+            printf("    AAVDP --ked     # Kinematic electron diffraction\n");
             printf("    AAVDP --ded     # Dynamical electron diffraction  \n");
-            printf("    AAVDP --kkd     # Kinematical Kikuchi diffraction \n");
+            printf("    AAVDP --kkd     # Kinematic Kikuchi diffraction \n");
             printf("    AAVDP --dkd     # Dynamical Kikuchi diffraction   \n");
             printf("    AAVDP --rdf     # Radial distribution function    \n");
             printf("    AAVDP --ssf     # Static structure factor         \n");
@@ -903,17 +909,17 @@ int main(int argc, char* argv[])
         }else{
             if(0==strcmp(argv[i], "xrd")){
                 printf("The syntax format and rules for xrd in AAVDP:\n");
-                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --smear -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
-                printf("    e.g., AAVDP --xrd Ni.vasp              # The prerequisite is that atomic types have been stored in Ni.vasp\n");
-                printf("    e.g., AAVDP --xrd Ni.lmp -e Ni\n");
-                printf("    e.g., AAVDP --xrd Ni.lmp -e Ni --smear\n");
+                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO_line.xrd\n");
+                printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO.xrd --scherrer -m 0.5 -d 294 -d2t 0.02\n");
+                printf("    e.g., AAVDP --xrd ./exp/xrd/NaCl/NaCl.lmp -e Na Cl -dw 1.72 1.41 -l 1.54056 -2t 20 90 -o ./exp/xrd/NaCl/NaCl1.xrd\n");
+                printf("    e.g., AAVDP --xrd ./exp/xrd/NaCl/NaCl.lmp -e Na Cl -dw 1.72 1.41 -l 1.54439 -2t 20 90 -o ./exp/xrd/NaCl/NaCl2.xrd\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ned")){
                 printf("The syntax format and rules for ned in AAVDP:\n");
-                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --smear -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
-                printf("    e.g., AAVDP --ned Ni.vasp              # The prerequisite is that atomic types have been stored in Ni.vasp\n");
-                printf("    e.g., AAVDP --ned Ni.lmp -e Ni\n");
-                printf("    e.g., AAVDP --ned Ni.lmp -e Ni --smear\n");
+                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3_line.ned\n");
+                printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3.ned --scherrer -d 400 -d2t 0.02\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else{
                 printf("AAVDP: unrecognized mode '%s'\n", argv[i]);

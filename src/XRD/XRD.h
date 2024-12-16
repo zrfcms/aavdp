@@ -27,7 +27,7 @@ extern void swap_knode_data(XRD_KNODE *knode1, XRD_KNODE *knode2);
 extern void quick_sort(XRD_KNODE *kstart, XRD_KNODE *kend);
 
 #define SCHERRER_CONST 0.90
-extern void pseudo_Voigt(double *y, double *x, int num, double x0, double y0, double eta, double w);
+
 
 //x-ray diffraction
 class XRD

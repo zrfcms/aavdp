@@ -1,1 +1,0 @@
-..\..\..\AAVDP.exe --ked ./Fe.lmp -e Fe -auto -z 0 1 1 -x 0 1 -1 -y -1 0 0

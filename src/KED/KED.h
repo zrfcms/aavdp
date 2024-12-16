@@ -59,7 +59,7 @@ private:
     void   find_first_and_second_knearests();
     void   rotate_by_first_knearest(int zone[3]);
     void   img(char *png_path, double *x, double *y, double *value, int num, double limit);
-    void   img(char *png_path, double **value, int nump);
+    void   img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background='w');
 };
 
 struct KKD_KNODE{
@@ -75,7 +75,7 @@ struct KKD_KNODE{
 class KKD
 {
 public:
-    KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double threshold, double ratiox, double ratioy, int npx, int npy, bool is_stereo_proj);
+    KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double threshold, double ratiox, double ratioy, int npx, int npy, char *mode);
     ~KKD();
     int    numk=0;//g
     KKD_KNODE  *khead=nullptr;
@@ -91,7 +91,7 @@ public:
 private:
     double axes[3][3]={0.0};
     void   add_k_node(double hkl[3], double K[3], double Kwidth, double intensity1, double intensity2);
-    void   compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], double zaxis[3], double kn, double ratiox, double ratioy, int npx, int npy, bool is_stereo_proj);
+    void   compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], double zaxis[3], double kn, double ratiox, double ratioy, int npx, int npy, char *mode);
     void   compute_Kikuchi_intensity_projection(KED *ked, double thickness, double kn);
 };
 

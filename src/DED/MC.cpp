@@ -1,30 +1,5 @@
 #include "MC.h"
 
-void compute_Lambert_Projection(double xy[2], int &ierr, double xyz[3]) 
-{
-    ierr=0;
-    xy[0]=0.0; xy[1]=0.0;
-    if(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]<1.0e-8){
-        ierr=1;
-    }else{
-        double mag=sqrt(xyz[0]*xyz[0] + xyz[1]*xyz[1] + xyz[2]*xyz[2]);
-        xyz[0]=xyz[0]/mag; xyz[1]=xyz[1]/mag; xyz[2]=xyz[2]/mag;
-        if(fabs(fabs(xyz[2])-1.0)>1.0e-8){
-            double q;
-            if((fabs(xyz[1])<=fabs(xyz[0]))&&(fabs(xyz[0])>1.0e-8)){
-                q=fabs(xyz[0])/xyz[0]*sqrt(2.0*(1.0+xyz[2]));
-                xy[0]=q*PI_SQRT_HALF; 
-                xy[1]=q*atan(xyz[1]/xyz[0])/PI_SQRT_HALF;
-            }else if(fabs(xyz[1])>1.0e-8){
-                q=fabs(xyz[1])/xyz[1]*sqrt(2.0*(1.0+xyz[2]));
-                xy[0]=q*atan(xyz[0]/xyz[1])/PI_SQRT_HALF; 
-                xy[1]=q*PI_SQRT_HALF;
-            }
-        }
-    }
-    xy[0]=xy[0]/PI_HALF_SQRT; xy[1]=xy[1]/PI_HALF_SQRT;
-}
-
 RNG::RNG(int nseed)
 {
     this->nseed=nseed;
@@ -83,12 +58,15 @@ MC::MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double 
     ave_Z=cell->ave_Z;
     density=cell->density;
 
+    numpE=nump;
+    if(nump%2==0) numpE=nump+1;
     numzbin=int(zmax/zstep)+1;
-    numpz=(nump-1)/10+1;
-    dz=zstep;
-    callocate_2d(&accum_E, nump, nump, 0);
+    numpz=(numpE-1)/10+1;
+    callocate_2d(&accum_E, numpE, numpE, 0);
     callocate_3d(&accum_z, numzbin, numpz, numpz, 0);
-    int ebin=1000;
+
+    dz=zstep*0.1; EkeV=Emax;
+    int ebin=10000;
     int nbatch=int(ceil(double(nume)/double(ebin)));
     int count_bse=0, count_e=0;
     double dir0[3]={cos(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), sin(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), cos(sigma*DEG_TO_RAD)}; 
@@ -133,13 +111,13 @@ MC::MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double 
 
 MC::~MC()
 {
-    deallocate_2d(accum_E, nump);
+    deallocate_2d(accum_E, numpE);
     deallocate_3d(accum_z, numzbin, numpz);
 }
 
 void MC::compute(int &count_bse, int ne, double dir0[3], double E0, double Ex)
 {
-    int imp=nump/2, imz=numpz/2;
+    int imp=numpE/2, imz=numpz/2;
     for(int ie=0;ie<ne;ie++){
         //Set the initial energy, coordinate, and direction (cosine) for this incident electron
         double E=E0;
@@ -158,7 +136,8 @@ void MC::compute(int &count_bse, int ne, double dir0[3], double E0, double Ex)
             update_incident_energy(E, step);
             if(xyz[2]<=0.0){//Determine whether the electron exit the crystal
                 double dxy[2]; int ierr;
-                compute_Lambert_Projection(dxy, ierr, dir);  //Coordinate in the Lambert projection
+                double dxyz[3]; vector_normalize(dxyz, dir);
+                compute_square_Lambert(dxy, ierr, dxyz);  //Coordinate in the Lambert projection
                 if(ierr==1){
                     printf("[ERROR] Zero electron direction in the Monte Carlo simulation");
                     exit(1);
