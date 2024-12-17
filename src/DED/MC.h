@@ -15,12 +15,11 @@ using namespace std;
 class RNG 
 {
 public:
-    RNG(int nseed=100);
+    RNG(char *seed_path, int nseed=100);
     ~RNG();
     void   seed(int id);
     double random();
 private:
-    const char *rand_path="RandomSeeds.data";
     int nseed=0;
     int **default_seeds=nullptr;
     int ns=4;
@@ -39,7 +38,7 @@ public:
     double dz, z;
     double EkeV;
     double *weight=nullptr;
-    MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double depthmax, double depthstep, int nume, int nump);
+    MC(CELL *cell, char *seed_path, double omega, double sigma, double Emax, double Emin, double depthmax, double depthstep, int nume, int nump);
     ~MC();
 private:
     RNG   *rng;

@@ -111,10 +111,6 @@ class DKD
 {
 public:
     int    numpx=0, numpy=0;
-    double ***screenK0=nullptr;
-    double **screenI=nullptr;
-    double thetax=0.0, thetay=0.0;
-    double intensity_min=1.0e8, intensity_max=0.0;
     double **screenNI=nullptr, **screenSI=nullptr;
     double intensity_maxN=0.0, intensity_minN=1.0e8;
     double intensity_maxS=0.0, intensity_minS=1.0e8;
@@ -129,7 +125,7 @@ private:
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
     void   compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projection, bool use_hexagonal);
-    void   img(char* png_path, double vmax, double vmin, char background);
+    void   img(char* png_path, double **value, double vmax, double vmin, char background);
 };
 
 #endif

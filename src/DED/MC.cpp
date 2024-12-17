@@ -1,13 +1,13 @@
 #include "MC.h"
 
-RNG::RNG(int nseed)
+RNG::RNG(char *seed_path, int nseed)
 {
     this->nseed=nseed;
     callocate_2d(&this->default_seeds, this->nseed, this->ns, 0);
     int *seeds;
     int seed_num=this->nseed*this->ns;
     FILE *fp;
-    fp=fopen(rand_path, "rb");
+    fp=fopen(seed_path, "rb");
     mallocate(&seeds, seed_num);
     fread(seeds, sizeof(int), seed_num, fp);
     fclose(fp);
@@ -52,7 +52,7 @@ double RNG::random(){
     return fabs(z1 ^ z2 ^ z3 ^ z4)/2147483647.0;
 }
 
-MC::MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double zmax, double zstep, int nume, int nump)
+MC::MC(CELL *cell, char *seed_path, double omega, double sigma, double Emax, double Emin, double zmax, double zstep, int nume, int nump)
 {
     ave_M=cell->ave_M; 
     ave_Z=cell->ave_Z;
@@ -70,7 +70,7 @@ MC::MC(CELL *cell, double omega, double sigma, double Emax, double Emin, double 
     int nbatch=int(ceil(double(nume)/double(ebin)));
     int count_bse=0, count_e=0;
     double dir0[3]={cos(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), sin(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), cos(sigma*DEG_TO_RAD)}; 
-    rng=new RNG(nbatch);
+    rng=new RNG(seed_path, nbatch);
     printf("[INFO] Starting computation of spatial and energy distributions of back-scattered electrons...\n");
     for(int i=0;i<nbatch;i++){
         if((nume-i*ebin)<ebin) ebin=nume-i*ebin;

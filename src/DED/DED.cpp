@@ -1257,6 +1257,20 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
         }
         ktemp=ktemp->next;
     }
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            if(intensity_maxN<screenNI[i][j]) intensity_maxN=screenNI[i][j];
+            if(intensity_minN>screenNI[i][j]) intensity_minN=screenNI[i][j];
+        }
+    }
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            if(intensity_maxS<screenSI[i][j]) intensity_maxS=screenSI[i][j];
+            if(intensity_minS>screenSI[i][j]) intensity_minS=screenSI[i][j];
+        }
+    }
+    img("./test.N.png", screenNI, intensity_maxN, intensity_minN, 'b');
+    img("./test.S.png", screenSI, intensity_maxS, intensity_minS, 'b');
 
     double **matN, **matS;
     callocate_2d(&matN, numpy, numpx, 0.0);
@@ -1305,6 +1319,20 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
     }
     deallocate_2d(matN, numpy);
     deallocate_2d(matS, numpy);
+    intensity_maxN=0.0; intensity_minN=1.0e8;
+    intensity_maxS=0.0; intensity_minS=1.0e8;
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            if(intensity_maxN<screenNI[i][j]) intensity_maxN=screenNI[i][j];
+            if(intensity_minN>screenNI[i][j]) intensity_minN=screenNI[i][j];
+        }
+    }
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            if(intensity_maxS<screenSI[i][j]) intensity_maxS=screenSI[i][j];
+            if(intensity_minS>screenSI[i][j]) intensity_minS=screenSI[i][j];
+        }
+    }
 
     if(0==strcmp(projection, "stereo")){
         callocate_2d(&matN, numpy, numpx, 0.0);
@@ -1315,6 +1343,8 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
                 matS[i][j]=screenSI[i][j];
             }
         }
+        intensity_maxN=0.0; intensity_minN=1.0e8;
+        intensity_maxS=0.0; intensity_minS=1.0e8;
         for(int i=-imp;i<=imp;i++){
             for(int j=-imp;j<=imp;j++){
                 double xy[2]={double(i)/double(imp), double(j)/double(imp)};
@@ -1344,21 +1374,12 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
                                 matN[ix][iyp]*dxm*dy+matN[ixp][iyp]*dx*dy;
                     screenSI[ii][jj]=matS[ix][iy]*dxm*dym+matS[ixp][iy]*dx*dym+
                                 matS[ix][iyp]*dxm*dy+matS[ixp][iyp]*dx*dy;
+                    if(intensity_maxN<screenNI[ii][jj]) intensity_maxN=screenNI[ii][jj];
+                    if(intensity_minN>screenNI[ii][jj]) intensity_minN=screenNI[ii][jj];
+                    if(intensity_maxS<screenSI[ii][jj]) intensity_maxS=screenSI[ii][jj];
+                    if(intensity_minS>screenSI[ii][jj]) intensity_minS=screenSI[ii][jj];
                 }
             }
-        }
-    }
-
-    for(int i=0;i<numpy;i++){
-        for(int j=0;j<numpx;j++){
-            if(intensity_maxN<screenNI[i][j]) intensity_maxN=screenNI[i][j];
-            if(intensity_minN>screenNI[i][j]) intensity_minN=screenNI[i][j];
-        }
-    }
-    for(int i=0;i<numpy;i++){
-        for(int j=0;j<numpx;j++){
-            if(intensity_maxS<screenNI[i][j]) intensity_maxS=screenNI[i][j];
-            if(intensity_minS>screenNI[i][j]) intensity_minS=screenNI[i][j];
         }
     }
 }
@@ -1377,7 +1398,7 @@ void DKD::dkd(char* dkd_path, char background)
     fp=fopen(dkd_path,"w");
     fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
     fprintf(fp, "%d %d\n", numpx, numpy);
-    fprintf(fp, "KIKUCHI_IMAGE_VALUE\n");
+    fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
     fflush(fp);
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
@@ -1385,10 +1406,21 @@ void DKD::dkd(char* dkd_path, char background)
             fflush(fp);
         }
     }
+    fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
+    fflush(fp);
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            fprintf(fp, "%.8f\n", screenSI[i][j]);
+            fflush(fp);
+        }
+    }
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
     char png_path[strlen(dkd_path)+5];
-    strcpy(png_path, dkd_path); strcat(png_path, ".png");
-    img(png_path, intensity_maxN, 0.0, background);
+    strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
+    img(png_path, screenNI, intensity_maxN, intensity_minN, background);
+    printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
+    strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
+    img(png_path, screenSI, intensity_maxS, intensity_minS, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
 }
 
@@ -1398,7 +1430,7 @@ void DKD::dkd(char* dkd_path, double vmax, double vmin, char background)
     fp=fopen(dkd_path,"w");
     fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
     fprintf(fp, "%d %d\n", numpx, numpy);
-    fprintf(fp, "KIKUCHI_IMAGE_VALUE\n");
+    fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
     fflush(fp);
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
@@ -1406,17 +1438,28 @@ void DKD::dkd(char* dkd_path, double vmax, double vmin, char background)
             fflush(fp);
         }
     }
+    fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
+    fflush(fp);
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            fprintf(fp, "%.8f\n", screenSI[i][j]);
+            fflush(fp);
+        }
+    }
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
     char png_path[strlen(dkd_path)+5];
-    strcpy(png_path, dkd_path); strcat(png_path, ".png");
-    img(png_path, vmax, vmin, background);
+    strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
+    img(png_path, screenNI, vmax, vmin, background);
+    printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
+    strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
+    img(png_path, screenSI, vmax, vmin, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
 }
 
-void DKD::img(char* png_path, double vmax, double vmin, char background)
+void DKD::img(char* png_path, double **value, double vmax, double vmin, char background)
 {
     double *wdata;
-    unreshape_2d(&wdata, screenNI, numpy, numpx);
+    unreshape_2d(&wdata, value, numpy, numpx);
     unsigned char *pixels;
     int num=numpx*numpy;
     mallocate(&pixels, 3*num);

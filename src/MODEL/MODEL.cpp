@@ -250,7 +250,7 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[], do
     for(int i=0;i<napos;i++){
         int typei=apos_type[i]-1;
         npos+=apos_multi[i];
-        apos_DW[i]=DWs[typei];
+        apos_DW[i]=DWs[typei]*0.01;
         for(int j=0;j<E_TYPE_NUMBER;j++){
             if(0==strcmp(type_name[typei], E_TYPE[j])){
                 apos_Z[i]=j+1;

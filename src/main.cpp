@@ -331,7 +331,7 @@ int main(int argc, char* argv[])
         double ratiox=1.0, ratioy=1.0;
         double thickness=0.2;
         int    npx=500, npy=500;
-        char   mode[10];
+        char   projection[10]="stereo";
 
         double vmax=1.0e6, vmin=0.0;
         char   background='b';
@@ -433,9 +433,9 @@ int main(int argc, char* argv[])
                     i++;
                     npy=(int)be_double(argv[i++]);
                     continue;
-                }else if(0==strcmp(argv[i], "-proj")){
+                }else if(0==strcmp(argv[i], "-projection")){
                     i++;
-                    strcpy(mode, argv[i++]);
+                    strcpy(projection, argv[i++]);
                     continue;
                 }else if(0==strcmp(argv[i], "-background")){
                     i++;
@@ -481,7 +481,7 @@ int main(int argc, char* argv[])
             }else{
                 strcpy(kkd_path, output_path);
             }
-            KKD kkd(input_path, xaxis, yaxis, zaxis, thickness, threshold, ratiox, ratioy, npx, npy, mode);
+            KKD kkd(input_path, xaxis, yaxis, zaxis, thickness, threshold, ratiox, ratioy, npx, npy, projection);
             if(is_scale){
                 kkd.kkd(kkd_path, vmax, vmin, background);
             }else{
@@ -645,16 +645,17 @@ int main(int argc, char* argv[])
         double fthick=100.0;
         double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
         int    nump=500;
-        char   mode[10];
+        char   projection[10]="stereo";
+        char   background='b';
 
         double omega=0.0, sigma=75.7;
-        double Eexit=voltage-1.0;
+        double Eexit=190;
         double dthick=10.0;
         int    nume=20000;
+        char   seed_path[PATH_CHAR_NUMBER]="./RandomSeeds.data";
         bool   is_monte=false;
 
         double vmax=1.0e6, vmin=0.0;
-        char   background='b';
         bool   is_scale=false;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
@@ -674,25 +675,25 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-en")){
                 i++;
                 voltage=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-ft")){
-                i++;
-                fthick=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-q")){
                 i++;
                 Kmax=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-p")){
+            }else if(0==strcmp(argv[i], "-ft")){
                 i++;
-                nump=(int)be_double(argv[i++]);
-                continue;
+                fthick=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-bethe")){
                 i++;
                 c1=be_double(argv[i++]);
                 c2=be_double(argv[i++]);
                 c3=be_double(argv[i++]);
                 c_sg=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-proj")){
+            }else if(0==strcmp(argv[i], "-np")){
                 i++;
-                strcpy(mode, argv[i++]);
+                nump=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-projection")){
+                i++;
+                strcpy(projection, argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-background")){
                 i++;
@@ -701,6 +702,42 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-o")){
                 i++;
                 strcpy(output_path, argv[i++]);
+            }else if(0==strcmp(argv[i], "--monte")){
+                i++;
+                is_monte=true;
+                while(i<argc){
+                    if(0==strcmp(argv[i], "-ome")){
+                        i++;
+                        omega=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-sig")){
+                        i++;
+                        sigma=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-ex")){
+                        i++;
+                        Eexit=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-dt")){
+                        i++;
+                        dthick=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-ne")){
+                        i++;
+                        nume=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-seedpath")){
+                        i++;
+                        strcpy(seed_path, argv[i++]);
+                        continue;
+                    }else if(is_mode(argv[i])){
+                        break;
+                    }else{
+                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                        printf("Try 'AAVDP -h dkd' for more information");
+                        exit(1);
+                    }
+                }
             }else if(0==strcmp(argv[i], "--scale")){
                 i++;
                 is_scale=true;
@@ -712,38 +749,6 @@ int main(int argc, char* argv[])
                     }else if(0==strcmp(argv[i], "-min")){
                         i++;
                         vmin=be_double(argv[i++]);
-                        continue;
-                    }else if(is_mode(argv[i])){
-                        break;
-                    }else{
-                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h dkd' for more information");
-                        exit(1);
-                    }
-                }
-            }else if(0==strcmp(argv[i], "--monte")){
-                i++;
-                is_monte=true;
-                while(i<argc){
-                    if(0==strcmp(argv[i], "-ex")){
-                        i++;
-                        Eexit=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-dt")){
-                        i++;
-                        dthick=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-ome")){
-                        i++;
-                        omega=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-sig")){
-                        i++;
-                        sigma=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-ne")){
-                        i++;
-                        nume=be_double(argv[i++]);
                         continue;
                     }else if(is_mode(argv[i])){
                         break;
@@ -769,15 +774,15 @@ int main(int argc, char* argv[])
         BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
         if(is_monte){
-            MC mc(&cell, omega, sigma, voltage, Eexit, fthick, dthick, nume, nump);
-            DKD dkd(&cell, &mc, &bethe, Kmax, mode);
+            MC mc(&cell, seed_path, omega, sigma, voltage, Eexit, fthick, dthick, nume, nump);
+            DKD dkd(&cell, &mc, &bethe, Kmax, projection);
             if(is_scale){
                 dkd.dkd(dkd_path, vmax, vmin, background);
             }else{
                 dkd.dkd(dkd_path, background);
             }
         }else{
-            DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, mode);
+            DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, projection);
             if(is_scale){
                 dkd.dkd(dkd_path, vmax, vmin, background);
             }else{
