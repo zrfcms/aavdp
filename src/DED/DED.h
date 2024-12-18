@@ -83,7 +83,6 @@ private:
     void   find_first_and_second_knearests();
     void   rotate_by_first_knearest(CELL *cell, int zone[3]);
     void   img(char *png_path, double *x, double *y, double *value, int num, double limit);
-    void   img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background='w');
 };
 
 struct DKD_KNODE{
@@ -111,21 +110,28 @@ class DKD
 {
 public:
     int    numpx=0, numpy=0;
+    double ***screenK0=nullptr;
+    double **screenI=nullptr;
+    double intensity_max=0.0, intensity_min=1.0e8;
+
     double **screenNI=nullptr, **screenSI=nullptr;
     double intensity_maxN=0.0, intensity_minN=1.0e8;
     double intensity_maxS=0.0, intensity_minS=1.0e8;
+    DKD(CELL *cell, MC *mc, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double Kmag_max, int npx, int npy, char *projection);
+    DKD(CELL *cell, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double voltage, double fthick, double Kmag_max, int npx, int npy, char *projection);
     DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection);
     DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double Kmag_max, int nump, char *projection);
     ~DKD();
     void   dkd(char* dkd_path, char background);
     void   dkd(char* dkd_path, double vmax, double vmin, char background);
 private:
+    void   compute_Kikuchi_sphere_projection(CELL *cell, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double kn, char *projection);
+    void   compute_Kikuchi_intensity_projection(double &intens, complex<double> ***Sgh, complex<double> **Lgh, int napos, int nstrong, int npos);
     void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DED_GVECTOR *gvec);
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DED_GVECTOR *gvec);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
     void   compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projection, bool use_hexagonal);
-    void   img(char* png_path, double **value, double vmax, double vmin, char background);
 };
 
 #endif

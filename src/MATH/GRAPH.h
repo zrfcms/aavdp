@@ -32,42 +32,8 @@ extern void compute_sphere_from_hexagonal_Lambert(double xyz[3], int &ierr, doub
 extern void compute_sphere_from_stereographic_projection(double xyz[3], int &ierr, double xy[2]);
 extern void compute_sphere_from_orthographic_projection(double xyz[3], int &ierr, double xy[2]);
 
-extern void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy);
-template <typename T>
-extern void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background=true);
-template <typename T>
-void image_array(const char* png_path, T **arr, int nrow, int ncol, double width, double height, int resolution, bool is_black_background)
-{
-    int numpx=width*resolution, numpy=height*resolution;
-    int multiplier=m_min(numpx/ncol, numpy/nrow);
-    numpx=ncol*multiplier; numpy=nrow*multiplier;
-    double **warr; callocate_2d(&warr, numpy, numpx, 0.0);
-    for(int i=0;i<nrow;i++){
-        for(int j=0;j<ncol;j++){
-            for(int k=0;k<multiplier;k++){
-                for(int n=0;n<multiplier;n++){
-                    warr[i*multiplier+k][j*multiplier+n]=arr[i][j];
-                }
-            }
-        }
-    }
-    int nump=numpx*numpy;
-    double *wdata; unreshape_2d(&wdata, warr, numpy, numpx);
-    double wmax=wdata[0], wmin=wdata[0];
-    for(int i=0;i<nump;i++){
-        if(wmax<wdata[i]) wmax=wdata[i];
-        if(wmin>wdata[i]) wmin=wdata[i];
-    }
-    double wdiff=wmax-wmin;
-    double wref=is_black_background?wmin:wmax;
-
-    unsigned char *pixels;
-    mallocate(&pixels, 3*nump);
-    for(int i=0;i<nump;i++){
-        pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round(fabs(wref-wdata[i])/wdiff*255.0);
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
-}
+extern void image_pixels(char* png_path, unsigned char *pixels, int nrow, int ncol);
+extern void image_array(char* png_path, double **value, double vmax, double vmin, int nrow, int ncol, char background);
 
 struct POINT
 {
@@ -131,7 +97,7 @@ public:
     void scatter(double *x, double *y, double *value, int num, char marker_style='c', double marker_size=20.0);
     void line(double *x, double *y, int num, double line_width=5.0);
     void hist(double *x, double *y, int num, double line_width=5.0);
-    void draw(const char *png_path);
+    void draw(char *png_path);
 private:
     void get_pixel(int &i, int &j, double x, double y);
     void draw_marker(POINT *point);

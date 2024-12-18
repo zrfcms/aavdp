@@ -59,7 +59,6 @@ private:
     void   find_first_and_second_knearests();
     void   rotate_by_first_knearest(int zone[3]);
     void   img(char *png_path, double *x, double *y, double *value, int num, double limit);
-    void   img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background='w');
 };
 
 struct KKD_KNODE{
@@ -87,7 +86,6 @@ public:
     double intensity_min=1.0e8, intensity_max=0.0;
     void   kkd(char* kkd_path, char background='b');
     void   kkd(char* kkd_path, double vmax, double vmin, char background='b');
-    void   img(char* png_path, double vmax, double vmin, char background='b');
 private:
     double axes[3][3]={0.0};
     void   add_k_node(double hkl[3], double K[3], double Kwidth, double intensity1, double intensity2);

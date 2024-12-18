@@ -55,7 +55,7 @@ Automatic Analysis of Virtual Diffraction Pattern （AAVDP）for artificial atom
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -z 2 1 0 -fn 2 1 0 -q 0.8 -o ./exp/ded/Al2O3/Al2O3_point.210.ded --rotate -x 0 0 1 -y -0.44721360 0.89442719 0
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -z 2 1 0 -fn 2 1 0 -q 0.8 -o ./exp/ded/Al2O3/Al2O3.210.ded --gauss -dx 0.00375 -sig 0.0075 --rotate -x 0 0 1 -y -0.44721360 0.89442719 0
 6.  dkd: 
-	>>./AAVDP.exe --dkd ./exp/dkd/bcc/bcc.vasp -q 1.5 -np 1000 -o ./exp/dkd/bcc/bcc.dkd --monte
+	>>./AAVDP.exe --dkd ./exp/dkd/bcc/bcc.vasp -q 2.0 -x 0 3 -1 -y 10 -1 -3 -z 1 1 3 -rx 0.25 -ry 0.30 -px 500 -py 600 -o ./exp/dkd/bcc/bcc.dkd --monte -o ./exp/dkd/bcc/bcc.mc
 7.  rdf:
 	>>./AAVDP.exe --rdf ./exp/rdf/Cu_glass/Cu_glass.lammps -r 8 -n 160 -o ./exp/rdf/Cu_glass/Cu_glass.rdf
 	>>./AAVDP.exe --rdf ./exp/rdf/Cu_liquid/Cu_liquid.lammps -r 8 -n 160 -o ./exp/rdf/Cu_liquid/Cu_liquid.rdf

@@ -52,34 +52,79 @@ double RNG::random(){
     return fabs(z1 ^ z2 ^ z3 ^ z4)/2147483647.0;
 }
 
-MC::MC(CELL *cell, char *seed_path, double omega, double sigma, double Emax, double Emin, double zmax, double zstep, int nume, int nump)
+MC::MC(CELL *cell, char *seed_path, double omega, double sigma, double voltage, double Eexit, double fthick, double dthick, int nume, int nump)
 {
+    Emax=voltage; Emin=Eexit;
+    zmax=fthick*0.1; zstep=dthick*0.1;
+
     ave_M=cell->ave_M; 
     ave_Z=cell->ave_Z;
     density=cell->density;
 
     numpE=nump;
     if(nump%2==0) numpE=nump+1;
-    numzbin=int(zmax/zstep)+1;
+    numzbin=int(ceil(zmax/zstep));
     numpz=(numpE-1)/10+1;
     callocate_2d(&accum_E, numpE, numpE, 0);
     callocate_3d(&accum_z, numzbin, numpz, numpz, 0);
-
-    dz=zstep*0.1; EkeV=Emax;
     int ebin=10000;
     int nbatch=int(ceil(double(nume)/double(ebin)));
     int count_bse=0, count_e=0;
+    double xyz0[3]={0.0, 0.0, 0.0};
     double dir0[3]={cos(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), sin(omega*DEG_TO_RAD)*sin(sigma*DEG_TO_RAD), cos(sigma*DEG_TO_RAD)}; 
     rng=new RNG(seed_path, nbatch);
-    printf("[INFO] Starting computation of spatial and energy distributions of back-scattered electrons...\n");
+    printf("[INFO] Starting computation of distribution of back-scattered electrons ...\n");
     for(int i=0;i<nbatch;i++){
         if((nume-i*ebin)<ebin) ebin=nume-i*ebin;
         rng->seed(i);
-        compute(count_bse, ebin, dir0, Emax, Emin);
+        compute(count_bse, ebin, xyz0, dir0, Emax, Emin, zstep);
         count_e+=ebin;
-        printf("[INFO] Completed incident electrons %d of %d\n", count_e, nume);
-        printf("[INFO] Back-scattered electrons hits = %d\n", count_bse);
+        printf("[INFO] Completed incident electrons %d of %d with %d back-scattered electrons hits\n", count_e, nume, count_bse);
     }
+    printf("[INFO] Ending computation of distribution of back-scattered electrons\n");
+    for(int i=0;i<numpE;i++){
+        for(int j=0;j<numpE;j++){
+            if(nume_max<accum_E[i][j]) nume_max=accum_E[i][j];
+            if(nume_min>accum_E[i][j]) nume_min=accum_E[i][j];
+        }
+    }
+    compute_weight(cell->fouri0.sigp, zstep, nume);
+    printf("[INFO] Back-scattered electrons have energy between %.8f and %.8f [keV], depth between %.8f and %.8f [nm]\n", Emin, Emax, 0.0, zmax);
+}
+
+MC::~MC()
+{
+    if(accum_E!=nullptr) deallocate_2d(accum_E, numpE);
+    if(accum_z!=nullptr) deallocate_3d(accum_z, numzbin, numpz);
+    if(weight!=nullptr) deallocate(weight);
+}
+
+void MC::mc(char *mc_path, char background)
+{
+    FILE *fp=nullptr;
+    fp=fopen(mc_path,"w");
+    fprintf(fp, "ENERGY_DISTRIBUTION_SIZE\n");
+    fprintf(fp, "%d %d\n", numpE, numpE);
+    fprintf(fp, "ENERGY_DISTRIBUTION_VALUE\n");
+    fflush(fp);
+    double **accum_E_double=nullptr;
+    callocate_2d(&accum_E_double, numpE, numpE, 0.0);
+    for(int i=0;i<numpE;i++){
+        for(int j=0;j<numpE;j++){
+            fprintf(fp, "%d\n", accum_E[i][j]);
+            fflush(fp);
+            accum_E_double[i][j]=accum_E[i][j];
+        }
+    }
+    printf("[INFO] Information for energy accumulator stored in %s\n", mc_path);
+    char png_path[strlen(mc_path)+5];
+    strcpy(png_path, mc_path); strcat(png_path, ".png");
+    image_array(png_path, accum_E_double, double(nume_max), double(nume_min), numpE, numpE, background);
+    printf("[INFO] Image for energy accumulator stored in %s\n", png_path);
+}
+
+void MC::compute_weight(double sigp, double dz, int nume)
+{
     izmax=0;
     for(int ix=0;ix<numpz;ix++){
         for(int iy=0;iy<numpz;iy++){
@@ -95,7 +140,7 @@ MC::MC(CELL *cell, char *seed_path, double omega, double sigma, double Emax, dou
             if(iz>izmax) izmax=iz;
         }
     }
-    z=double(izmax)*dz;
+    zmax=double(izmax)*dz;
     callocate(&weight, izmax, 0.0);
     for(int iz=0;iz<izmax;iz++){
         int sum_z=0;
@@ -104,25 +149,18 @@ MC::MC(CELL *cell, char *seed_path, double omega, double sigma, double Emax, dou
                 sum_z+=accum_z[iz][ix][iy];
             }
         }
-        weight[iz]=double(sum_z)/double(nume)*exp(TWO_PI*double(iz)*dz/cell->fouri0.sigp);
+        weight[iz]=double(sum_z)/double(nume)*exp(TWO_PI*double(iz)*dz/sigp);
     }
-    printf("[INFO] Ending computation of spatial and energy distributions of back-scattered electrons\n");
 }
 
-MC::~MC()
-{
-    deallocate_2d(accum_E, numpE);
-    deallocate_3d(accum_z, numzbin, numpz);
-}
-
-void MC::compute(int &count_bse, int ne, double dir0[3], double E0, double Ex)
+void MC::compute(int &count_bse, int ne, double xyz0[3], double dir0[3], double E0, double Ex, double dz)
 {
     int imp=numpE/2, imz=numpz/2;
     for(int ie=0;ie<ne;ie++){
         //Set the initial energy, coordinate, and direction (cosine) for this incident electron
         double E=E0;
         double dir[3]; vector_copy(dir, dir0);
-        double xyz[3]={0.0, 0.0, 0.0};
+        double xyz[3]; vector_copy(xyz, xyz0);
         double alpha=0.0, step=0.0;
         update_free_path(step, alpha, E, E0);
         update_incident_coordinate(xyz, dir, step);

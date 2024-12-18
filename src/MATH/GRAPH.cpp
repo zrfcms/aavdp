@@ -233,7 +233,7 @@ void compute_sphere_from_orthographic_projection(double xyz[3], int &ierr, doubl
     }
 }
 
-void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int numpy)
+void image_pixels(char* png_path, unsigned char *pixels, int nrow, int ncol)
 {	
     png_structp png_ptr;  
     png_infop info_ptr;  
@@ -255,7 +255,7 @@ void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int nu
         exit(1);
     }  
     png_init_io(png_ptr, fp);  
-    png_set_IHDR(png_ptr, info_ptr, numpx, numpy, 8, 
+    png_set_IHDR(png_ptr, info_ptr, ncol, nrow, 8, 
                  PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE); 
     png_colorp palette=(png_colorp)png_malloc(png_ptr, PNG_MAX_PALETTE_LENGTH*sizeof(png_color));
     if(!palette){
@@ -267,9 +267,9 @@ void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int nu
     png_set_PLTE(png_ptr, info_ptr, palette, PNG_MAX_PALETTE_LENGTH);  
     png_write_info(png_ptr, info_ptr);  
     png_set_packing(png_ptr);
-    png_bytepp rows=(png_bytepp)png_malloc(png_ptr, numpy*sizeof(png_bytep));
-    for(int i=0;i<numpy;++i){
-        rows[numpy-i-1]=(png_bytep)(pixels+(i)*numpx*3);
+    png_bytepp rows=(png_bytepp)png_malloc(png_ptr, nrow*sizeof(png_bytep));
+    for(int i=0;i<nrow;++i){
+        rows[nrow-i-1]=(png_bytep)(pixels+(i)*ncol*3);
     }
     png_write_image(png_ptr, rows);  
     delete[] rows;
@@ -278,6 +278,47 @@ void image_pixels(const char* png_path, unsigned char *pixels, int numpx, int nu
     palette=NULL;  
     png_destroy_write_struct(&png_ptr, &info_ptr);  
     fclose(fp);   
+}
+
+void image_array(char* png_path, double **value, double vmax, double vmin, int nrow, int ncol, char background)
+{
+    double *wdata;
+    unreshape_2d(&wdata, value, nrow, ncol);
+    unsigned char *pixels;
+    int num=nrow*ncol;
+    mallocate(&pixels, 3*num);
+
+    double vdiff=vmax-vmin;
+    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
+    switch(background)
+    {
+    case 'b':
+        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
+        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
+        break;
+    case 'w':
+        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
+        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
+        break;
+    default:
+        printf("[ERROR] Unrecognized background %s\n", background);
+        exit(1);
+    }
+    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
+    unsigned char rgb[3];
+    for(int i=0;i<num;i++){
+        if(wdata[i]>=vmax){
+            vector_copy(rgb, rgb_max);
+        }else if(wdata[i]<=vmin){
+            vector_copy(rgb, rgb_min);
+        }else{
+            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
+            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
+            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
+        }
+        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
+    }
+    image_pixels(png_path, pixels, nrow, ncol);
 }
 
 GRAPH::GRAPH(double width, double height, int resolution)
@@ -433,7 +474,7 @@ void GRAPH::hist(double *x, double *y, int num, double line_width)
     }
 }
 
-void GRAPH::draw(const char *png_path)
+void GRAPH::draw(char *png_path)
 {
     area.start_px=round(area.border_width_factor*image.pwidth);
     area.start_py=round(area.border_height_factor*image.pheight);

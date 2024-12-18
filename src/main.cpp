@@ -635,16 +635,21 @@ int main(int argc, char* argv[])
         i++;
         char   input_path[PATH_CHAR_NUMBER]; strcpy(input_path, argv[i++]);
         char   output_path[PATH_CHAR_NUMBER]; strcpy(output_path, "");
+        char   mc_path[PATH_CHAR_NUMBER]; strcpy(mc_path, "");
         is_path_accessible(input_path);
 
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
-        
         double voltage=200.0;
         double Kmax=1.0;
         double fthick=100.0;
         double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
-        int    nump=500;
+
+        double xaxis[3]={1.0, 0.0, 0.0};
+        double yaxis[3]={0.0, 1.0, 0.0};
+        double zaxis[3]={0.0, 0.0, 1.0};
+        double ratiox=1.0, ratioy=1.0;
+        int    numpx=501, numpy=501;
         char   projection[10]="stereo";
         char   background='b';
 
@@ -652,6 +657,7 @@ int main(int argc, char* argv[])
         double Eexit=190;
         double dthick=10.0;
         int    nume=20000;
+        int    nump=501;
         char   seed_path[PATH_CHAR_NUMBER]="./RandomSeeds.data";
         bool   is_monte=false;
 
@@ -687,9 +693,39 @@ int main(int argc, char* argv[])
                 c2=be_double(argv[i++]);
                 c3=be_double(argv[i++]);
                 c_sg=be_double(argv[i++]);
-            }else if(0==strcmp(argv[i], "-np")){
+            }if(0==strcmp(argv[i], "-x")){
                 i++;
-                nump=(int)be_double(argv[i++]);
+                xaxis[0]=be_double(argv[i++]);
+                xaxis[1]=be_double(argv[i++]);
+                xaxis[2]=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-y")){
+                i++;
+                yaxis[0]=be_double(argv[i++]);
+                yaxis[1]=be_double(argv[i++]);
+                yaxis[2]=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-z")){
+                i++;
+                zaxis[0]=be_double(argv[i++]);
+                zaxis[1]=be_double(argv[i++]);
+                zaxis[2]=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-rx")){
+                i++;
+                ratiox=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-ry")){
+                i++;
+                ratioy=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-px")){
+                i++;
+                numpx=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-py")){
+                i++;
+                numpy=(int)be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-projection")){
                 i++;
@@ -726,10 +762,17 @@ int main(int argc, char* argv[])
                         i++;
                         nume=be_double(argv[i++]);
                         continue;
+                    }else if(0==strcmp(argv[i], "-np")){
+                        i++;
+                        nump=be_double(argv[i++]);
+                        continue;
                     }else if(0==strcmp(argv[i], "-seedpath")){
                         i++;
                         strcpy(seed_path, argv[i++]);
                         continue;
+                    }else if(0==strcmp(argv[i], "-o")){
+                        i++;
+                        strcpy(mc_path, argv[i++]);
                     }else if(is_mode(argv[i])){
                         break;
                     }else{
@@ -774,15 +817,21 @@ int main(int argc, char* argv[])
         BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
         if(is_monte){
+            if(0==strcmp(mc_path, "")){
+                strcpy(mc_path, "./AAVDP.mc");
+            }
             MC mc(&cell, seed_path, omega, sigma, voltage, Eexit, fthick, dthick, nume, nump);
-            DKD dkd(&cell, &mc, &bethe, Kmax, projection);
+            mc.mc(mc_path, 'b');
+            // DKD dkd(&cell, &mc, &bethe, Kmax, projection);
+            DKD dkd(&cell, &mc, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, Kmax, numpx, numpy, projection);
             if(is_scale){
                 dkd.dkd(dkd_path, vmax, vmin, background);
             }else{
                 dkd.dkd(dkd_path, background);
             }
         }else{
-            DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, projection);
+            // DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, projection);
+            DKD dkd(&cell, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, voltage, fthick, Kmax, numpx, numpy, projection);
             if(is_scale){
                 dkd.dkd(dkd_path, vmax, vmin, background);
             }else{

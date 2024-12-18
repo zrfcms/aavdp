@@ -401,7 +401,7 @@ void KED::ked(char *ked_path, double sigma, double dx)
 
     char png_path[strlen(ked_path)+5];
     strcpy(png_path, ked_path); strcat(png_path, ".png");
-    img(png_path, intensity, nbin, nbin, imax, imin);
+    image_array(png_path, intensity, imax, imin, nbin, nbin, 'w');
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);
 }
 
@@ -422,47 +422,6 @@ void KED::img(char *png_path, double *x, double *y, double *value, int num, doub
     graph.set_tick_in(false);
     graph.scatter(x, y, value, num);
     graph.draw(png_path);
-}
-
-void KED::img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background)
-{
-    double *wdata;
-    unreshape_2d(&wdata, value, numpy, numpx);
-    unsigned char *pixels;
-    int num=numpx*numpy;
-    mallocate(&pixels, 3*num);
-
-    double vdiff=vmax-vmin;
-    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
-    switch(background)
-    {
-    case 'b':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
-        break;
-    case 'w':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
-        break;
-    default:
-        printf("[ERROR] Unrecognized background %s\n", background);
-        exit(1);
-    }
-    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
-    unsigned char rgb[3];
-    for(int i=0;i<num;i++){
-        if(wdata[i]>=vmax){
-            vector_copy(rgb, rgb_max);
-        }else if(wdata[i]<=vmin){
-            vector_copy(rgb, rgb_min);
-        }else{
-            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
-            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
-            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
-        }
-        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
 }
 
 KED::KED(char *ked3_path)
@@ -779,7 +738,7 @@ void KKD::kkd(char* kkd_path, char background)
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", kkd_path);
     char png_path[strlen(kkd_path)+5];
     strcpy(png_path, kkd_path); strcat(png_path, ".png");
-    img(png_path, intensity_max, 0.0, background);
+    image_array(png_path, screenI, intensity_max, 0.0, numpy, numpx, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
 }
 
@@ -800,47 +759,6 @@ void KKD::kkd(char* kkd_path, double vmax, double vmin, char background)
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", kkd_path);
     char png_path[strlen(kkd_path)+5];
     strcpy(png_path, kkd_path); strcat(png_path, ".png");
-    img(png_path, vmax, vmin, background);
+    image_array(png_path, screenI, vmax, vmin, numpy, numpx, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
-}
-
-void KKD::img(char* png_path, double vmax, double vmin, char background)
-{
-    double *wdata;
-    unreshape_2d(&wdata, screenI, numpy, numpx);
-    unsigned char *pixels;
-    int num=numpx*numpy;
-    mallocate(&pixels, 3*num);
-
-    double vdiff=vmax-vmin;
-    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
-    switch(background)
-    {
-    case 'b':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
-        break;
-    case 'w':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
-        break;
-    default:
-        printf("[ERROR] Unrecognized background %s\n", background);
-        exit(1);
-    }
-    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
-    unsigned char rgb[3];
-    for(int i=0;i<num;i++){
-        if(wdata[i]>=vmax){
-            vector_copy(rgb, rgb_max);
-        }else if(wdata[i]<=vmin){
-            vector_copy(rgb, rgb_min);
-        }else{
-            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
-            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
-            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
-        }
-        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
 }

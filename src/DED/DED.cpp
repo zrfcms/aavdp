@@ -515,7 +515,7 @@ void DED::ded(char *ded_path, double sigma, double dx)
 
     char png_path[strlen(ded_path)+5];
     strcpy(png_path, ded_path); strcat(png_path, ".png");
-    img(png_path, intensity, nbin, nbin, imax, imin);
+    image_array(png_path, intensity, imax, imin, nbin, nbin, 'w');
     printf("[INFO] Image for diffraction pattern stored in %s\n", png_path);
 }
 
@@ -538,47 +538,6 @@ void DED::img(char *png_path, double *x, double *y, double *value, int num, doub
     graph.draw(png_path);
 }
 
-void DED::img(char* png_path, double **value, int numpx, int numpy, double vmax, double vmin, char background)
-{
-    double *wdata;
-    unreshape_2d(&wdata, value, numpy, numpx);
-    unsigned char *pixels;
-    int num=numpx*numpy;
-    mallocate(&pixels, 3*num);
-
-    double vdiff=vmax-vmin;
-    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
-    switch(background)
-    {
-    case 'b':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
-        break;
-    case 'w':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
-        break;
-    default:
-        printf("[ERROR] Unrecognized background %s\n", background);
-        exit(1);
-    }
-    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
-    unsigned char rgb[3];
-    for(int i=0;i<num;i++){
-        if(wdata[i]>=vmax){
-            vector_copy(rgb, rgb_max);
-        }else if(wdata[i]<=vmin){
-            vector_copy(rgb, rgb_min);
-        }else{
-            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
-            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
-            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
-        }
-        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
-}
-
 bool is_in_hexagonal_grid(double xy[2])
 {
     double x=fabs(xy[0]-0.5*xy[1]);
@@ -590,205 +549,212 @@ bool is_in_hexagonal_grid(double xy[2])
 
 DKD_KVECTOR::DKD_KVECTOR(CELL *cell, int npx, int npy)
 {
-    double delta=1.0/double(npx);
+    double delta=1.0/double(npx)*0.3;
     double kn=1.0/cell->fouri0.lambda;
-    double xy[2]={0.0, 0.0};
-    add_k_node(cell, xy, kn);
-    switch(cell->sampling_type)
-    {
-    case 1://triclinic 1
-        for(int j=-npy;j<=npy;j++){
-            for(int i=-npx;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j, true);
-            }
+    double xy[2];
+    for(int j=-npy;j<=npy;j++){
+        for(int i=-npx;i<=npx;i++){
+            xy[0]=i*delta; xy[1]=j*delta;
+            add_k_node(cell, xy, kn, i, j, true);
         }
-        break;
-    case 2://triclinic -1
-        for(int j=-npy;j<=npy;j++){
-            for(int i=-npx;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j);
-            }
-        }
-        break;
-    case 3://monoclinic 2
-        for(int j=-npy;j<=npy;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j, true);
-            }
-        }
-        break;
-    case 4://monoclinic m
-        for(int j=0;j<=npy;j++){
-            for(int i=-npx;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j, true);
-            }
-        }
-        break;
-    case 5://monoclinic 2/m, orthorhombic 222, mm2, tetragonal 4, -4
-        for(int j=0;j<=npy;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j, true);
-            }
-        }
-        break;
-    case 6://orthorhombic mmm, tetragonal 4/m, 422, -4m2, cubic m-3, 432
-        for(int j=0;j<=npy;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j);
-            }
-        }
-        break;
-    case 7://tetragonal 4mm
-        for(int i=0;i<=npx;i++){
-            for(int j=0;j<=i;j++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j, true);
-            }
-        }
-        break;
-    case 8://tetragonal -42m, cubic -43m
-        for(int i=0;i<=npx;i++){
-            for(int j=-i;j<=i;j++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j);
-            }
-        }
-        break;
-    case 9://tetragonal 4/mmm, cubic m-3m
-        for(int i=0;i<=npx;i++){
-            for(int j=0;j<=i;j++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                add_k_node(cell, xy, kn, i, j);
-            }
-        }
-        break;
-    case 10://hexagonal 3
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j, true);
-                }
-            }
-        }
-        break;
-    case 11://rhombohedral 3
-        printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-        exit(1);
-    case 12://hexagonal -3, 321, -6 [not implemented: rhombohedral 32]
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        break;
-    case 13://hexagonal 312 [not implemented: rhombohedral -3]
-        for(int j=0;j>=-npx;j--){
-            for(int i=j/2;i<npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        for(int i=0;i<=npx;i++){
-            for(int j=0;j<i/2;j++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        break;
-    case 14://hexagonal 3m1 [not implemented: rhombohedral 3m]
-        for(int j=1;j<=npx;j++){
-            for(int i=j;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j, true);
-                }
-            }
-        }
-        break;
-    case 15://hexagonal 31m, 6
-        for(int j=1;j<=npx;j++){
-            for(int i=j;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j, true);
-                }
-            }
-        }
-        break;
-    case 16://hexagonal -3m1, 622, -6m2 [not implemented: rhombohedral -3m]
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                double x=double(i)-double(j)/2.0;
-                double y=double(j)*SQRT_HALF_3;
-                if((x<0.0)||((x>=0.0)&&(atan2(y, x)<(PI/6.0-1.0e-4)))){
-                    continue;
-                }else if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        break;
-    case 17://hexagonal -31m, 6/m, -62m
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                double x=double(i)-double(j)/2.0;
-                double y=double(j)*SQRT_HALF_3;
-                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/3.0+1.0e-4)))){
-                    continue;
-                }else if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        break;
-    case 18://hexagonal 6mm
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                double x=double(i)-double(j)/2.0;
-                double y=double(j)*SQRT_HALF_3;
-                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
-                    continue;
-                }else if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j, true);
-                }
-            }
-        }
-        break;
-    case 19:
-        for(int j=0;j<=npx;j++){
-            for(int i=0;i<=npx;i++){
-                xy[0]=i*delta; xy[1]=j*delta;
-                double x=double(i)-double(j)/2.0;
-                double y=double(j)*SQRT_HALF_3;
-                if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
-                    continue;
-                }else if(is_in_hexagonal_grid(xy)){
-                    add_k_node(cell, xy, kn, i, j);
-                }
-            }
-        }
-        break;
-    default:
-        printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
-        exit(1);
     }
+    // double xy[2]={0.0, 0.0};
+    // add_k_node(cell, xy, kn);
+    // switch(cell->sampling_type)
+    // {
+    // case 1://triclinic 1
+    //     for(int j=-npy;j<=npy;j++){
+    //         for(int i=-npx;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j, true);
+    //         }
+    //     }
+    //     break;
+    // case 2://triclinic -1
+    //     for(int j=-npy;j<=npy;j++){
+    //         for(int i=-npx;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j);
+    //         }
+    //     }
+    //     break;
+    // case 3://monoclinic 2
+    //     for(int j=-npy;j<=npy;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j, true);
+    //         }
+    //     }
+    //     break;
+    // case 4://monoclinic m
+    //     for(int j=0;j<=npy;j++){
+    //         for(int i=-npx;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j, true);
+    //         }
+    //     }
+    //     break;
+    // case 5://monoclinic 2/m, orthorhombic 222, mm2, tetragonal 4, -4
+    //     for(int j=0;j<=npy;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j, true);
+    //         }
+    //     }
+    //     break;
+    // case 6://orthorhombic mmm, tetragonal 4/m, 422, -4m2, cubic m-3, 432
+    //     for(int j=0;j<=npy;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j);
+    //         }
+    //     }
+    //     break;
+    // case 7://tetragonal 4mm
+    //     for(int i=0;i<=npx;i++){
+    //         for(int j=0;j<=i;j++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j, true);
+    //         }
+    //     }
+    //     break;
+    // case 8://tetragonal -42m, cubic -43m
+    //     for(int i=0;i<=npx;i++){
+    //         for(int j=-i;j<=i;j++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j);
+    //         }
+    //     }
+    //     break;
+    // case 9://tetragonal 4/mmm, cubic m-3m
+    //     for(int i=0;i<=npx;i++){
+    //         for(int j=0;j<=i;j++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             add_k_node(cell, xy, kn, i, j);
+    //         }
+    //     }
+    //     break;
+    // case 10://hexagonal 3
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j, true);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 11://rhombohedral 3
+    //     printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+    //     exit(1);
+    // case 12://hexagonal -3, 321, -6 [not implemented: rhombohedral 32]
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 13://hexagonal 312 [not implemented: rhombohedral -3]
+    //     for(int j=0;j>=-npx;j--){
+    //         for(int i=j/2;i<npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     for(int i=0;i<=npx;i++){
+    //         for(int j=0;j<i/2;j++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 14://hexagonal 3m1 [not implemented: rhombohedral 3m]
+    //     for(int j=1;j<=npx;j++){
+    //         for(int i=j;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j, true);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 15://hexagonal 31m, 6
+    //     for(int j=1;j<=npx;j++){
+    //         for(int i=j;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j, true);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 16://hexagonal -3m1, 622, -6m2 [not implemented: rhombohedral -3m]
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             double x=double(i)-double(j)/2.0;
+    //             double y=double(j)*SQRT_HALF_3;
+    //             if((x<0.0)||((x>=0.0)&&(atan2(y, x)<(PI/6.0-1.0e-4)))){
+    //                 continue;
+    //             }else if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 17://hexagonal -31m, 6/m, -62m
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             double x=double(i)-double(j)/2.0;
+    //             double y=double(j)*SQRT_HALF_3;
+    //             if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/3.0+1.0e-4)))){
+    //                 continue;
+    //             }else if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 18://hexagonal 6mm
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             double x=double(i)-double(j)/2.0;
+    //             double y=double(j)*SQRT_HALF_3;
+    //             if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
+    //                 continue;
+    //             }else if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j, true);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // case 19:
+    //     for(int j=0;j<=npx;j++){
+    //         for(int i=0;i<=npx;i++){
+    //             xy[0]=i*delta; xy[1]=j*delta;
+    //             double x=double(i)-double(j)/2.0;
+    //             double y=double(j)*SQRT_HALF_3;
+    //             if((x<0.0)||((x>=0.0)&&(atan2(y, x)>(PI/6.0+1.0e-4)))){
+    //                 continue;
+    //             }else if(is_in_hexagonal_grid(xy)){
+    //                 add_k_node(cell, xy, kn, i, j);
+    //             }
+    //         }
+    //     }
+    //     break;
+    // default:
+    //     printf("[ERROR] Unrecognized sampling type %d in k-vector computation.", cell->sampling_type);
+    //     exit(1);
+    // }
 }
 
 DKD_KVECTOR::~DKD_KVECTOR()
@@ -803,9 +769,15 @@ DKD_KVECTOR::~DKD_KVECTOR()
 
 void DKD_KVECTOR::add_k_node(CELL *cell, double xy[2], double kn, int i, int j, bool southern_flag)
 {
+    double axes[3][3]={{0, 3, -1}, {10, -1, -3}, {1, 1, 3}};
+    for(int i=0;i<3;i++){
+        vector_normalize(axes[i], axes[i]);
+    }
     if(ktail==nullptr){
         khead=ktail=new DKD_KNODE;
         double kstar[3]={0.0, 0.0, kn}, r_kstar[3];//c* as the center of the Rosca-Lambert projection
+        kstar[2]=1.0; vector_transform(kstar, kstar, axes);
+        vector_constant(kstar, kn, kstar);
         cell->cartesian_to_reciprocal(r_kstar, kstar);
         khead->k[0]=r_kstar[0]; khead->k[1]=r_kstar[1]; khead->k[2]=r_kstar[2];
         khead->kn=kn;
@@ -822,7 +794,9 @@ void DKD_KVECTOR::add_k_node(CELL *cell, double xy[2], double kn, int i, int j, 
         }else{
             compute_sphere_from_square_Lambert(kstar, ierr, xy);
         }
+        compute_sphere_from_stereographic_projection(kstar, ierr, xy);
         vector_normalize(kstar, kstar);
+        vector_transform(kstar, kstar, axes);
         kstar[0]*=kn; kstar[1]*=kn; kstar[2]*=kn;
         cell->cartesian_to_reciprocal(r_kstar, kstar);
         ktail->k[0]=r_kstar[0]; ktail->k[1]=r_kstar[1]; ktail->k[2]=r_kstar[2];
@@ -844,6 +818,204 @@ void DKD_KVECTOR::add_k_node(CELL *cell, double xy[2], double kn, int i, int j, 
     }
 }
 
+DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double Kmag_max, int npx, int npy, char *projection)
+{
+    printf("[INFO] Starting computation of dynamical Kikuchi diffraction...\n");
+    double dmin=1.0/Kmag_max*0.1;
+    cell->compute_reflection_range(dmin);
+    cell->compute_Bloch_wave_coefficients();
+    cell->compute_Fourier_coefficients(mc->Emax);
+    printf("[INFO] Range of Miller indices along a*, b*, or c* in reciprocal space: %d %d %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
+
+    numpx=npx; numpy=npy;
+    if(0==npx%2) numpx=npx+1;
+    if(0==npy%2) numpy=npy+1;
+    double kn=1.0/cell->fouri0.lambda;
+    compute_Kikuchi_sphere_projection(cell, xaxis, yaxis, zaxis, ratiox, ratioy, kn, projection);
+    
+    clock_t start, finish; 
+    start=clock();
+    int numk=numpy*numpx;
+    int sum_strong=0, sum_weak=0;
+    int count=0;
+    callocate_2d(&screenI, numpy, numpx, 0.0);
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            DED_GVECTOR gvec(cell, bethe, screenK0[i][j], screenK0[i][j], kn, dmin);
+            sum_strong+=gvec.nstrong; sum_weak+=gvec.nweak;
+
+            complex<double> ***Sgh;
+            callocate_3d(&Sgh, cell->napos, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_Sgh_matrices(Sgh, cell, &gvec);
+
+            complex<double> **dmat, **Lgh;
+            callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_dynamic_matrix(dmat, cell, &gvec);
+            compute_Lgh_matrix(Lgh, dmat, mc->weight, mc->izmax, mc->zmax, mc->zstep, kn, gvec.nstrong);
+            
+            compute_Kikuchi_intensity_projection(screenI[i][j], Sgh, Lgh, cell->napos, gvec.nstrong, cell->npos);
+            count++;
+            if(0==count%10000){
+                printf("[INFO] Completed beam direction %d of %d\n", count, numk);
+            }
+            deallocate_2d(Lgh, gvec.nstrong);
+            deallocate_2d(dmat, gvec.nstrong);
+            deallocate_3d(Sgh, cell->napos, gvec.nstrong);
+        }
+    }
+    finish=clock();
+    printf("[INFO] Execution time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
+    printf("[INFO] Average number of strong reflections = %d.\n", int(round(double(sum_strong)/double(numk))));
+    printf("[INFO] Average number of weak reflections = %d.\n", int(round(double(sum_weak)/double(numk))));
+    printf("[INFO] Range of Kikuchi intensity: %.8f, %.8f\n", intensity_min, intensity_max);
+    printf("[INFO] Ending computation of dynamical Kikuchi diffraction\n");
+}
+
+DKD::DKD(CELL *cell, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double voltage, double fthick, double Kmag_max, int npx, int npy, char *projection)
+{
+    printf("[INFO] Starting computation of dynamical Kikuchi diffraction...\n");
+    double dmin=1.0/Kmag_max*0.1;
+    cell->compute_reflection_range(dmin);
+    cell->compute_Bloch_wave_coefficients();
+    cell->compute_Fourier_coefficients(voltage);
+    printf("[INFO] Range of Miller indices along a*, b*, or c* in reciprocal space: %d %d %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
+
+    numpx=npx; numpy=npy;
+    if(0==npx%2) numpx=npx+1;
+    if(0==npy%2) numpy=npy+1;
+    double ft=fthick*0.1;
+    double kn=1.0/cell->fouri0.lambda;
+    compute_Kikuchi_sphere_projection(cell, xaxis, yaxis, zaxis, ratiox, ratioy, kn, projection);
+    
+    clock_t start, finish; 
+    start=clock();
+    int numk=numpy*numpx;
+    int sum_strong=0, sum_weak=0;
+    int count=0;
+    callocate_2d(&screenI, numpy, numpx, 0.0);
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            DED_GVECTOR gvec(cell, bethe, screenK0[i][j], screenK0[i][j], kn, dmin);
+            sum_strong+=gvec.nstrong; sum_weak+=gvec.nweak;
+
+            complex<double> ***Sgh;
+            callocate_3d(&Sgh, cell->napos, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_Sgh_matrices(Sgh, cell, &gvec);
+
+            complex<double> **dmat, **Lgh;
+            callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
+            compute_dynamic_matrix(dmat, cell, &gvec);
+            compute_Lgh_matrix(Lgh, dmat, ft, kn, gvec.nstrong);
+            
+            compute_Kikuchi_intensity_projection(screenI[i][j], Sgh, Lgh, cell->napos, gvec.nstrong, cell->npos);
+            count++;
+            if(0==count%10000){
+                printf("[INFO] Completed beam direction %d of %d\n", count, numk);
+            }
+            deallocate_2d(Lgh, gvec.nstrong);
+            deallocate_2d(dmat, gvec.nstrong);
+            deallocate_3d(Sgh, cell->napos, gvec.nstrong);
+        }
+    }
+    finish=clock();
+    printf("[INFO] Execution time [s]: %.2f.\n", double(finish-start)/CLOCKS_PER_SEC);
+    printf("[INFO] Average number of strong reflections = %d.\n", int(round(double(sum_strong)/double(numk))));
+    printf("[INFO] Average number of weak reflections = %d.\n", int(round(double(sum_weak)/double(numk))));
+    printf("[INFO] Range of Kikuchi intensity: %.8f, %.8f\n", intensity_min, intensity_max);
+    printf("[INFO] Ending computation of dynamical Kikuchi diffraction\n");
+}
+
+void DKD::compute_Kikuchi_intensity_projection(double &intens, complex<double> ***Sgh, complex<double> **Lgh, int napos, int nstrong, int npos)
+{
+    intens=0.0;
+    for(int i=0;i<napos;i++){
+        for(int j=0;j<nstrong;j++){
+            for(int k=0;k<nstrong;k++){
+                complex<double> temp=Lgh[j][k]*Sgh[i][j][k];
+                intens+=temp.real();
+            }
+        }
+    }
+    intens/=double(npos);
+    if(intensity_max<intens) intensity_max=intens;
+    if(intensity_min>intens) intensity_min=intens;
+}
+
+void DKD::compute_Kikuchi_sphere_projection(CELL *cell, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double kn, char *projection)
+{
+    double axes[3][3];
+    vector_copy(axes[0], xaxis);
+    vector_normalize(axes[0], axes[0]);
+    vector_copy(axes[1], yaxis);
+    vector_normalize(axes[1], axes[1]);
+    vector_copy(axes[2], zaxis);
+    vector_normalize(axes[2], axes[2]);
+    for(int i=0;i<3;i++){
+        vector_zero(axes[i], axes[i]);
+    }
+    if(fabs(vector_dot(axes[0], axes[1]))>1.0e-6||fabs(vector_dot(axes[1], axes[2]))>1.0e-6||fabs(vector_dot(axes[0], axes[2]))>1.0e-6){
+        printf("[ERROR] The orthogonality condition is not satisfied with x-[%.8f %.8f %.8f], y-[%.8f %.8f %.8f], z-[%.8f %.8f %.8f]", 
+                xaxis[0], xaxis[1], xaxis[2], yaxis[0], yaxis[1], yaxis[2], zaxis[0], zaxis[1], zaxis[2]);
+        exit(1);
+    }
+
+    callocate_3d(&screenK0, numpy, numpx, 3, 0.0);
+    int impx=numpx/2, impy=numpy/2;
+    int err;
+    if(0==strcmp(projection, "stereo")){
+        for(int i=0;i<numpy;i++){
+            for(int j=0;j<numpx;j++){
+                double xy[2]={double(i-impy)/double(impy)*ratioy, double(j-impx)/double(impx)*ratiox};
+                double xyz[3];
+                compute_sphere_from_stereographic_projection(xyz, err, xy);
+                if(0==err){
+                    vector_transform(xyz, xyz, axes);
+                    vector_copy(screenK0[i][j], xyz);
+                }
+            }
+        }
+    }else if(0==strcmp(projection, "lambert")){
+        for(int i=0;i<numpy;i++){
+            for(int j=0;j<numpx;j++){
+                double xy[2]={double(i-impy)/double(impy)*ratioy, double(j-impx)/double(impx)*ratiox};
+                double xyz[3];
+                if(cell->use_hexagonal){
+                    compute_sphere_from_hexagonal_Lambert(xyz, err, xy);
+                }else{
+                    compute_sphere_from_square_Lambert(xyz, err, xy);
+                }
+                if(0==err){
+                    vector_transform(xyz, xyz, axes);
+                    vector_copy(screenK0[i][j], xyz);
+                }
+            }
+        }
+    }else if(0==strcmp(projection, "ortho")){
+        for(int i=0;i<numpy;i++){
+            for(int j=0;j<numpx;j++){
+                double xy[2]={double(i-impy)/double(impy)*ratioy, double(j-impx)/double(impx)*ratiox};
+                double xyz[3];
+                compute_sphere_from_orthographic_projection(xyz, err, xy);
+                if(0==err){
+                    vector_transform(xyz, xyz, axes);
+                    vector_copy(screenK0[i][j], xyz);
+                }
+            }
+        }
+    }else{
+        printf("[ERROR] Unrecognized projection mode %s\n", projection);
+        exit(1);
+    }
+    for(int i=0;i<numpy;i++){
+        for(int j=0;j<numpx;j++){
+            vector_constant(screenK0[i][j], kn, screenK0[i][j]);
+            cell->cartesian_to_reciprocal(screenK0[i][j], screenK0[i][j]);
+        }
+    }
+}
+
 DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection)
 {
     numpx=numpy=mc->numpE;
@@ -853,7 +1025,7 @@ DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection)
     printf("[INFO] Range of Miller indices along a*, b*, or c* in reciprocal space: %d %d %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
 
     clock_t start, finish; start=clock();
-    double voltage=mc->EkeV;
+    double voltage=mc->Emax;
     cell->compute_Fourier_coefficients(voltage);
 
     DKD_KVECTOR kvec(cell, numpx/2, numpy/2);
@@ -873,7 +1045,7 @@ DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection)
         callocate_2d(&dmat, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
         callocate_2d(&Lgh, gvec.nstrong, gvec.nstrong, complex<double>(0.0, 0.0));
         compute_dynamic_matrix(dmat, cell, &gvec);
-        compute_Lgh_matrix(Lgh, dmat, mc->weight, mc->izmax, mc->z, mc->dz, ktemp->kn, gvec.nstrong);
+        compute_Lgh_matrix(Lgh, dmat, mc->weight, mc->izmax, mc->zmax, mc->zstep, ktemp->kn, gvec.nstrong);
         
         ktemp->intensity=0.0;
         for(int i=0;i<cell->napos;i++){
@@ -887,7 +1059,7 @@ DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection)
         ktemp->intensity/=double(cell->npos);
         ktemp=ktemp->next;
 
-        if(0==(ik+1)%1000){
+        if(0==(ik+1)%10000){
             printf("[INFO] Completed beam direction %d of %d.\n", ik+1, kvec.numk);
         }
         deallocate_2d(Lgh, gvec.nstrong);
@@ -901,7 +1073,6 @@ DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection)
     compute_kvector_projection(cell, &kvec, projection, cell->use_hexagonal);
     printf("[INFO] Range of intensity on the projection of northern hemisphere: %.8f, %.8f\n", intensity_minN, intensity_maxN);
     printf("[INFO] Range of intensity on the projection of southern hemisphere: %.8f, %.8f\n", intensity_minS, intensity_maxS);
-
 }
 
 DKD::DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double Kmag_max, int nump, char *projection)
@@ -1245,16 +1416,21 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
     DKD_KNODE *ktemp=kvec->khead;
     int imp=numpx/2;
     for(int i=0;i<kvec->numk;i++){
-        int iequiv[48][3], nequiv;
-        cell->apply_point_group_symmetry(iequiv, nequiv, ktemp->i, ktemp->j, ktemp->hemisphere, imp, imp);
-        for(int i=0;i<nequiv;i++){
-            int ix=iequiv[i][0]+imp, iy=iequiv[i][1]+imp;
-            if(-1==iequiv[i][2]){
-                screenSI[ix][iy]=ktemp->intensity;
-            }else if(1==iequiv[i][2]){
-                screenNI[ix][iy]=ktemp->intensity;
-            }
+        if(ktemp->hemisphere==-1){
+            screenSI[ktemp->i+imp][ktemp->j+imp]=ktemp->intensity;
+        }else{
+            screenNI[ktemp->i+imp][ktemp->j+imp]=ktemp->intensity;
         }
+        // int iequiv[48][3], nequiv;
+        // cell->apply_point_group_symmetry(iequiv, nequiv, ktemp->i, ktemp->j, ktemp->hemisphere, imp, imp);
+        // for(int i=0;i<nequiv;i++){
+        //     int ix=iequiv[i][0]+imp, iy=iequiv[i][1]+imp;
+        //     if(-1==iequiv[i][2]){
+        //         screenSI[ix][iy]=ktemp->intensity;
+        //     }else if(1==iequiv[i][2]){
+        //         screenNI[ix][iy]=ktemp->intensity;
+        //     }
+        // }
         ktemp=ktemp->next;
     }
     for(int i=0;i<numpy;i++){
@@ -1269,8 +1445,8 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
             if(intensity_minS>screenSI[i][j]) intensity_minS=screenSI[i][j];
         }
     }
-    img("./test.N.png", screenNI, intensity_maxN, intensity_minN, 'b');
-    img("./test.S.png", screenSI, intensity_maxS, intensity_minS, 'b');
+    // image_array("./test.N.png", screenNI, numpy, numpx, intensity_maxN, intensity_minN, 'b');
+    // image_array("./test.S.png", screenSI, numpy, numpx, intensity_maxS, intensity_minS, 'b');
 
     double **matN, **matS;
     callocate_2d(&matN, numpy, numpx, 0.0);
@@ -1295,7 +1471,7 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
                 printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
                 exit(1);
             }
-            xy[0]*=double(imp); xy[1]*=double(imp);
+            xy[0]*=(double(imp)); xy[1]*=(double(imp));
             int ix=floor(xy[0]), iy=floor(xy[1]);
             int ixp=ix+1, iyp=iy+1;
             if(ixp>imp) ixp=ix;
@@ -1333,7 +1509,8 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
             if(intensity_minS>screenSI[i][j]) intensity_minS=screenSI[i][j];
         }
     }
-
+    // image_array("./test1.N.png", screenNI, numpy, numpx, intensity_maxN, intensity_minN, 'b');
+    // image_array("./test1.S.png", screenSI, numpy, numpx, intensity_maxS, intensity_minS, 'b');
     if(0==strcmp(projection, "stereo")){
         callocate_2d(&matN, numpy, numpx, 0.0);
         callocate_2d(&matS, numpy, numpx, 0.0);
@@ -1360,7 +1537,7 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
                         printf("[ERROR] Unable to compute Lambert interpolation using (%.2f, %.2f, %.2f).\n", xyz[0], xyz[1], xyz[2]);
                         exit(1);
                     }
-                    xy[0]*=imp; xy[1]*=imp;
+                    xy[0]*=double(imp); xy[1]*=double(imp);
                     int ix=int(imp+xy[0])-imp, iy=int(imp+xy[1])-imp;
                     int ixp=ix+1, iyp=iy+1;
                     if(ixp>imp) ixp=ix;
@@ -1386,10 +1563,9 @@ void DKD::compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projec
 
 DKD::~DKD()
 {
-    if(numpy!=0){
-        deallocate_2d(screenNI, numpy);
-        deallocate_2d(screenSI, numpy);
-    }
+    if(screenNI!=nullptr) deallocate_2d(screenNI, numpy);
+    if(screenSI!=nullptr) deallocate_2d(screenSI, numpy);
+    if(screenI!=nullptr) deallocate_2d(screenI, numpy);
 }
 
 void DKD::dkd(char* dkd_path, char background)
@@ -1398,30 +1574,47 @@ void DKD::dkd(char* dkd_path, char background)
     fp=fopen(dkd_path,"w");
     fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
     fprintf(fp, "%d %d\n", numpx, numpy);
-    fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
+    fprintf(fp, "KIKUCHI_IMAGE_VALUE\n");
     fflush(fp);
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
-            fprintf(fp, "%.8f\n", screenNI[i][j]);
-            fflush(fp);
-        }
-    }
-    fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
-    fflush(fp);
-    for(int i=0;i<numpy;i++){
-        for(int j=0;j<numpx;j++){
-            fprintf(fp, "%.8f\n", screenSI[i][j]);
+            fprintf(fp, "%.8f\n", screenI[i][j]);
             fflush(fp);
         }
     }
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
     char png_path[strlen(dkd_path)+5];
-    strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
-    img(png_path, screenNI, intensity_maxN, intensity_minN, background);
+    strcpy(png_path, dkd_path); strcat(png_path, ".png");
+    image_array(png_path, screenI, intensity_max, intensity_min, numpy, numpx, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
-    strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
-    img(png_path, screenSI, intensity_maxS, intensity_minS, background);
-    printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
+    // FILE *fp=nullptr;
+    // fp=fopen(dkd_path,"w");
+    // fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
+    // fprintf(fp, "%d %d\n", numpx, numpy);
+    // fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
+    // fflush(fp);
+    // for(int i=0;i<numpy;i++){
+    //     for(int j=0;j<numpx;j++){
+    //         fprintf(fp, "%.8f\n", screenNI[i][j]);
+    //         fflush(fp);
+    //     }
+    // }
+    // fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
+    // fflush(fp);
+    // for(int i=0;i<numpy;i++){
+    //     for(int j=0;j<numpx;j++){
+    //         fprintf(fp, "%.8f\n", screenSI[i][j]);
+    //         fflush(fp);
+    //     }
+    // }
+    // printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
+    // char png_path[strlen(dkd_path)+5];
+    // strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
+    // img(png_path, screenNI, intensity_maxN, intensity_minN, background);
+    // printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
+    // strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
+    // img(png_path, screenSI, intensity_maxS, intensity_minS, background);
+    // printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
 }
 
 void DKD::dkd(char* dkd_path, double vmax, double vmin, char background)
@@ -1430,7 +1623,7 @@ void DKD::dkd(char* dkd_path, double vmax, double vmin, char background)
     fp=fopen(dkd_path,"w");
     fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
     fprintf(fp, "%d %d\n", numpx, numpy);
-    fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
+    fprintf(fp, "KIKUCHI_IMAGE_VALUE\n");
     fflush(fp);
     for(int i=0;i<numpy;i++){
         for(int j=0;j<numpx;j++){
@@ -1438,61 +1631,37 @@ void DKD::dkd(char* dkd_path, double vmax, double vmin, char background)
             fflush(fp);
         }
     }
-    fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
-    fflush(fp);
-    for(int i=0;i<numpy;i++){
-        for(int j=0;j<numpx;j++){
-            fprintf(fp, "%.8f\n", screenSI[i][j]);
-            fflush(fp);
-        }
-    }
     printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
     char png_path[strlen(dkd_path)+5];
-    strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
-    img(png_path, screenNI, vmax, vmin, background);
+    strcpy(png_path, dkd_path); strcat(png_path, ".png");
+    image_array(png_path, screenI, vmax, vmin, numpy, numpx, background);
     printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
-    strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
-    img(png_path, screenSI, vmax, vmin, background);
-    printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
-}
-
-void DKD::img(char* png_path, double **value, double vmax, double vmin, char background)
-{
-    double *wdata;
-    unreshape_2d(&wdata, value, numpy, numpx);
-    unsigned char *pixels;
-    int num=numpx*numpy;
-    mallocate(&pixels, 3*num);
-
-    double vdiff=vmax-vmin;
-    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
-    switch(background)
-    {
-    case 'b':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=0;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=255;
-        break;
-    case 'w':
-        rgb_min[0]=rgb_min[1]=rgb_min[2]=255;
-        rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
-        break;
-    default:
-        printf("[ERROR] Unrecognized background %s\n", background);
-        exit(1);
-    }
-    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
-    unsigned char rgb[3];
-    for(int i=0;i<num;i++){
-        if(wdata[i]>=vmax){
-            vector_copy(rgb, rgb_max);
-        }else if(wdata[i]<=vmin){
-            vector_copy(rgb, rgb_min);
-        }else{
-            rgb[0]=rgb_min[0]+int((wdata[i]-vmin)/vdiff*rgb_diff[0]);
-            rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
-            rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
-        }
-        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
-    }
-    image_pixels(png_path, pixels, numpx, numpy);
+    // FILE *fp=nullptr;
+    // fp=fopen(dkd_path,"w");
+    // fprintf(fp, "KIKUCHI_IMAGE_SIZE\n");
+    // fprintf(fp, "%d %d\n", numpx, numpy);
+    // fprintf(fp, "KIKUCHI_IMAGE_NVALUE\n");
+    // fflush(fp);
+    // for(int i=0;i<numpy;i++){
+    //     for(int j=0;j<numpx;j++){
+    //         fprintf(fp, "%.8f\n", screenNI[i][j]);
+    //         fflush(fp);
+    //     }
+    // }
+    // fprintf(fp, "KIKUCHI_IMAGE_SVALUE\n");
+    // fflush(fp);
+    // for(int i=0;i<numpy;i++){
+    //     for(int j=0;j<numpx;j++){
+    //         fprintf(fp, "%.8f\n", screenSI[i][j]);
+    //         fflush(fp);
+    //     }
+    // }
+    // printf("[INFO] Information for Kikuchi pattern stored in %s\n", dkd_path);
+    // char png_path[strlen(dkd_path)+5];
+    // strcpy(png_path, dkd_path); strcat(png_path, ".N.png");
+    // img(png_path, screenNI, vmax, vmin, background);
+    // printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
+    // strcpy(png_path, dkd_path); strcat(png_path, ".S.png");
+    // img(png_path, screenSI, vmax, vmin, background);
+    // printf("[INFO] Image for Kikuchi pattern stored in %s\n", png_path);
 }
