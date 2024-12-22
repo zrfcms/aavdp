@@ -330,10 +330,10 @@ int main(int argc, char* argv[])
         double zaxis[3]={0.0, 0.0, 1.0};
         double ratiox=1.0, ratioy=1.0;
         double thickness=0.2;
-        int    npx=500, npy=500;
+        int    npx=501, npy=501;
         char   projection[10]="stereo";
 
-        double vmax=1.0e6, vmin=0.0;
+        double vmax=1.0e4, vmin=0.0;
         char   background='b';
         bool   is_scale=false;
         if(0!=strcmp(ext, ".ked3")){
@@ -501,7 +501,7 @@ int main(int argc, char* argv[])
         int    zone[3]={0, 0, 1};
         int    fnorm[3]={0, 0, 1};
         double fthick=100.0;
-        double c1=8.0, c2=50.0, c3=100.0, c_sg=1.0;
+        double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
         double threshold=0.001;
 
         double xaxis[3]={1.0, 0.0, 0.0};
@@ -661,7 +661,7 @@ int main(int argc, char* argv[])
         char   seed_path[PATH_CHAR_NUMBER]="./RandomSeeds.data";
         bool   is_monte=false;
 
-        double vmax=1.0e6, vmin=0.0;
+        double vmax=1.0e4, vmin=0.0;
         bool   is_scale=false;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
@@ -963,7 +963,7 @@ int main(int argc, char* argv[])
         }else{
             if(0==strcmp(argv[i], "xrd")){
                 printf("The syntax format and rules for xrd in AAVDP:\n");
-                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
                 printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO_line.xrd\n");
                 printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO.xrd --scherrer -m 0.5 -d 294 -d2t 0.02\n");
                 printf("    e.g., AAVDP --xrd ./exp/xrd/NaCl/NaCl.lmp -e Na Cl -dw 1.72 1.41 -l 1.54056 -2t 20 90 -o ./exp/xrd/NaCl/NaCl1.xrd\n");
@@ -971,9 +971,34 @@ int main(int argc, char* argv[])
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ned")){
                 printf("The syntax format and rules for ned in AAVDP:\n");
-                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
                 printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3_line.ned\n");
                 printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3.ned --scherrer -d 400 -d2t 0.02\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "ked")){
+                printf("The syntax format and rules for ked in AAVDP:\n");
+                printf("    AAVDP --ked [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -t [thickness] -c [c1] [c2] [c3] -auto/manu  -thr [threshold] -o [output_file] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "kkd")){
+                printf("The syntax format and rules for ked in AAVDP:\n");
+                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [Kmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile]\n");
+                printf("    AAVDP --kkd [inputfile] -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] -z [z_1] [z_2] [z_3] -rx [ratiox] -ry [ratioy] -t [thickness] -px [numpx] -py [numpy] -thr [threshold] -background [background_color] -o [outputfile] --scale -max [intensity_max] -min [intensity_min]\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "ded")){
+                printf("The syntax format and rules for ded in AAVDP:\n");
+                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [c1] [c2] [c3] [c_sg] -thr [threshold] -o [outputfile] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "dkd")){
+                printf("The syntax format and rules for dkd in AAVDP:\n");
+                printf("    AAVDP --dkd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [Kmax] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] -z [z_1] [z_2] [z_3] -rx [ratiox] -ry [ratioy] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --monte -ome [omega] -sig [sigma] -ex [Eexit] -dt [dthick] -ne [nume] -np [nump] -seedpath [randomSeed_path] -o [outputfile]  --scale -max [intensity_max] -min [intensity_min]\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "rdf")){
+                printf("The syntax format and rules for dkd in AAVDP:\n");
+                printf("    AAVDP --rdf [inputfile] -r [rmax] -n [nbin] -partial -o [outputfile]\n");
+                printf("Check /man/manual.pdf for more information\n");
+            }else if(0==strcmp(argv[i], "ssf")){
+                printf("The syntax format and rules for dkd in AAVDP:\n");
+                printf("    AAVDP --ssf [inputfile] -q [qmax] -n [nbin] -partial -o [outputfile] --rdf -r [rmax] -n [nbin]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else{
                 printf("AAVDP: unrecognized mode '%s'\n", argv[i]);

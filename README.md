@@ -48,20 +48,41 @@ Automatic Analysis of Virtual Diffraction Pattern （AAVDP）for artificial atom
 	>>./AAVDP.exe --ked ./exp/ked/Fe_twin/Fe112_twin.lmp -e Fe -z 0 1 0 -o ./exp/ked/Fe_twin/Fe112_twin.ked --gauss -sig 0.02 --rotate -x 0 0 1 -y 1 0 0
 4.  kkd:
 	>>./AAVDP.exe --kkd ./exp/kkd/bcc/bcc.vasp -q 1.5 -o ./exp/kkd/bcc/bcc.ked3
-	>>./AAVDP.exe --kkd ./exp/kkd/bcc/bcc.ked3 -x 0 3 -1 -y 10 -1 -3 -z 1 1 3 -rx 0.25 -ry 0.30 -t 0.4 -px 1000 -py 1200 -o ./exp/kkd/bcc/bcc.113.kkd
+	>>./AAVDP.exe --kkd ./exp/kkd/bcc/bcc.ked3 -x 0 3 -1 -y 10 -1 -3 -z 1 1 3 -rx 0.25 -ry 0.30 -t 0.3 -px 2000 -py 2400 -o ./exp/kkd/bcc/bcc.113.kkd
+	>>./AAVDP.exe --kkd ./exp/kkd/bcc/bcc.ked3 -t 0.3 -px 4000 -py 4000 -o ./exp/kkd/bcc/bcc.kkd
+
+	>>./AAVDP.exe --kkd ./exp/kkd/hcp/hcp.vasp -q 1.5 -o ./exp/kkd/hcp/hcp.ked3
+	>>./AAVDP.exe --kkd ./exp/kkd/hcp/hcp.ked3 -t 0.3 -px 2000 -py 2000 -o ./exp/kkd/hcp/hcp.kkd
+	
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc/fcc.vasp -q 1.5 -o ./exp/kkd/fcc/fcc.ked3
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc/fcc.ked3 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc/fcc.001.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc/fcc.ked3 -x 0.00000000 0.47609129 -0.33664738 -y 0.00000000 0.33664738 0.47609129 -z 1 0 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc/fcc.100.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc/fcc.ked3 -x 0 0 1 -y 1 0 0 -z 0 1 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc/fcc.010.kkd --scale -max 130
+
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_edge/edge.vasp -q 1.5 -o ./exp/kkd/fcc_edge/edge.ked3
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_edge/edge.ked3 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_edge/edge.001.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_edge/edge.ked3 -x 0.00000000 0.47609129 -0.33664738 -y 0.00000000 0.33664738 0.47609129 -z 1 0 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_edge/edge.100.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_edge/edge.ked3 -x 0 0 1 -y 1 0 0 -z 0 1 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_edge/edge.010.kkd --scale -max 130
+
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_screw/screw.vasp -q 1.5 -o ./exp/kkd/fcc_screw/screw.ked3
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_screw/screw.ked3 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_screw/screw.001.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_screw/screw.ked3 -x 0.00000000 0.47609129 -0.33664738 -y 0.00000000 0.33664738 0.47609129 -z 1 0 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_screw/screw.100.kkd --scale -max 350
+	>>./AAVDP.exe --kkd ./exp/kkd/fcc_screw/screw.ked3 -x 0 0 1 -y 1 0 0 -z 0 1 0 -rx 0.075 -ry 0.075 -t 0.1 -px 1000 -py 1000 -o ./exp/kkd/fcc_screw/screw.010.kkd --scale -max 130
 5.  ded:
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -q 0.8 -o ./exp/ded/Al2O3/Al2O3_point.001.ded
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -q 0.8 -o ./exp/ded/Al2O3/Al2O3.001.ded --gauss
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -z 2 1 0 -fn 2 1 0 -q 0.8 -o ./exp/ded/Al2O3/Al2O3_point.210.ded --rotate -x 0 0 1 -y -0.44721360 0.89442719 0
 	>>./AAVDP.exe --ded ./exp/ded/Al2O3/Al2O3.vasp -z 2 1 0 -fn 2 1 0 -q 0.8 -o ./exp/ded/Al2O3/Al2O3.210.ded --gauss -dx 0.00375 -sig 0.0075 --rotate -x 0 0 1 -y -0.44721360 0.89442719 0
 6.  dkd: 
-	>>./AAVDP.exe --dkd ./exp/dkd/bcc/bcc.vasp -q 2.0 -x 0 3 -1 -y 10 -1 -3 -z 1 1 3 -rx 0.25 -ry 0.30 -px 500 -py 600 -o ./exp/dkd/bcc/bcc.dkd --monte -o ./exp/dkd/bcc/bcc.mc
+	>>./AAVDP.exe --dkd ./exp/dkd/bcc/bcc.vasp -q 1.5 -x 0 3 -1 -y 10 -1 -3 -z 1 1 3 -rx 0.25 -ry 0.30 -px 500 -py 600 -o ./exp/dkd/bcc/bcc.113.dkd --monte -o ./exp/dkd/bcc/bcc.mc
+	>>./AAVDP.exe --dkd ./exp/dkd/bcc/bcc.vasp -q 1.5 -px 600 -py 600 -o ./exp/dkd/bcc/bcc.001.dkd --monte -o ./exp/dkd/bcc/bcc.mc
+	>>./AAVDP.exe --dkd ./exp/dkd/hcp/hcp.vasp -q 1.5 -px 600 -py 600 -o ./exp/dkd/hcp/hcp.001.dkd --monte -o ./exp/dkd/hcp/hcp.mc
 7.  rdf:
 	>>./AAVDP.exe --rdf ./exp/rdf/Cu_glass/Cu_glass.lammps -r 8 -n 160 -o ./exp/rdf/Cu_glass/Cu_glass.rdf
 	>>./AAVDP.exe --rdf ./exp/rdf/Cu_liquid/Cu_liquid.lammps -r 8 -n 160 -o ./exp/rdf/Cu_liquid/Cu_liquid.rdf
-	>>./AAVDP.exe --rdf ./exp/rdf/CuZr/Cu50Zr50.liquid.lammps -r 5.0 -n 100 -partial -o ./exp/rdf/CuZr/Cu50Zr50.liquid.rdf
+	>>./AAVDP.exe --rdf ./exp/rdf/CuZr/Cu50Zr50.liquid.lammps -r 10 -n 100 -partial -o ./exp/rdf/CuZr/Cu50Zr50.liquid.rdf
 8.  ssf:
 	>>./AAVDP.exe --ssf ./exp/ssf/Cu_glass/Cu_glass.lammps -q 8 -n 160 -o ./exp/ssf/Cu_glass/Cu_glass.ssf --rdf -r 7.5 -n 150
 	>>./AAVDP.exe --ssf ./exp/ssf/Cu_liquid/Cu_liquid.lammps -q 8 -n 160 -o ./exp/ssf/Cu_liquid/Cu_liquid.ssf --rdf -r 7.5 -n 150
-	>>./AAVDP.exe --ssf ./exp/ssf/CuZr/Cu50Zr50.liquid.lammps -q 5.0 -n 100 -partial -o ./exp/ssf/CuZr/Cu50Zr50.liquid.ssf
+	>>./AAVDP.exe --ssf ./exp/ssf/CuZr/Cu50Zr50.liquid.lammps -q 10 -n 100 -partial -o ./exp/ssf/CuZr/Cu50Zr50.liquid.ssf
 

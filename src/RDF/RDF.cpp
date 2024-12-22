@@ -277,7 +277,7 @@ SSF::SSF(RDF *rdf, double qmax, int nbin, bool is_partial)
     }
 	printf("[INFO] Range of static structure factor of pair *-*: %.8f %.8f\n", Smin[0], Smax[0]);
 	for(int i=1;i<numij;i++){
-		printf("[INFO] Range of static structure factor of pair %d-%d: %.8f %.8f\n", ij[i], ij[i], Smin[i], Smax[i]);
+		printf("[INFO] Range of static structure factor of pair %d-%d: %.8f %.8f\n", ij[i][0], ij[i][1], Smin[i], Smax[i]);
 	}
 	printf("[INFO] Ending computation of static structure factor\n");  
 }

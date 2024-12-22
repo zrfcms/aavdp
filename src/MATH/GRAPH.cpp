@@ -289,7 +289,7 @@ void image_array(char* png_path, double **value, double vmax, double vmin, int n
     mallocate(&pixels, 3*num);
 
     double vdiff=vmax-vmin;
-    unsigned char rgb_min[3]={0}, rgb_max[3]={255};
+    int rgb_min[3]={0}, rgb_max[3]={255};
     switch(background)
     {
     case 'b':
@@ -304,8 +304,8 @@ void image_array(char* png_path, double **value, double vmax, double vmin, int n
         printf("[ERROR] Unrecognized background %s\n", background);
         exit(1);
     }
-    unsigned char rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
-    unsigned char rgb[3];
+    int rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);
+    int rgb[3];
     for(int i=0;i<num;i++){
         if(wdata[i]>=vmax){
             vector_copy(rgb, rgb_max);
@@ -316,7 +316,7 @@ void image_array(char* png_path, double **value, double vmax, double vmin, int n
             rgb[1]=rgb_min[1]+int((wdata[i]-vmin)/vdiff*rgb_diff[1]);
             rgb[2]=rgb_min[2]+int((wdata[i]-vmin)/vdiff*rgb_diff[2]);
         }
-        pixels[i*3]=rgb[0]; pixels[i*3+1]=rgb[1]; pixels[i*3+2]=rgb[2];
+        pixels[i*3]=(unsigned char)rgb[0]; pixels[i*3+1]=(unsigned char)rgb[1]; pixels[i*3+2]=(unsigned char)rgb[2];
     }
     image_pixels(png_path, pixels, nrow, ncol);
 }
@@ -520,7 +520,7 @@ void GRAPH::draw(char *png_path)
     for(int i=0;i<npixel;i++){
         pixels[i*3]=pixels[i*3+1]=pixels[i*3+2]=round((1.0-wpixels[i])*255.0);
     }
-    image_pixels(png_path, pixels, image.pwidth, image.pheight);
+    image_pixels(png_path, pixels, image.pheight, image.pwidth);
 }
 
 void GRAPH::get_pixel(int &i, int &j, double x, double y)

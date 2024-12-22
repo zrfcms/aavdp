@@ -94,17 +94,17 @@ struct DKD_KNODE{
     DKD_KNODE *next=nullptr;
 };
 
-class DKD_KVECTOR
-{
-public:
-    DKD_KVECTOR(CELL *cell, int npx, int npy);//Rosca-Lambert
-    ~DKD_KVECTOR();
-    int    numk=0;
-    DKD_KNODE *khead=nullptr;
-    DKD_KNODE *ktail=nullptr;
-private:
-    void   add_k_node(CELL *cell, double xy[2], double kn, int i=0, int j=0, bool southern_flag=false);
-};
+// class DKD_KVECTOR
+// {
+// public:
+//     DKD_KVECTOR(CELL *cell, int npx, int npy);//Rosca-Lambert
+//     ~DKD_KVECTOR();
+//     int    numk=0;
+//     DKD_KNODE *khead=nullptr;
+//     DKD_KNODE *ktail=nullptr;
+// private:
+//     void   add_k_node(CELL *cell, double xy[2], double kn, int i=0, int j=0, bool southern_flag=false);
+// };
 
 class DKD
 {
@@ -114,13 +114,13 @@ public:
     double **screenI=nullptr;
     double intensity_max=0.0, intensity_min=1.0e8;
 
-    double **screenNI=nullptr, **screenSI=nullptr;
-    double intensity_maxN=0.0, intensity_minN=1.0e8;
-    double intensity_maxS=0.0, intensity_minS=1.0e8;
+    // double **screenNI=nullptr, **screenSI=nullptr;
+    // double intensity_maxN=0.0, intensity_minN=1.0e8;
+    // double intensity_maxS=0.0, intensity_minS=1.0e8;
     DKD(CELL *cell, MC *mc, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double Kmag_max, int npx, int npy, char *projection);
     DKD(CELL *cell, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double voltage, double fthick, double Kmag_max, int npx, int npy, char *projection);
-    DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection);
-    DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double Kmag_max, int nump, char *projection);
+    // DKD(CELL *cell, MC *mc, BETHE *bethe, double Kmag_max, char *projection);
+    // DKD(CELL *cell, BETHE *bethe, double voltage, double fthick, double Kmag_max, int nump, char *projection);
     ~DKD();
     void   dkd(char* dkd_path, char background);
     void   dkd(char* dkd_path, double vmax, double vmin, char background);
@@ -131,7 +131,7 @@ private:
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DED_GVECTOR *gvec);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double *EWF, int IZMAX, double Z, double DZ, double KN, int NS);
     void   compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, double Z, double KN, int NS);
-    void   compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projection, bool use_hexagonal);
+    // void   compute_kvector_projection(CELL *cell, DKD_KVECTOR *kvec, char *projection, bool use_hexagonal);
 };
 
 #endif
