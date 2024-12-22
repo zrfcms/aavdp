@@ -504,9 +504,7 @@ void DED::ded(char *ded_path, double sigma, double dx)
     double constn=100.0/imax;
     for(int i=0;i<nbin;i++){
         for(int j=0;j<nbin;j++){
-            fprintf(fp, "%.8f\t%.8f\t%.8f\t", pos_x[j], pos_x[i], intensity[i][j]);
-            intensity[i][j]*=constn;
-            fprintf(fp, "%.8f\n", intensity[i][j]);
+            fprintf(fp, "%.8f\t%.8f\t%.8f\t%.8f\n", pos_x[j], pos_x[i], intensity[i][j], constn*intensity[i][j]);
             fflush(fp);
         }
     }
