@@ -964,16 +964,10 @@ int main(int argc, char* argv[])
             if(0==strcmp(argv[i], "xrd")){
                 printf("The syntax format and rules for xrd in AAVDP:\n");
                 printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
-                printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO_line.xrd\n");
-                printf("    e.g., AAVDP --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO.xrd --scherrer -m 0.5 -d 294 -d2t 0.02\n");
-                printf("    e.g., AAVDP --xrd ./exp/xrd/NaCl/NaCl.lmp -e Na Cl -dw 1.72 1.41 -l 1.54056 -2t 20 90 -o ./exp/xrd/NaCl/NaCl1.xrd\n");
-                printf("    e.g., AAVDP --xrd ./exp/xrd/NaCl/NaCl.lmp -e Na Cl -dw 1.72 1.41 -l 1.54439 -2t 20 90 -o ./exp/xrd/NaCl/NaCl2.xrd\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ned")){
                 printf("The syntax format and rules for ned in AAVDP:\n");
                 printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
-                printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3_line.ned\n");
-                printf("    e.g., AAVDP --ned ./exp/ned/LaCrGe3/LaCrGe3.vasp -dw 0.7646 0.1028 0.2458 -2t 10 80 -l 2.43955 -o ./exp/ned/LaCrGe3/LaCrGe3.ned --scherrer -d 400 -d2t 0.02\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ked")){
                 printf("The syntax format and rules for ked in AAVDP:\n");
@@ -986,7 +980,7 @@ int main(int argc, char* argv[])
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ded")){
                 printf("The syntax format and rules for ded in AAVDP:\n");
-                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [c1] [c2] [c3] [c_sg] -thr [threshold] -o [outputfile] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
+                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -thr [threshold] -o [outputfile] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "dkd")){
                 printf("The syntax format and rules for dkd in AAVDP:\n");

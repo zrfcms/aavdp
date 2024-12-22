@@ -6,15 +6,14 @@ Automatic Analysis of Virtual Diffraction Pattern （AAVDP）for artificial atom
 #### 软件架构
 1.  X-ray diffraction (XRD)
 2.  Neutron diffraction (NED)
-3.  Kinematical electron diffraction (KED)
-4.  Kinematical Kikuchi diffraction (KKD)
-5.  Dynamatical electron diffraction (DED)
-6.  Dynamatical Kikuchi diffraction (DKD)
+3.  Kinematic electron diffraction (KED)
+4.  Kinematic Kikuchi diffraction (KKD)
+5.  Dynamical electron diffraction (DED)
+6.  Dynamical Kikuchi diffraction (DKD)
 7.  Radial distribution function (RDF)
 8.  Static structure factor (SSF)
 
 #### 安装教程
-
 1.  win:
 	>>cp makefile.win makefile
 	>>make
@@ -26,7 +25,6 @@ Automatic Analysis of Virtual Diffraction Pattern （AAVDP）for artificial atom
 	>>make
 
 #### 使用说明
-
 1.  xrd:
 	>>./AAVDP.exe --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO_line.xrd
 	>>./AAVDP.exe --xrd ./exp/xrd/ZnO/ZnO.vasp -2t 0 80 -o ./exp/xrd/ZnO/ZnO.xrd --scherrer -m 0.5 -d 294 -d2t 0.02
@@ -85,4 +83,8 @@ Automatic Analysis of Virtual Diffraction Pattern （AAVDP）for artificial atom
 	>>./AAVDP.exe --ssf ./exp/ssf/Cu_glass/Cu_glass.lammps -q 8 -n 160 -o ./exp/ssf/Cu_glass/Cu_glass.ssf --rdf -r 7.5 -n 150
 	>>./AAVDP.exe --ssf ./exp/ssf/Cu_liquid/Cu_liquid.lammps -q 8 -n 160 -o ./exp/ssf/Cu_liquid/Cu_liquid.ssf --rdf -r 7.5 -n 150
 	>>./AAVDP.exe --ssf ./exp/ssf/CuZr/Cu50Zr50.liquid.lammps -q 10 -n 100 -partial -o ./exp/ssf/CuZr/Cu50Zr50.liquid.ssf
+9.  other:
+	>>./AAVDP.exe -h/--help
+	>>./AAVDP.exe -h xrd
+	>>./AAVDP.exe -v/--version
 
