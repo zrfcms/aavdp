@@ -1374,7 +1374,7 @@ void DKD::compute_Lgh_matrix(complex<double> **Lgh, complex<double> **DMAT, doub
             complex<double> sumq(0.0, 0.0);
             complex<double> q(TPI*(NW[j].imag()+NW[k].imag()), TPI*(NW[j].real()-NW[k].real()));
             if(q.real()<0.0) q=-q;
-            IJK[j][k]=conj(NCGINV[j][0])*exp(-q)*NCGINV[k][0];
+            IJK[j][k]=conj(NCGINV[j][0])*(exp(-q)-1.0)/(-q)*NCGINV[k][0];
         }
     }
 
