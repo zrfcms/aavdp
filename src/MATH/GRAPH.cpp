@@ -301,7 +301,7 @@ void image_array(char* png_path, double **value, double vmax, double vmin, int n
         rgb_max[0]=rgb_max[1]=rgb_max[2]=0;
         break;
     default:
-        printf("[ERROR] Unrecognized background %s\n", background);
+        printf("[ERROR] Unrecognized background %c\n", background);
         exit(1);
     }
     int rgb_diff[3]; vector_difference(rgb_diff, rgb_max, rgb_min);

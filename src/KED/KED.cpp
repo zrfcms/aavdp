@@ -308,7 +308,7 @@ void KED::rotate(double x[3], double y[3])
     vector_normalize(axes[1], axes[1]);
     vector_zero(axes[1], axes[1]);
     if(fabs(vector_dot(axes[0], axes[1]))>1.0e-6||fabs(vector_dot(axes[1], axes[2]))>1.0e-6||fabs(vector_dot(axes[0], axes[2]))>1.0e-6){
-        printf("[ERROR] The orthogonality condition is not satisfied with x-[%d %d %d], y-[%d %d %d]", x[0], x[1], x[2], y[0], y[1], y[2]);
+        printf("[ERROR] The orthogonality condition is not satisfied with x-[%.8f %.8f %.8f], y-[%.8f %.8f %.8f]", x[0], x[1], x[2], y[0], y[1], y[2]);
         exit(1);
     }
 }
