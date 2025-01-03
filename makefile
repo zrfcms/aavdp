@@ -1,12 +1,12 @@
 CXX=g++
 SYS=win
-INC=-I ./src/include/$(SYS):./src/QSPG/spglib:./src/QB:./src/QSPG:./src/MATH:./src/MODEL:./src/XRD:./src/KED:./src/DED:./src/RDF
-LIB=./src/lib/$(SYS)/liblapacke.a ./src/lib/$(SYS)/liblapack.a ./src/lib/$(SYS)/libgfortran.dll.a ./src/lib/$(SYS)/libcblas.a ./src/lib/$(SYS)/librefblas.a ./src/lib/$(SYS)/libpng16.a ./src/lib/$(SYS)/libz.a
+INC=-I ./include:./src/QSPG/spglib:./src/QB:./src/QSPG:./src/MATH:./src/MODEL:./src/XRD:./src/KED:./src/DED:./src/RDF
+LIB=./lib/$(SYS)/liblapacke.a ./lib/$(SYS)/liblapack.a ./lib/$(SYS)/libgfortran.dll.a ./lib/$(SYS)/libcblas.a ./lib/$(SYS)/librefblas.a ./lib/$(SYS)/libpng16.a ./lib/$(SYS)/libz.a
 
 SRC=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
 OBJ=$(patsubst %.cpp, %.o, $(SRC))
 
-./AAVDP: $(OBJ)
+./bin/AAVDP_win: $(OBJ)
 	@echo "Start building AAVDP..."
 	$(CXX) $(OBJ) -o $@ \
 	-g $(INC) $(LIB)

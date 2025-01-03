@@ -1,0 +1,1 @@
+..\..\..\AAVDP_win.exe --rdf .\Cu_glass.lammps -r 8 -n 160 -o .\Cu_glass.rdf

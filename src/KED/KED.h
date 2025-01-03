@@ -74,7 +74,7 @@ struct KKD_KNODE{
 class KKD
 {
 public:
-    KKD(char *ked3_path, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double threshold, double ratiox, double ratioy, int npx, int npy, char *mode);
+    KKD(KED *ked, double xaxis[3], double yaxis[3], double zaxis[3], double thickness, double ratiox, double ratioy, int npx, int npy, char *mode);
     ~KKD();
     int    numk=0;//g
     KKD_KNODE  *khead=nullptr;
@@ -88,9 +88,10 @@ public:
     void   kkd(char* kkd_path, double vmax, double vmin, char background='b');
 private:
     double axes[3][3]={0.0};
+    void   rotate(double x[3], double y[3], double z[3]);
     void   add_k_node(double hkl[3], double K[3], double Kwidth, double intensity1, double intensity2);
-    void   compute_Kikuchi_sphere_projection(double xaxis[3], double yaxis[3], double zaxis[3], double kn, double ratiox, double ratioy, int npx, int npy, char *mode);
-    void   compute_Kikuchi_intensity_projection(KED *ked, double thickness, double kn);
+    void   compute_Kikuchi_sphere_projection(double ratiox, double ratioy, double kn, char *mode);
+    void   compute_Kikuchi_intensity_projection(KED *ked, double zaxis[3], double thickness, double kn);
 };
 
 #endif

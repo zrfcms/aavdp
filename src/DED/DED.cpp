@@ -826,10 +826,11 @@ DKD::DKD(CELL *cell, MC *mc, BETHE *bethe, double xaxis[3], double yaxis[3], dou
     printf("[INFO] Range of Miller indices along a*, b*, or c* in reciprocal space: %d %d %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
 
     numpx=npx; numpy=npy;
-    if(0==npx%2) numpx=npx+1;
-    if(0==npy%2) numpy=npy+1;
     double kn=1.0/cell->fouri0.lambda;
-    compute_Kikuchi_sphere_projection(cell, xaxis, yaxis, zaxis, ratiox, ratioy, kn, projection);
+    rotate(xaxis, yaxis, zaxis);
+    compute_Kikuchi_sphere_projection(cell, ratiox, ratioy, kn, projection);
+    printf("[INFO] Kikuchi pattern has %d pixels along x-[%.8f %.8f %.8f] and %d pixels along y-[%.8f %.8f %.8f] under zone-[%.8f %.8f %.8f]\n", 
+            numpx, axes[0][0], axes[0][1], axes[0][2], numpy, axes[1][0], axes[1][1], axes[1][2], axes[2][0], axes[2][1], axes[2][2]);
     
     clock_t start, finish; 
     start=clock();
@@ -881,11 +882,12 @@ DKD::DKD(CELL *cell, BETHE *bethe, double xaxis[3], double yaxis[3], double zaxi
     printf("[INFO] Range of Miller indices along a*, b*, or c* in reciprocal space: %d %d %d\n", cell->HKL[0], cell->HKL[1], cell->HKL[2]);
 
     numpx=npx; numpy=npy;
-    if(0==npx%2) numpx=npx+1;
-    if(0==npy%2) numpy=npy+1;
     double ft=fthick*0.1;
     double kn=1.0/cell->fouri0.lambda;
-    compute_Kikuchi_sphere_projection(cell, xaxis, yaxis, zaxis, ratiox, ratioy, kn, projection);
+    rotate(xaxis, yaxis, zaxis);
+    compute_Kikuchi_sphere_projection(cell, ratiox, ratioy, kn, projection);
+    printf("[INFO] Kikuchi pattern has %d pixels along x-[%.8f %.8f %.8f] and %d pixels along y-[%.8f %.8f %.8f] under zone-[%.8f %.8f %.8f]\n", 
+            numpx, axes[0][0], axes[0][1], axes[0][2], numpy, axes[1][0], axes[1][1], axes[1][2], axes[2][0], axes[2][1], axes[2][2]);
     
     clock_t start, finish; 
     start=clock();
@@ -943,24 +945,26 @@ void DKD::compute_Kikuchi_intensity_projection(double &intens, complex<double> *
     if(intensity_min>intens) intensity_min=intens;
 }
 
-void DKD::compute_Kikuchi_sphere_projection(CELL *cell, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double kn, char *projection)
+void DKD::rotate(double x[3], double y[3], double z[3])
 {
-    double axes[3][3];
-    vector_copy(axes[0], xaxis);
+    vector_copy(axes[0], x);
     vector_normalize(axes[0], axes[0]);
-    vector_copy(axes[1], yaxis);
+    vector_copy(axes[1], y);
     vector_normalize(axes[1], axes[1]);
-    vector_copy(axes[2], zaxis);
+    vector_copy(axes[2], z);
     vector_normalize(axes[2], axes[2]);
     for(int i=0;i<3;i++){
         vector_zero(axes[i], axes[i]);
     }
     if(fabs(vector_dot(axes[0], axes[1]))>1.0e-6||fabs(vector_dot(axes[1], axes[2]))>1.0e-6||fabs(vector_dot(axes[0], axes[2]))>1.0e-6){
         printf("[ERROR] The orthogonality condition is not satisfied with x-[%.8f %.8f %.8f], y-[%.8f %.8f %.8f], z-[%.8f %.8f %.8f]", 
-                xaxis[0], xaxis[1], xaxis[2], yaxis[0], yaxis[1], yaxis[2], zaxis[0], zaxis[1], zaxis[2]);
+                x[0], x[1], x[2], y[0], y[1], y[2], z[0], z[1], z[2]);
         exit(1);
     }
+}
 
+void DKD::compute_Kikuchi_sphere_projection(CELL *cell, double ratiox, double ratioy, double kn, char *projection)
+{
     callocate_3d(&screenK0, numpy, numpx, 3, 0.0);
     int impx=numpx/2, impy=numpy/2;
     int err;

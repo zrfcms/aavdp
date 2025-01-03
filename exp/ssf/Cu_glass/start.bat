@@ -1,0 +1,1 @@
+..\..\..\bin\AAVDP_win.exe --ssf .\Cu_glass.lammps -q 8 -n 160 -o .\Cu_glass.ssf --rdf -r 7.5 -n 150

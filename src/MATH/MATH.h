@@ -1,6 +1,7 @@
 #ifndef __AAVDP_MATH_H__
 #define __AAVDP_MATH_H__
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <cstring>
 

@@ -6,6 +6,10 @@
 int main(int argc, char* argv[])
 {
     int    i=1;
+    if(argc<2){
+        printf("AAVDP: unrecognized mode ''\n");
+        printf("Try 'AAVDP -h' or 'AAVDP --help' for more information'\n");
+    }
     if(0==strcmp(argv[i], "--xrd")||0==strcmp(argv[i], "--ned")){
         char   *mode; mode=argv[i]+2;
         i++;
@@ -17,7 +21,7 @@ int main(int argc, char* argv[])
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double lambda=1.54184;
         double min2Theta=0.0;
-        double max2Theta=180.0;
+        double max2Theta=90.0;
         int    lp_type=3;
         if(0==strcmp(mode, "ned")) lp_type=2;
         double c[3]={1.0, 1.0, 1.0};
@@ -26,11 +30,9 @@ int main(int argc, char* argv[])
         double threshold=0.001;
 
         double mixing_param=0.0;
-        double diameter=500.0;
-        double FWHM=1.0;
+        double grain_diameter=500.0;
         double d2t=0.01;
         bool   is_scherrer=false;
-        bool   is_smear=false;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
                 i++;
@@ -94,29 +96,7 @@ int main(int argc, char* argv[])
                         continue;
                     }else if(0==strcmp(argv[i], "-d")){
                         i++;
-                        diameter=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-d2t")){
-                        i++;
-                        d2t=be_double(argv[i++]);
-                        continue;
-                    }else{
-                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h %s' for more information", mode);
-                        exit(1);
-                    }
-                }
-            }else if(0==strcmp(argv[i], "--smear")){
-                i++;
-                is_smear=true;
-                while(i<argc){
-                    if(0==strcmp(argv[i], "-m")){
-                        i++;
-                        mixing_param=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-w")){
-                        i++;
-                        FWHM=be_double(argv[i++]);
+                        grain_diameter=be_double(argv[i++]);
                         continue;
                     }else if(0==strcmp(argv[i], "-d2t")){
                         i++;
@@ -145,9 +125,7 @@ int main(int argc, char* argv[])
             model.update_lorentzP_type(lp_type);
             XRD xrd(&model, min2Theta, max2Theta, threshold, c, is_spacing_auto);
             if(is_scherrer){
-                xrd.xrd(xrd_path, mixing_param, lambda, diameter, d2t);
-            }else if(is_smear){
-                xrd.xrd(xrd_path, mixing_param, FWHM, d2t);
+                xrd.xrd(xrd_path, mixing_param, lambda, grain_diameter, d2t);
             }else{
                 xrd.xrd(xrd_path);
             }
@@ -156,9 +134,7 @@ int main(int argc, char* argv[])
             model.update_lorentzP_type(lp_type);
             XRD xrd(&model, min2Theta, max2Theta, threshold, c, is_spacing_auto);
             if(is_scherrer){
-                xrd.xrd(xrd_path, mixing_param, lambda, diameter, d2t);
-            }else if(is_smear){
-                xrd.xrd(xrd_path, mixing_param, FWHM, d2t);
+                xrd.xrd(xrd_path, mixing_param, lambda, grain_diameter, d2t);
             }else{
                 xrd.xrd(xrd_path);
             } 
@@ -172,7 +148,7 @@ int main(int argc, char* argv[])
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double voltage=200.0;
-        double Kmax=1.0;
+        double qmax=1.0;
         double thickness=0.1;
         int    zaxis[3]={0, 0, 1};
         double c[3]={1.0, 1.0, 1.0};
@@ -208,7 +184,7 @@ int main(int argc, char* argv[])
                 continue;
             }else if(0==strcmp(argv[i], "-q")){
                 i++;
-                Kmax=be_double(argv[i++]);
+                qmax=be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
@@ -301,7 +277,7 @@ int main(int argc, char* argv[])
             strcpy(ked_path, output_path);
         }
         VMODEL model(input_path, types, DWs, voltage);
-        KED ked(&model, zaxis, thickness, Kmax, threshold, c, is_spacing_auto);
+        KED ked(&model, zaxis, thickness, qmax, threshold, c, is_spacing_auto);
         if(is_rotate) ked.rotate(xaxis, yaxis);
         if(is_gauss){
             ked.ked(ked_path, sigma, dx);
@@ -319,71 +295,153 @@ int main(int argc, char* argv[])
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double voltage=200.0;
-        double Kmax=1.0;
+        double qmax=1.0;
         double c[3]={1.0, 1.0, 1.0};
         bool   is_spacing_auto=true;
         bool   is_c_default=true;
         double threshold=0.001;
 
-        double xaxis[3]={1.0, 0.0, 0.0};
-        double yaxis[3]={0.0, 1.0, 0.0};
         double zaxis[3]={0.0, 0.0, 1.0};
         double ratiox=1.0, ratioy=1.0;
         double thickness=0.2;
         int    npx=501, npy=501;
         char   projection[10]="stereo";
 
-        double vmax=1.0e4, vmin=0.0;
+        double xaxis[3]={1.0, 0.0, 0.0};
+        double yaxis[3]={0.0, 1.0, 0.0};
+        bool   is_rotate=false;
+
+        double imax=1.0e3, imin=0.0;
         char   background='b';
         bool   is_scale=false;
-        if(0!=strcmp(ext, ".ked3")){
-            while(i<argc){
-                if(0==strcmp(argv[i], "-e")){
-                    i++;
-                    int count=0;
-                    while(i<argc&&is_parameter(argv[i])){
-                        strcpy(types[count++], argv[i++]);
-                    }
-                    continue;
-                }else if(0==strcmp(argv[i], "-en")){
-                    i++;
-                    voltage=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-q")){
-                    i++;
-                    Kmax=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-c")){
-                    i++;
-                    c[0]=be_double(argv[i++]);
-                    c[1]=be_double(argv[i++]);
-                    c[2]=be_double(argv[i++]);
-                    is_c_default=false;
-                    continue;
-                }else if(0==strcmp(argv[i], "-auto")){
-                    i++;
-                    is_spacing_auto=true;
-                    if(is_c_default) c[0]=c[1]=c[2]=1.0;
-                    continue;
-                }else if(0==strcmp(argv[i], "-manu")){
-                    i++;
-                    is_spacing_auto=false;
-                    if(is_c_default) c[0]=c[1]=c[2]=0.1;
-                    continue;
-                }else if(0==strcmp(argv[i], "-thr")){
-                    i++;
-                    threshold=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-o")){
-                    i++;
-                    strcpy(output_path, argv[i++]);
-                    continue;
-                }else{
-                    printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                    printf("Try 'AAVDP -h kkd' for more information");
-                    exit(1);
+
+        bool   is_ked3=false;
+        while(i<argc){
+            if(0==strcmp(argv[i], "-e")){
+                i++;
+                int count=0;
+                while(i<argc&&is_parameter(argv[i])){
+                    strcpy(types[count++], argv[i++]);
                 }
+                continue;
+            }else if(0==strcmp(argv[i], "-en")){
+                i++;
+                voltage=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-q")){
+                i++;
+                qmax=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-c")){
+                i++;
+                c[0]=be_double(argv[i++]);
+                c[1]=be_double(argv[i++]);
+                c[2]=be_double(argv[i++]);
+                is_c_default=false;
+                continue;
+            }else if(0==strcmp(argv[i], "-auto")){
+                i++;
+                is_spacing_auto=true;
+                if(is_c_default) c[0]=c[1]=c[2]=1.0;
+                continue;
+            }else if(0==strcmp(argv[i], "-manu")){
+                i++;
+                is_spacing_auto=false;
+                if(is_c_default) c[0]=c[1]=c[2]=0.1;
+                continue;
+            }else if(0==strcmp(argv[i], "-thr")){
+                i++;
+                threshold=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-z")){
+                i++;
+                zaxis[0]=be_double(argv[i++]);
+                zaxis[1]=be_double(argv[i++]);
+                zaxis[2]=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-rx")){
+                i++;
+                ratiox=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-ry")){
+                i++;
+                ratioy=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-t")){
+                i++;
+                thickness=be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-px")){
+                i++;
+                npx=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-py")){
+                i++;
+                npy=(int)be_double(argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-projection")){
+                i++;
+                strcpy(projection, argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "-background")){
+                i++;
+                background=(argv[i++])[0];
+                continue;
+            }else if(0==strcmp(argv[i], "-o")){
+                i++;
+                strcpy(output_path, argv[i++]);
+                continue;
+            }else if(0==strcmp(argv[i], "--rotate")){
+                i++;
+                is_rotate=true;
+                while(i<argc){
+                    if(0==strcmp(argv[i], "-x")){
+                        i++;
+                        xaxis[0]=be_double(argv[i++]);
+                        xaxis[1]=be_double(argv[i++]);
+                        xaxis[2]=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-y")){
+                        i++;
+                        yaxis[0]=be_double(argv[i++]);
+                        yaxis[1]=be_double(argv[i++]);
+                        yaxis[2]=be_double(argv[i++]);
+                        continue;
+                    }else if(is_mode(argv[i])){
+                        break;
+                    }else{
+                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                        printf("Try 'AAVDP -h kkd' for more information");
+                        exit(1);
+                    }
+                }
+            }else if(0==strcmp(argv[i], "--scale")){
+                i++;
+                is_scale=true;
+                while(i<argc){
+                    if(0==strcmp(argv[i], "-i")){
+                        i++;
+                        imin=be_double(argv[i++]);
+                        imax=be_double(argv[i++]);
+                        continue;
+                    }else if(is_mode(argv[i])){
+                        break;
+                    }else{
+                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                        printf("Try 'AAVDP -h kkd' for more information");
+                        exit(1);
+                    }
+                }
+            }else if(0==strcmp(argv[i], "--ked3")){
+                i++;
+                is_ked3=true;
+            }else{
+                printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                printf("Try 'AAVDP -h kkd' for more information");
+                exit(1);
             }
+        }
+        if(is_ked3){
             char ked3_path[PATH_CHAR_NUMBER];
             if(0==strcmp(output_path, "")){
                 strcpy(ked3_path, "./AAVDP.ked3");
@@ -391,101 +449,38 @@ int main(int argc, char* argv[])
                 strcpy(ked3_path, output_path);
             }
             VMODEL model(input_path, types, DWs, voltage);
-            KED ked(&model, Kmax, threshold, c, is_spacing_auto);
+            KED ked(&model, qmax, threshold, c, is_spacing_auto);
             ked.ked3(ked3_path);
         }else{
-            while(i<argc){
-                if(0==strcmp(argv[i], "-x")){
-                    i++;
-                    xaxis[0]=be_double(argv[i++]);
-                    xaxis[1]=be_double(argv[i++]);
-                    xaxis[2]=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-y")){
-                    i++;
-                    yaxis[0]=be_double(argv[i++]);
-                    yaxis[1]=be_double(argv[i++]);
-                    yaxis[2]=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-z")){
-                    i++;
-                    zaxis[0]=be_double(argv[i++]);
-                    zaxis[1]=be_double(argv[i++]);
-                    zaxis[2]=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-rx")){
-                    i++;
-                    ratiox=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-ry")){
-                    i++;
-                    ratioy=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-t")){
-                    i++;
-                    thickness=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-px")){
-                    i++;
-                    npx=(int)be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-py")){
-                    i++;
-                    npy=(int)be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-projection")){
-                    i++;
-                    strcpy(projection, argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-background")){
-                    i++;
-                    background=(argv[i++])[0];
-                    continue;
-                }else if(0==strcmp(argv[i], "-thr")){
-                    i++;
-                    threshold=be_double(argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "-o")){
-                    i++;
-                    strcpy(output_path, argv[i++]);
-                    continue;
-                }else if(0==strcmp(argv[i], "--scale")){
-                    i++;
-                    is_scale=true;
-                    while(i<argc){
-                        if(0==strcmp(argv[i], "-max")){
-                            i++;
-                            vmax=be_double(argv[i++]);
-                            continue;
-                        }else if(0==strcmp(argv[i], "-min")){
-                            i++;
-                            vmin=be_double(argv[i++]);
-                            continue;
-                        }else if(is_mode(argv[i])){
-                            break;
-                        }else{
-                            printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                            printf("Try 'AAVDP -h kkd' for more information");
-                            exit(1);
-                        }
-                    }
-                }else{
-                    printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                    printf("Try 'AAVDP -h kkd' for more information");
-                    exit(1);
-                }
-            }
             char kkd_path[PATH_CHAR_NUMBER];
             if(0==strcmp(output_path, "")){
                 strcpy(kkd_path, "./AAVDP.kkd");
             }else{
                 strcpy(kkd_path, output_path);
             }
-            KKD kkd(input_path, xaxis, yaxis, zaxis, thickness, threshold, ratiox, ratioy, npx, npy, projection);
-            if(is_scale){
-                kkd.kkd(kkd_path, vmax, vmin, background);
+            if((!is_rotate)&&(0!=zaxis[0]||0!=zaxis[1])){
+                xaxis[0]=-zaxis[1]; xaxis[1]=zaxis[0]; xaxis[2]=0.0;
+                yaxis[0]=zaxis[2]*zaxis[0]; yaxis[1]=zaxis[2]*zaxis[1]; yaxis[2]=-1.0*(zaxis[0]*zaxis[0]+zaxis[1]*zaxis[1]);
+            }
+            if(0==npx%2) npx++;
+            if(0==npy%2) npy++;
+            if(0==strcmp(ext, ".ked3")){
+                KED ked(input_path);
+                KKD kkd(&ked, xaxis, yaxis, zaxis, thickness, ratiox, ratioy, npx, npy, projection);
+                if(is_scale){
+                    kkd.kkd(kkd_path, imax, imin, background);
+                }else{
+                    kkd.kkd(kkd_path, background);
+                }
             }else{
-                kkd.kkd(kkd_path, background);
+                VMODEL model(input_path, types, DWs, voltage);
+                KED ked(&model, qmax, threshold, c, is_spacing_auto);
+                KKD kkd(&ked, xaxis, yaxis, zaxis, thickness, ratiox, ratioy, npx, npy, projection);
+                if(is_scale){
+                    kkd.kkd(kkd_path, imax, imin, background);
+                }else{
+                    kkd.kkd(kkd_path, background);
+                }
             }
         }
     }else if(0==strcmp(argv[i], "--ded")){
@@ -497,7 +492,7 @@ int main(int argc, char* argv[])
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double voltage=200.0;
-        double Kmax=1.0;
+        double qmax=1.0;
         int    zone[3]={0, 0, 1};
         int    fnorm[3]={0, 0, 1};
         double fthick=100.0;
@@ -532,7 +527,7 @@ int main(int argc, char* argv[])
                 continue;
             }else if(0==strcmp(argv[i], "-q")){
                 i++;
-                Kmax=be_double(argv[i++]);
+                qmax=be_double(argv[i++]);
                 continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
@@ -624,7 +619,7 @@ int main(int argc, char* argv[])
         CELL cell(input_path, types, DWs, voltage);
         BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
-        DED ded(&cell, &bethe, zone, fnorm, fthick, voltage, Kmax, threshold);
+        DED ded(&cell, &bethe, zone, fnorm, fthick, voltage, qmax, threshold);
         if(is_rotate) ded.rotate(xaxis, yaxis);
         if(is_gauss){
             ded.ded(ded_path, sigma, dx);
@@ -641,12 +636,10 @@ int main(int argc, char* argv[])
         char   types[TYPE_INPUT_NUMBER][10]={0};
         double DWs[TYPE_INPUT_NUMBER]={0.0};
         double voltage=200.0;
-        double Kmax=1.0;
+        double qmax=1.0;
         double fthick=100.0;
         double c1=4.0, c2=8.0, c3=50.0, c_sg=1.0;
 
-        double xaxis[3]={1.0, 0.0, 0.0};
-        double yaxis[3]={0.0, 1.0, 0.0};
         double zaxis[3]={0.0, 0.0, 1.0};
         double ratiox=1.0, ratioy=1.0;
         int    numpx=501, numpy=501;
@@ -661,7 +654,11 @@ int main(int argc, char* argv[])
         char   seed_path[PATH_CHAR_NUMBER]="./RandomSeeds.data";
         bool   is_monte=false;
 
-        double vmax=1.0e4, vmin=0.0;
+        double xaxis[3]={1.0, 0.0, 0.0};
+        double yaxis[3]={0.0, 1.0, 0.0};
+        bool   is_rotate=false;
+
+        double imax=1.0e3, imin=0.0;
         bool   is_scale=false;
         while(i<argc){
             if(0==strcmp(argv[i], "-e")){
@@ -683,7 +680,7 @@ int main(int argc, char* argv[])
                 voltage=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-q")){
                 i++;
-                Kmax=be_double(argv[i++]);
+                qmax=be_double(argv[i++]);
             }else if(0==strcmp(argv[i], "-ft")){
                 i++;
                 fthick=be_double(argv[i++]);
@@ -693,18 +690,6 @@ int main(int argc, char* argv[])
                 c2=be_double(argv[i++]);
                 c3=be_double(argv[i++]);
                 c_sg=be_double(argv[i++]);
-            }if(0==strcmp(argv[i], "-x")){
-                i++;
-                xaxis[0]=be_double(argv[i++]);
-                xaxis[1]=be_double(argv[i++]);
-                xaxis[2]=be_double(argv[i++]);
-                continue;
-            }else if(0==strcmp(argv[i], "-y")){
-                i++;
-                yaxis[0]=be_double(argv[i++]);
-                yaxis[1]=be_double(argv[i++]);
-                yaxis[2]=be_double(argv[i++]);
-                continue;
             }else if(0==strcmp(argv[i], "-z")){
                 i++;
                 zaxis[0]=be_double(argv[i++]);
@@ -742,11 +727,11 @@ int main(int argc, char* argv[])
                 i++;
                 is_monte=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-ome")){
+                    if(0==strcmp(argv[i], "-rd")){
                         i++;
                         omega=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-sig")){
+                    }else if(0==strcmp(argv[i], "-td")){
                         i++;
                         sigma=be_double(argv[i++]);
                         continue;
@@ -766,7 +751,7 @@ int main(int argc, char* argv[])
                         i++;
                         nump=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-seedpath")){
+                    }else if(0==strcmp(argv[i], "-seed")){
                         i++;
                         strcpy(seed_path, argv[i++]);
                         continue;
@@ -781,17 +766,38 @@ int main(int argc, char* argv[])
                         exit(1);
                     }
                 }
+            }else if(0==strcmp(argv[i], "--rotate")){
+                i++;
+                is_rotate=true;
+                while(i<argc){
+                    if(0==strcmp(argv[i], "-x")){
+                        i++;
+                        xaxis[0]=be_double(argv[i++]);
+                        xaxis[1]=be_double(argv[i++]);
+                        xaxis[2]=be_double(argv[i++]);
+                        continue;
+                    }else if(0==strcmp(argv[i], "-y")){
+                        i++;
+                        yaxis[0]=be_double(argv[i++]);
+                        yaxis[1]=be_double(argv[i++]);
+                        yaxis[2]=be_double(argv[i++]);
+                        continue;
+                    }else if(is_mode(argv[i])){
+                        break;
+                    }else{
+                        printf("AAVDP: unrecognized option '%s'\n", argv[i]);
+                        printf("Try 'AAVDP -h dkd' for more information");
+                        exit(1);
+                    }
+                }
             }else if(0==strcmp(argv[i], "--scale")){
                 i++;
                 is_scale=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-max")){
+                    if(0==strcmp(argv[i], "-i")){
                         i++;
-                        vmax=be_double(argv[i++]);
-                        continue;
-                    }else if(0==strcmp(argv[i], "-min")){
-                        i++;
-                        vmin=be_double(argv[i++]);
+                        imin=be_double(argv[i++]);
+                        imax=be_double(argv[i++]);
                         continue;
                     }else if(is_mode(argv[i])){
                         break;
@@ -813,6 +819,13 @@ int main(int argc, char* argv[])
         }else{
             strcpy(dkd_path, output_path);
         }
+        if((!is_rotate)&&(0!=zaxis[0]||0!=zaxis[1])){
+            xaxis[0]=-zaxis[1]; xaxis[1]=zaxis[0]; xaxis[2]=0.0;
+            yaxis[0]=zaxis[2]*zaxis[0]; yaxis[1]=zaxis[2]*zaxis[1]; yaxis[2]=-1.0*(zaxis[0]*zaxis[0]+zaxis[1]*zaxis[1]);
+        }
+        if(0==numpx%2) numpx++;
+        if(0==numpy%2) numpy++;
+        if(0==nump%2)  nump++;
         CELL cell(input_path, types, DWs, voltage);
         BETHE bethe;
         bethe.c1=c1; bethe.c2=c2; bethe.c3=c3; bethe.c_sg=c_sg;
@@ -823,17 +836,17 @@ int main(int argc, char* argv[])
             MC mc(&cell, seed_path, omega, sigma, voltage, Eexit, fthick, dthick, nume, nump);
             mc.mc(mc_path, 'b');
             // DKD dkd(&cell, &mc, &bethe, Kmax, projection);
-            DKD dkd(&cell, &mc, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, Kmax, numpx, numpy, projection);
+            DKD dkd(&cell, &mc, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, qmax, numpx, numpy, projection);
             if(is_scale){
-                dkd.dkd(dkd_path, vmax, vmin, background);
+                dkd.dkd(dkd_path, imax, imin, background);
             }else{
                 dkd.dkd(dkd_path, background);
             }
         }else{
             // DKD dkd(&cell, &bethe, voltage, fthick, Kmax, nump, projection);
-            DKD dkd(&cell, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, voltage, fthick, Kmax, numpx, numpy, projection);
+            DKD dkd(&cell, &bethe, xaxis, yaxis, zaxis, ratiox, ratioy, voltage, fthick, qmax, numpx, numpy, projection);
             if(is_scale){
-                dkd.dkd(dkd_path, vmax, vmin, background);
+                dkd.dkd(dkd_path, imax, imin, background);
             }else{
                 dkd.dkd(dkd_path, background);
             }
@@ -963,28 +976,30 @@ int main(int argc, char* argv[])
         }else{
             if(0==strcmp(argv[i], "xrd")){
                 printf("The syntax format and rules for xrd in AAVDP:\n");
-                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [Lorentz_polarization_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [grain_diameter] -d2t [2theta_bin]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ned")){
                 printf("The syntax format and rules for ned in AAVDP:\n");
-                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [scherrer_diameter] -d2t [2theta_bin]\n");
+                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [Lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [grain_diameter] -d2t [2theta_bin]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ked")){
                 printf("The syntax format and rules for ked in AAVDP:\n");
-                printf("    AAVDP --ked [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -t [thickness] -c [c1] [c2] [c3] -auto/manu  -thr [threshold] -o [output_file] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
+                printf("    AAVDP --ked [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -z [z_1] [z_2] [z_3] -q [qmax] -t [intersection_thickness] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [output_file] --gauss -sig [standard_deviation] -dx [qx_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "kkd")){
                 printf("The syntax format and rules for ked in AAVDP:\n");
-                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [Kmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile]\n");
-                printf("    AAVDP --kkd [inputfile] -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] -z [z_1] [z_2] [z_3] -rx [ratiox] -ry [ratioy] -t [thickness] -px [numpx] -py [numpy] -thr [threshold] -background [background_color] -o [outputfile] --scale -max [intensity_max] -min [intensity_min]\n");
+                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [qmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -t [Kikuchi_line_thickness] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
+                printf("    or\n");
+                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [qmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [ked3file] --ked3\n");
+                printf("    AAVDP --kkd [ked3file] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -t [Kikuchi_line_thickness] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "ded")){
                 printf("The syntax format and rules for ded in AAVDP:\n");
-                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -q [Kmax] -z [z_1] [z_2] [z_3] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -thr [threshold] -o [outputfile] --gauss -sig [sigma] -dx [x_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
+                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -z [z_1] [z_2] [z_3] -q [qmax] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -thr [threshold] -o [outputfile] --gauss -sig [standard_deviation] -dx [qx_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "dkd")){
                 printf("The syntax format and rules for dkd in AAVDP:\n");
-                printf("    AAVDP --dkd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [Kmax] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] -z [z_1] [z_2] [z_3] -rx [ratiox] -ry [ratioy] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --monte -ome [omega] -sig [sigma] -ex [Eexit] -dt [dthick] -ne [nume] -np [nump] -seedpath [randomSeed_path] -o [outputfile]  --scale -max [intensity_max] -min [intensity_min]\n");
+                printf("    AAVDP --dkd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [qmax] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --monte -rd [rotation_angle] -td [tilt_angle] -ex [energy_exit] -dt [foil_depth_bin] -ne [nume] -np [nump] -seed [randomfile] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
                 printf("Check /man/manual.pdf for more information\n");
             }else if(0==strcmp(argv[i], "rdf")){
                 printf("The syntax format and rules for dkd in AAVDP:\n");

@@ -1,0 +1,1 @@
+..\..\..\bin\AAVDP_win.exe --ked .\Fe112_twin.lmp -e Fe -z 0 1 0 -o .\Fe112_twin.ked --gauss -sig 0.02 --rotate -x 0 0 1 -y 1 0 0

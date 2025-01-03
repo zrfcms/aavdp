@@ -1,0 +1,1 @@
+..\..\..\bin\AAVDP_win.exe --rdf .\Cu_liquid.lammps -r 8 -n 160 -o .\Cu_liquid.rdf

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include "MATH.h"
-#include "../include/png.h"
+#include "../../include/png.h"
 
 #define PI_SQRT_HALF 0.886226925452758 //sqrt(PI)/2
 #define PI_HALF_SQRT 1.253314137315500 //sqrt(PI/2)

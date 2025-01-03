@@ -1,0 +1,1 @@
+..\..\..\bin\AAVDP_win.exe --rdf .\Cu50Zr50.liquid.lammps -r 10 -n 100 -partial -o .\Cu50Zr50.liquid.rdf

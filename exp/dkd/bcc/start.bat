@@ -1,0 +1,3 @@
+..\..\..\bin\AAVDP_win.exe --dkd .\bcc.vasp -q 1.5 -z 1 1 3 -rx 0.25 -ry 0.30 -px 500 -py 600 -o .\bcc.113.dkd --monte -seed ..\..\..\RandomSeeds.data -o .\bcc.mc --rotate -x 0 3 -1 -y 10 -1 -3
+..\..\..\bin\AAVDP_win.exe --dkd .\bcc.vasp -q 1.5 -px 600 -py 600 -o .\bcc.dkd --monte -seed ..\..\..\RandomSeeds.data -o .\bcc.mc
+..\..\..\bin\AAVDP_win.exe --dkd .\bcc.vasp -q 1.5 -px 600 -py 600 -o .\bcc.no_mc.dkd

@@ -7,7 +7,7 @@
 #include <complex>
 #define lapack_complex_float std::complex<float>
 #define lapack_complex_double std::complex<double>
-#include "../include/lapacke.h"
+#include "../../include/lapacke.h"
 #include "../MATH/MATH.h"
 #include "../MATH/GRAPH.h"
 #include "../MODEL/MODEL.h"
@@ -85,14 +85,14 @@ private:
     void   img(char *png_path, double *x, double *y, double *value, int num, double limit);
 };
 
-struct DKD_KNODE{
-    double k[3];
-    double kn;
-    double intensity;
-    int i, j;
-    int hemisphere;//Northern = 1, Southern = -1
-    DKD_KNODE *next=nullptr;
-};
+// struct DKD_KNODE{
+//     double k[3];
+//     double kn;
+//     double intensity;
+//     int i, j;
+//     int hemisphere;//Northern = 1, Southern = -1
+//     DKD_KNODE *next=nullptr;
+// };
 
 // class DKD_KVECTOR
 // {
@@ -125,7 +125,9 @@ public:
     void   dkd(char* dkd_path, char background);
     void   dkd(char* dkd_path, double vmax, double vmin, char background);
 private:
-    void   compute_Kikuchi_sphere_projection(CELL *cell, double xaxis[3], double yaxis[3], double zaxis[3], double ratiox, double ratioy, double kn, char *projection);
+    double axes[3][3];
+    void   rotate(double x[3], double y[3], double z[3]);
+    void   compute_Kikuchi_sphere_projection(CELL *cell, double ratiox, double ratioy, double kn, char *projection);
     void   compute_Kikuchi_intensity_projection(double &intens, complex<double> ***Sgh, complex<double> **Lgh, int napos, int nstrong, int npos);
     void   compute_dynamic_matrix(complex<double> **dynmat, CELL *cell, DED_GVECTOR *gvec);
     void   compute_Sgh_matrices(complex<double> ***Sgh, CELL *cell, DED_GVECTOR *gvec);
