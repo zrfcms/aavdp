@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
     int    i=1;
     if(argc<2){
         printf("AAVDP: unrecognized mode ''\n");
-        printf("Try 'AAVDP -h' or 'AAVDP --help' for more information'\n");
+        printf("Try 'AAVDP -h' or 'AAVDP --help' for more information\n");
     }
     if(0==strcmp(argv[i], "--xrd")||0==strcmp(argv[i], "--ned")){
         char   *mode; mode=argv[i]+2;
