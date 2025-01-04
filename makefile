@@ -7,10 +7,10 @@ SRC=$(wildcard ./src/*/*/*.cpp ./src/*/*.cpp ./src/*.cpp)
 OBJ=$(patsubst %.cpp, %.o, $(SRC))
 
 ./bin/AAVDP_win: $(OBJ)
-	@echo "Start building AAVDP..."
+	@echo "Start building AAVDP on Windows platform..."
 	$(CXX) $(OBJ) -o $@ \
 	-g $(INC) $(LIB)
-	@echo "End building AAVDP."
+	@echo "End building AAVDP on Windows platform."
 
 %.o: %.cpp
 	@echo $<
