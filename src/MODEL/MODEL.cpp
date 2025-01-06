@@ -206,7 +206,11 @@ CELL::CELL(const char *cell_path, const char types[][10], const double DWs[], do
 {
     QB_tools QB;
     QB_init(&QB);
-    QB_read_file(&QB, cell_path);
+    int state=QB_read_file(&QB, cell_path);
+    if(QB_F_UNKNOWN==state){
+        printf("[ERROR] Unrecognized file %s\n", cell_path);
+        exit(1);
+    }
     QSPG_refined(&QB, &QB, SYMPREC);
     ntype=QB.TypeNumber;
     callocate_2d(&type_name, ntype, 10, '\0');
@@ -919,7 +923,11 @@ MODEL::MODEL(const char *model_path, const char types[][10], const double DWs[])
 {
     QB_tools QB;
     QB_init(&QB);
-    QB_read_file(&QB, model_path);
+    int state=QB_read_file(&QB, model_path);
+    if(QB_F_UNKNOWN==state){
+        printf("[ERROR] Unrecognized file %s\n", model_path);
+        exit(1);
+    }
     set_lattice(QB.mat);
     is_periodic[0]=QB.px; is_periodic[1]=QB.py; is_periodic[2]=QB.pz;
     ntype=QB.TypeNumber;

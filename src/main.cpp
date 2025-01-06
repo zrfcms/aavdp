@@ -7,8 +7,18 @@ int main(int argc, char* argv[])
 {
     int    i=1;
     if(argc<2){
-        printf("AAVDP: unrecognized mode ''\n");
-        printf("Try 'AAVDP -h' or 'AAVDP --help' for more information\n");
+        print_version();
+    }else if(argc<3){
+        if(0==strcmp(argv[i], "-h")||0==strcmp(argv[i], "--help")){
+            print_help();
+        }else if(0==strcmp(argv[i], "-v")||0==strcmp(argv[i], "--version")){
+            print_version();
+        }else if(0==strcmp(argv[i], "--xrd")||0==strcmp(argv[i], "--ned")||0==strcmp(argv[i], "--ked")||0==strcmp(argv[i], "--kkd")||0==strcmp(argv[i], "--ded")||0==strcmp(argv[i], "--dkd")||0==strcmp(argv[i], "--rdf")||0==strcmp(argv[i], "--ssf")){
+            printf("[ERROR] inputfile is required for mode '%s'\n", argv[i]);
+        }else{
+            printf("AAVDP: unrecognized mode '%s'\n", argv[i]);
+            printf("Try 'AAVDP -h' for more information'\n");
+        }
     }else if(0==strcmp(argv[i], "--xrd")||0==strcmp(argv[i], "--ned")){
         char   *mode; mode=argv[i]+2;
         i++;
@@ -85,31 +95,33 @@ int main(int argc, char* argv[])
                 i++;
                 strcpy(output_path, argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "--scherrer")){
+            }else if(0==strcmp(argv[i], "-scherrer")){
                 i++;
                 is_scherrer=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-m")){
+                    if(0==strcmp(argv[i], "-scherrer_m")){
                         i++;
                         mixing_param=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-d")){
+                    }else if(0==strcmp(argv[i], "-scherrer_d")){
                         i++;
                         grain_diameter=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-d2t")){
+                    }else if(0==strcmp(argv[i], "-scherrer_d2t")){
                         i++;
                         d2t=be_double(argv[i++]);
                         continue;
+                    }else if(not_in_switch(argv[i], "-scherrer")){
+                        break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h %s' for more information", mode);
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h %s' for more information", mode);
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -219,53 +231,53 @@ int main(int argc, char* argv[])
                 i++;
                 strcpy(output_path, argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "--rotate")){
+            }else if(0==strcmp(argv[i], "-rotate")){
                 i++;
                 is_rotate=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-x")){
+                    if(0==strcmp(argv[i], "-rotate_x")){
                         i++;
                         xaxis[0]=be_double(argv[i++]);
                         xaxis[1]=be_double(argv[i++]);
                         xaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-y")){
+                    }else if(0==strcmp(argv[i], "-rotate_y")){
                         i++;
                         yaxis[0]=be_double(argv[i++]);
                         yaxis[1]=be_double(argv[i++]);
                         yaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-rotate")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h ked' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--gauss")){
+            }else if(0==strcmp(argv[i], "-gauss")){
                 i++;
                 is_gauss=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-sig")){
+                    if(0==strcmp(argv[i], "-gauss_sig")){
                         i++;
                         sigma=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-dx")){
+                    }else if(0==strcmp(argv[i], "-gauss_dx")){
                         i++;
                         dx=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-gauss")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h ked' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h ked' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -390,53 +402,53 @@ int main(int argc, char* argv[])
                 i++;
                 strcpy(output_path, argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "--rotate")){
+            }else if(0==strcmp(argv[i], "-rotate")){
                 i++;
                 is_rotate=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-x")){
+                    if(0==strcmp(argv[i], "-rotate_x")){
                         i++;
                         xaxis[0]=be_double(argv[i++]);
                         xaxis[1]=be_double(argv[i++]);
                         xaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-y")){
+                    }else if(0==strcmp(argv[i], "-rotate_y")){
                         i++;
                         yaxis[0]=be_double(argv[i++]);
                         yaxis[1]=be_double(argv[i++]);
                         yaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-rotate")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h kkd' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--scale")){
+            }else if(0==strcmp(argv[i], "-scale")){
                 i++;
                 is_scale=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-i")){
+                    if(0==strcmp(argv[i], "-scale_i")){
                         i++;
                         imin=be_double(argv[i++]);
                         imax=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-scale")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h kkd' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--ked3")){
+            }else if(0==strcmp(argv[i], "-ked3")){
                 i++;
                 is_ked3=true;
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h kkd' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -559,53 +571,53 @@ int main(int argc, char* argv[])
                 i++;
                 strcpy(output_path, argv[i++]);
                 continue;
-            }else if(0==strcmp(argv[i], "--rotate")){
+            }else if(0==strcmp(argv[i], "-rotate")){
                 i++;
                 is_rotate=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-x")){
+                    if(0==strcmp(argv[i], "-rotate_x")){
                         i++;
                         xaxis[0]=be_double(argv[i++]);
                         xaxis[1]=be_double(argv[i++]);
                         xaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-y")){
+                    }else if(0==strcmp(argv[i], "-rotate_y")){
                         i++;
                         yaxis[0]=be_double(argv[i++]);
                         yaxis[1]=be_double(argv[i++]);
                         yaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-rotate")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h ded' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--gauss")){
+            }else if(0==strcmp(argv[i], "-gauss")){
                 i++;
                 is_gauss=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-sig")){
+                    if(0==strcmp(argv[i], "-gauss_sig")){
                         i++;
                         sigma=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-dx")){
+                    }else if(0==strcmp(argv[i], "-gauss_dx")){
                         i++;
                         dx=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-gauss")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h ded' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h ded' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -722,93 +734,93 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-o")){
                 i++;
                 strcpy(output_path, argv[i++]);
-            }else if(0==strcmp(argv[i], "--monte")){
+            }else if(0==strcmp(argv[i], "-monte")){
                 i++;
                 is_monte=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-rd")){
+                    if(0==strcmp(argv[i], "-monte_rd")){
                         i++;
                         omega=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-td")){
+                    }else if(0==strcmp(argv[i], "-monte_td")){
                         i++;
                         sigma=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-ex")){
+                    }else if(0==strcmp(argv[i], "-monte_ex")){
                         i++;
                         Eexit=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-dt")){
+                    }else if(0==strcmp(argv[i], "-monte_dt")){
                         i++;
                         dthick=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-ne")){
+                    }else if(0==strcmp(argv[i], "-monte_ne")){
                         i++;
                         nume=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-np")){
+                    }else if(0==strcmp(argv[i], "-monte_np")){
                         i++;
                         nump=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-seed")){
+                    }else if(0==strcmp(argv[i], "-monte_seed")){
                         i++;
                         strcpy(seed_path, argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-o")){
+                    }else if(0==strcmp(argv[i], "-monte_o")){
                         i++;
                         strcpy(mc_path, argv[i++]);
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-monte")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h dkd' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--rotate")){
+            }else if(0==strcmp(argv[i], "-rotate")){
                 i++;
                 is_rotate=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-x")){
+                    if(0==strcmp(argv[i], "-rotate_x")){
                         i++;
                         xaxis[0]=be_double(argv[i++]);
                         xaxis[1]=be_double(argv[i++]);
                         xaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-y")){
+                    }else if(0==strcmp(argv[i], "-rotate_y")){
                         i++;
                         yaxis[0]=be_double(argv[i++]);
                         yaxis[1]=be_double(argv[i++]);
                         yaxis[2]=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-rotate")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h dkd' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
-            }else if(0==strcmp(argv[i], "--scale")){
+            }else if(0==strcmp(argv[i], "-scale")){
                 i++;
                 is_scale=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-i")){
+                    if(0==strcmp(argv[i], "-scale_i")){
                         i++;
                         imin=be_double(argv[i++]);
                         imax=be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-scale")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h dkd' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h dkd' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -877,7 +889,7 @@ int main(int argc, char* argv[])
                 strcpy(output_path, argv[i++]);
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h rdf' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -918,29 +930,29 @@ int main(int argc, char* argv[])
             }else if(0==strcmp(argv[i], "-o")){
                 i++;
                 strcpy(output_path, argv[i++]);
-            }else if(0==strcmp(argv[i], "--rdf")){
+            }else if(0==strcmp(argv[i], "-rdf")){
                 i++;
                 is_rdf=true;
                 while(i<argc){
-                    if(0==strcmp(argv[i], "-r")){
+                    if(0==strcmp(argv[i], "-rdf_r")){
                         i++;
                         rmax=be_double(argv[i++]);
                         continue;
-                    }else if(0==strcmp(argv[i], "-n")){
+                    }else if(0==strcmp(argv[i], "-rdf_n")){
                         i++;
                         nrbin=(int)be_double(argv[i++]);
                         continue;
-                    }else if(is_mode(argv[i])){
+                    }else if(not_in_switch(argv[i], "-rdf")){
                         break;
                     }else{
                         printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                        printf("Try 'AAVDP -h ssf' for more information");
+                        printf("Try 'AAVDP -h' for more information");
                         exit(1);
                     }
                 }
             }else{
                 printf("AAVDP: unrecognized option '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h ssf' for more information");
+                printf("Try 'AAVDP -h' for more information");
                 exit(1);
             }
         }
@@ -958,69 +970,8 @@ int main(int argc, char* argv[])
             SSF ssf(input_path, qmax, nqbin, is_partial);
             ssf.ssf(ssf_path);
         }
-    }else if(0==strcmp(argv[i], "-h")||0==strcmp(argv[i], "--help")){
-        i++;
-        if(i==argc){
-            printf("The syntax format and rules for AAVDP:\n");
-            printf("    AAVDP <--mode> (inputfile) <-parameter> [value]   \n");
-            printf("    AAVDP --xrd     # X-ray diffraction               \n");
-            printf("    AAVDP --ned     # Neutron diffraction             \n");
-            printf("    AAVDP --ked     # Kinematic electron diffraction\n");
-            printf("    AAVDP --ded     # Dynamical electron diffraction  \n");
-            printf("    AAVDP --kkd     # Kinematic Kikuchi diffraction \n");
-            printf("    AAVDP --dkd     # Dynamical Kikuchi diffraction   \n");
-            printf("    AAVDP --rdf     # Radial distribution function    \n");
-            printf("    AAVDP --ssf     # Static structure factor         \n");
-            printf("Try 'AAVDP -h [mode]' for more information, e.g., 'AAVDP -h xrd'\n");
-        }else{
-            if(0==strcmp(argv[i], "xrd")){
-                printf("The syntax format and rules for xrd in AAVDP:\n");
-                printf("    AAVDP --xrd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [Lorentz_polarization_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [grain_diameter] -d2t [2theta_bin]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "ned")){
-                printf("The syntax format and rules for ned in AAVDP:\n");
-                printf("    AAVDP --ned [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -l [lambda] -2t [2theta_min] [2theta_max] -lp [Lorentz_type] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [outputfile] --scherrer -m [mixing_parameter] -d [grain_diameter] -d2t [2theta_bin]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "ked")){
-                printf("The syntax format and rules for ked in AAVDP:\n");
-                printf("    AAVDP --ked [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -z [z_1] [z_2] [z_3] -q [qmax] -t [intersection_thickness] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [output_file] --gauss -sig [standard_deviation] -dx [qx_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "kkd")){
-                printf("The syntax format and rules for ked in AAVDP:\n");
-                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [qmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -t [Kikuchi_line_thickness] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
-                printf("    or\n");
-                printf("    AAVDP --kkd [inputfile] -e [type1] [type2] … [typeN] -en [voltage] -q [qmax] -c [c1] [c2] [c3] -auto/manu -thr [threshold] -o [ked3file] --ked3\n");
-                printf("    AAVDP --kkd [ked3file] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -t [Kikuchi_line_thickness] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "ded")){
-                printf("The syntax format and rules for ded in AAVDP:\n");
-                printf("    AAVDP --ded [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] ... -en [voltage] -z [z_1] [z_2] [z_3] -q [qmax] -fn [n_1] [n_2] [n_3] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -thr [threshold] -o [outputfile] --gauss -sig [standard_deviation] -dx [qx_bin] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "dkd")){
-                printf("The syntax format and rules for dkd in AAVDP:\n");
-                printf("    AAVDP --dkd [inputfile] -e [type1] [type2] … [typeN] -dw [DW1] [DW2] … [DWN] -en [voltage] -q [qmax] -ft [foil_thickness] -bethe [rg_c1] [rg_c2] [rg_c3] [sg_c] -z [z_1] [z_2] [z_3] -rx [projection_ratiox] -ry [projection_ratioy] -px [numpx] -py [numpy] -background [background_color] -o [outputfile] --monte -rd [rotation_angle] -td [tilt_angle] -ex [energy_exit] -dt [foil_depth_bin] -ne [nume] -np [nump] -seed [randomfile] -o [outputfile] --rotate -x [x_1] [x_2] [x_3] -y [y_1] [y_2] [y_3] --scale -i [intensity_min] [intensity_max]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "rdf")){
-                printf("The syntax format and rules for dkd in AAVDP:\n");
-                printf("    AAVDP --rdf [inputfile] -r [rmax] -n [nbin] -partial -o [outputfile]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else if(0==strcmp(argv[i], "ssf")){
-                printf("The syntax format and rules for dkd in AAVDP:\n");
-                printf("    AAVDP --ssf [inputfile] -q [qmax] -n [nbin] -partial -o [outputfile] --rdf -r [rmax] -n [nbin]\n");
-                printf("Check /man/manual.pdf for more information\n");
-            }else{
-                printf("AAVDP: unrecognized mode '%s'\n", argv[i]);
-                printf("Try 'AAVDP -h' or 'AAVDP --help' for more information'\n");
-            }
-        }
-    }else if(0==strcmp(argv[i], "-v")||0==strcmp(argv[i], "--version")){
-        printf("***------------------------------------------------AAVDP Version 0.0.4 (2024.10.30)-----------------------------------------------***\n");
-        printf("*** An integrated command-line program for automatic analysis of virtual diffraction patterns of artificial atomistic structures. ***\n");
-        printf("***                           Copyright[c] 2022-2024, Beihang University by Zhang Yan and Ruifeng Zhang.                          ***\n");
-        printf("***                                     Please send bugs and suggestions to zrfcms@buaa.edu.cn                                    ***\n");
-        printf("***-------------------------------------------------------------------------------------------------------------------------------***\n");
     }else{
         printf("AAVDP: unrecognized mode '%s'\n", argv[i]);
-        printf("Try 'AAVDP -h' or 'AAVDP --help' for more information'\n");
+        printf("Try 'AAVDP -h' for more information'\n");
     }
 }

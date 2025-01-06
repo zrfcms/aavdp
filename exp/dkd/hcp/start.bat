@@ -1,2 +1,2 @@
-..\..\..\bin\AAVDP_win.exe --dkd .\hcp.vasp -q 1.5 -px 600 -py 600 -o .\hcp.dkd --monte -seed ..\..\..\RandomSeeds.data -o .\hcp.mc
+..\..\..\bin\AAVDP_win.exe --dkd .\hcp.vasp -q 1.5 -px 600 -py 600 -o .\hcp.dkd -monte -monte_seed ..\..\..\RandomSeeds.data -monte_o .\hcp.mc
 ..\..\..\bin\AAVDP_win.exe --dkd .\hcp.vasp -q 1.5 -px 600 -py 600 -o .\hcp.no_mc.dkd

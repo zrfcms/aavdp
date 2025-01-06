@@ -28,7 +28,11 @@ RDF::RDF(char *model_path, double rmax, int nbin, bool is_partial)
 {
 	QB_tools QB;
 	QB_init(&QB);
-	QB_read_file(&QB, model_path);
+	int state=QB_read_file(&QB, model_path);
+    if(QB_F_UNKNOWN==state){
+        printf("[ERROR] Unrecognized file %s\n", model_path);
+        exit(1);
+    }
 
 	printf("[INFO] Starting computation of radial distribution function...\n");
 	set_volume(QB.mat);
@@ -286,7 +290,11 @@ SSF::SSF(char *model_path, double qmax, int nbin, bool is_partial)
 {
 	QB_tools QB;
 	QB_init(&QB);
-	QB_read_file(&QB, model_path);
+    int state=QB_read_file(&QB, model_path);
+    if(QB_F_UNKNOWN==state){
+        printf("[ERROR] Unrecognized file %s\n", model_path);
+        exit(1);
+    }
 	printf("[INFO] Starting computation of static structure factor...\n");
     double dq=TWO_PI/cbrt(QB.mat[0][0]*QB.mat[1][1]*QB.mat[2][2]);
     double spacingK[3]={dq, dq, dq};
