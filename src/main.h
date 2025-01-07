@@ -24,7 +24,7 @@ void print_version()
 {
     printf("AAVDP Version 1.0.0 (2025.01.04)\n"
            "An integrated command-line program for automatic analysis of virtual diffraction patterns of artificial atomistic structures.\n"
-           "Copyright[c] 2022-2024, Beihang University by Yan Zhang and Ruifeng Zhang.\n"
+           "Copyright[c] 2025-2027, Beihang University by Yan Zhang and Ruifeng Zhang.\n"
            "Please send bugs and suggestions to zrfcms@buaa.edu.cn.\n");
 }
 
