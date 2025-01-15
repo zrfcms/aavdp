@@ -238,7 +238,11 @@ void RDF::rdf(char *rdf_path)
 		if(ggmin>gmin[i]) ggmin=gmin[i];
 		if(ggmax<gmax[i]) ggmax=gmax[i];
 	}
-	for(int i=0;i<numij;i++){
+	strcpy(png_path, rdf_path);
+	strcat(png_path, ".png");
+	img(png_path, rij, gij[0], numrbin, ggmin, ggmax);
+	printf("[INFO] Image for radial distribution function stored in %s\n", png_path);
+	for(int i=1;i<numij;i++){
 		int typei=ij[i][0], typej=ij[i][1];
 		strcpy(png_path, rdf_path);
 		char stri[5], strj[5]; int_to_str(stri, typei); int_to_str(strj, typej); 
@@ -478,7 +482,11 @@ void SSF::ssf(char *ssf_path)
 		if(SSmin>Smin[i]) SSmin=Smin[i];
 		if(SSmax<Smax[i]) SSmax=Smax[i];
 	}
-	for(int i=0;i<numij;i++){
+	strcpy(png_path, ssf_path);
+	strcat(png_path, ".png");
+	img(png_path, qij, Sij[0], numqbin, SSmin, SSmax);
+	printf("[INFO] Image for radial distribution function stored in %s\n", png_path);
+	for(int i=1;i<numij;i++){
 		int typei=ij[i][0], typej=ij[i][1];
 		strcpy(png_path, ssf_path);
 		char stri[5], strj[5]; int_to_str(stri, typei); int_to_str(strj, typej); 
